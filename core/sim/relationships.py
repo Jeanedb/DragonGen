@@ -32,6 +32,9 @@ def add_rivalry(world, d1, d2):
     if d1.id in d2.friends:
         d2.friends.remove(d1.id)
 
+    d1.resentment[d2.id] = d1.resentment.get(d2.id, 0) + 1
+    d2.resentment[d1.id] = d2.resentment.get(d1.id, 0) + 1
+
     log_event(
         world,
         f"Tension grows between {d1.name} and {d2.name}; they are now rivals.",
