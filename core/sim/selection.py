@@ -44,7 +44,7 @@ def choose_injury_dragon(living):
 # -------- weights --------
 
 def friendship_weight(a, b):
-    weight = 1.1
+    weight = 1.0
 
     friendly_traits = {"Kind", "Loyal", "Playful"}
     difficult_traits = {"Suspicious", "Moody", "Ambitious"}
@@ -61,6 +61,12 @@ def friendship_weight(a, b):
 
     if set(a.parents) & set(b.parents):
         weight += 0.6
+
+    weight += a.trust.get(b.id, 0) * 0.25
+    weight += b.trust.get(a.id, 0) * 0.25
+
+    weight -= a.resentment.get(b.id, 0) * 0.30
+    weight -= b.resentment.get(a.id, 0) * 0.30
 
     return max(0.2, weight)
 
@@ -94,6 +100,12 @@ def rivalry_weight(a, b):
     # if already rivals, reduce repeated selection a bit
     if b.id in a.rivals or a.id in b.rivals:
         weight -= 0.15
+
+    weight += a.resentment.get(b.id, 0) * 0.30
+    weight += b.resentment.get(a.id, 0) * 0.30
+
+    weight -= a.trust.get(b.id, 0) * 0.20
+    weight -= b.trust.get(a.id, 0) * 0.20
 
     return max(0.05, weight)
 
