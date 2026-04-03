@@ -18,3 +18,5 @@ class Dragon:
     dragonets: List[int] = field(default_factory=list)
     friends: List[int] = field(default_factory=list)
     rivals: List[int] = field(default_factory=list)
+    trust: dict = field(default_factory=dict)
+    resentment: dict = field(default_factory=dict)

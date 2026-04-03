@@ -12,13 +12,16 @@ def add_friendship(world, d1, d2):
     if d1.id in d2.rivals:
         d2.rivals.remove(d1.id)
 
+    d1.trust[d2.id] = d1.trust.get(d2.id, 0) + 1
+    d2.trust[d1.id] = d2.trust.get(d1.id, 0) + 1
+
     log_event(
         world,
         f"{d1.name} and {d2.name} have become friends.",
         [d1.id, d2.id],
         event_type="friendship",
         importance=2,
-    )
+)
 
 
 def add_rivalry(world, d1, d2):
