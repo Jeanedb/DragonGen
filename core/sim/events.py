@@ -4,9 +4,9 @@ from core.sim.leadership import try_leadership_event
 
 
 def run_event_phase(world):
+    from core.sim.family import try_family_event
     from core.simulation import (
         get_living_dragons,
-        try_family_event,
         try_existing_relationship_event,
         choose_friendship_pair,
         choose_rivalry_pair,
