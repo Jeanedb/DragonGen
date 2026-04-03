@@ -4,6 +4,7 @@ from core.generator import generate_dragonet
 from core.sim.logging import log_event
 from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.choices import resolve_choice
+from core.sim.progression import tick_dragon_progression
 
 
 def get_living_dragons(world: World):
@@ -541,30 +542,8 @@ def advance_moon(world: World):
     living = get_living_dragons(world)
 
     for dragon in living:
-        dragon.age_moons += 1
-
-        if dragon.role == "Dragonet" and dragon.age_moons >= 12:
-            dragon.role = random.choice(["Hunter", "Scout", "Warrior", "Healer"])
-            log_event(
-                world,
-                f"{dragon.name} is no longer a dragonet and now serves as a {dragon.role}.",
-                involved_ids=[dragon.id],
-                event_type="role_change",
-                importance=3
-            )
-
-        heal_chance = 0.35
-        if any(d.role == "Healer" and d.status == "Alive" for d in living):
-            heal_chance += 0.10
-
-        if dragon.health == "Injured" and random.random() < heal_chance:
-            dragon.health = "Healthy"
-            log_event(
-                world,
-                f"{dragon.name} recovered from their injuries.",
-                involved_ids=[dragon.id],
-                event_type="recovery"
-            )
+        tick_dragon_progression(world, dragon, living)
+        handle_possible_death(world, dragon)
 
         handle_possible_death(world, dragon)
 
