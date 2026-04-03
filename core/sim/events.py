@@ -1,21 +1,19 @@
 import random
 from core.sim.relationships import add_friendship, add_rivalry
-from core.sim.logging import log_event
-
-# We will import helpers from simulation for now (temporary)
-from core.simulation import (
-    get_living_dragons,
-    try_leadership_event,
-    try_family_event,
-    try_existing_relationship_event,
-    choose_friendship_pair,
-    choose_rivalry_pair,
-    choose_injury_dragon,
-    add_injury,
-)
 
 
 def run_event_phase(world):
+    from core.simulation import (
+        get_living_dragons,
+        try_leadership_event,
+        try_family_event,
+        try_existing_relationship_event,
+        choose_friendship_pair,
+        choose_rivalry_pair,
+        choose_injury_dragon,
+        add_injury,
+    )
+
     event_count = random.randint(2, 4)
 
     for _ in range(event_count):

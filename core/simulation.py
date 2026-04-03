@@ -5,21 +5,7 @@ from core.sim.logging import log_event
 from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.choices import resolve_choice
 from core.sim.progression import tick_dragon_progression
-
-def run_event_phase(world):
-    from core.simulation import (
-        get_living_dragons,
-        try_leadership_event,
-        try_family_event,
-        try_existing_relationship_event,
-        choose_friendship_pair,
-        choose_rivalry_pair,
-        choose_injury_dragon,
-        add_injury,
-    )
-
-def get_living_dragons(world: World):
-    return [d for d in world.dragons if d.status == "Alive"]
+from core.sim.events import run_event_phase
 
 
 def are_family(a, b):
@@ -28,6 +14,47 @@ def are_family(a, b):
     if set(a.parents) & set(b.parents):
         return True
     return False
+
+def get_living_dragons(world: World):
+    return [d for d in world.dragons if d.status == "Alive"]
+
+def choose_friendship_pair(living):
+    pairs = []
+
+    for i in range(len(living)):
+        for j in range(i + 1, len(living)):
+            a = living[i]
+            b = living[j]
+            pairs.append((a, b))
+
+    if not pairs:
+        return None, None
+
+    weights = [friendship_weight(a, b) for a, b in pairs]
+    return random.choices(pairs, weights=weights, k=1)[0]
+
+def choose_rivalry_pair(living):
+    pairs = []
+
+    for i in range(len(living)):
+        for j in range(i + 1, len(living)):
+            a = living[i]
+            b = living[j]
+            pairs.append((a, b))
+
+    if not pairs:
+        return None, None
+
+    weights = [rivalry_weight(a, b) for a, b in pairs]
+    return random.choices(pairs, weights=weights, k=1)[0]
+
+def choose_injury_dragon(living):
+    if not living:
+        return None
+
+    weights = [injury_weight(d) for d in living]
+    return random.choices(living, weights=weights, k=1)[0]
+
 
 
 def friendship_weight(a, b):
@@ -96,46 +123,6 @@ def injury_weight(dragon):
         weight -= 0.40
 
     return max(0.2, weight)
-
-
-def choose_friendship_pair(living):
-    pairs = []
-
-    for i in range(len(living)):
-        for j in range(i + 1, len(living)):
-            a = living[i]
-            b = living[j]
-            pairs.append((a, b))
-
-    if not pairs:
-        return None, None
-
-    weights = [friendship_weight(a, b) for a, b in pairs]
-    return random.choices(pairs, weights=weights, k=1)[0]
-
-
-def choose_rivalry_pair(living):
-    pairs = []
-
-    for i in range(len(living)):
-        for j in range(i + 1, len(living)):
-            a = living[i]
-            b = living[j]
-            pairs.append((a, b))
-
-    if not pairs:
-        return None, None
-
-    weights = [rivalry_weight(a, b) for a, b in pairs]
-    return random.choices(pairs, weights=weights, k=1)[0]
-
-
-def choose_injury_dragon(living):
-    if not living:
-        return None
-
-    weights = [injury_weight(d) for d in living]
-    return random.choices(living, weights=weights, k=1)[0]
 
 
 
