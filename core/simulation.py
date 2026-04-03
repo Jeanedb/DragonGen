@@ -6,6 +6,17 @@ from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.choices import resolve_choice
 from core.sim.progression import tick_dragon_progression
 
+def run_event_phase(world):
+    from core.simulation import (
+        get_living_dragons,
+        try_leadership_event,
+        try_family_event,
+        try_existing_relationship_event,
+        choose_friendship_pair,
+        choose_rivalry_pair,
+        choose_injury_dragon,
+        add_injury,
+    )
 
 def get_living_dragons(world: World):
     return [d for d in world.dragons if d.status == "Alive"]
@@ -545,8 +556,6 @@ def advance_moon(world: World):
         tick_dragon_progression(world, dragon, living)
         handle_possible_death(world, dragon)
 
-        handle_possible_death(world, dragon)
-
     maintain_hierarchy(world)
 
     if random.random() < 0.20:
@@ -568,43 +577,8 @@ def advance_moon(world: World):
                 world.event_log = world.event_log[-100:]
                 return True
 
-    event_count = random.randint(2, 4)
-
-    for _ in range(event_count):
-        living = get_living_dragons(world)
-        if len(living) < 2:
-            break
-
-        roll = random.random()
-        success = False
-        attempts = 0
-
-        while not success and attempts < 10:
-            attempts += 1
-
-            if roll < 0.15:
-                success = try_leadership_event(world)
-            elif roll < 0.30:
-                success = try_family_event(world, living)
-            elif roll < 0.55:
-                success = try_existing_relationship_event(world, living)
-            elif roll < 0.65:
-                a, b = choose_friendship_pair(living)
-                if a and b:
-                    success = add_friendship(world, a, b)
-            elif roll < 0.90:
-                a, b = choose_rivalry_pair(living)
-                if a and b:
-                    success = add_rivalry(world, a, b)
-            else:
-                dragon = choose_injury_dragon(living)
-                if dragon:
-                    success = add_injury(world, dragon)
-
-            if success:
-                break
-
-            roll = random.random()
+    # ✅ THIS is where your new call goes
+    run_event_phase(world)
 
     world.event_log = world.event_log[-100:]
     return True
