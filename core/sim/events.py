@@ -36,11 +36,11 @@ def run_event_phase(world):
                 success = try_family_event(world, living)
             elif roll < 0.55:
                 success = try_existing_relationship_event(world, living)
-            elif roll < 0.65:
+            elif roll < 0.72:
                 a, b = choose_friendship_pair(living)
                 if a and b:
                     success = add_friendship(world, a, b)
-            elif roll < 0.90:
+            elif roll < 0.87:
                 a, b = choose_rivalry_pair(living)
                 if a and b:
                     success = add_rivalry(world, a, b)

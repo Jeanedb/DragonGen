@@ -44,7 +44,7 @@ def choose_injury_dragon(living):
 # -------- weights --------
 
 def friendship_weight(a, b):
-    weight = 1.0
+    weight = 1.1
 
     friendly_traits = {"Kind", "Loyal", "Playful"}
     difficult_traits = {"Suspicious", "Moody", "Ambitious"}
@@ -66,29 +66,36 @@ def friendship_weight(a, b):
 
 
 def rivalry_weight(a, b):
-    weight = 1.0
+    weight = 0.6
 
     rivalry_traits = {"Ambitious", "Moody", "Suspicious"}
 
     if a.personality in rivalry_traits:
-        weight += 0.4
+        weight += 0.20
     if b.personality in rivalry_traits:
-        weight += 0.4
+        weight += 0.20
 
     if a.role == "Warrior":
-        weight += 0.2
+        weight += 0.10
     if b.role == "Warrior":
-        weight += 0.2
+        weight += 0.10
 
     if a.role == "Dragonet":
-        weight -= 0.6
+        weight -= 0.30
     if b.role == "Dragonet":
-        weight -= 0.6
+        weight -= 0.30
 
+    # direct family or shared parents should strongly suppress rivalry
+    if a.id in b.parents or b.id in a.parents:
+        weight -= 0.60
     if set(a.parents) & set(b.parents):
-        weight -= 0.5
+        weight -= 0.45
 
-    return max(0.1, weight)
+    # if already rivals, reduce repeated selection a bit
+    if b.id in a.rivals or a.id in b.rivals:
+        weight -= 0.15
+
+    return max(0.05, weight)
 
 
 def injury_weight(dragon):
