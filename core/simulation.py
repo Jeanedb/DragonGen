@@ -2,6 +2,7 @@ import random
 from core.world import World
 from core.generator import generate_dragonet
 from core.sim.logging import log_event
+from core.sim.relationships import add_friendship, add_rivalry
 
 
 def get_living_dragons(world: World):
@@ -123,41 +124,6 @@ def choose_injury_dragon(living):
     weights = [injury_weight(d) for d in living]
     return random.choices(living, weights=weights, k=1)[0]
 
-
-def add_friendship(world: World, a, b):
-    if b.id in a.friends:
-        return False
-
-    a.friends.append(b.id)
-    b.friends.append(a.id)
-
-    texts = [
-        f"{a.name} and {b.name} spent time together and grew closer.",
-        f"In the {world.tribe_name}, {a.name} and {b.name} formed a strong bond.",
-        f"{a.name} and {b.name} shared a quiet moment and became friends.",
-        f"{a.name} and {b.name} trained together and formed a friendship."
-    ]
-    text = random.choice(texts)
-    log_event(world, text, involved_ids=[a.id, b.id], event_type="friendship")
-    return True
-
-
-def add_rivalry(world: World, a, b):
-    if b.id in a.rivals:
-        return False
-
-    a.rivals.append(b.id)
-    b.rivals.append(a.id)
-
-    texts = [
-        f"{a.name} and {b.name} argued fiercely during the moon.",
-        f"Tension grew between {a.name} and {b.name}.",
-        f"In the {world.tribe_name}, {a.name} and {b.name} fought fiercely.",
-        f"{a.name} and {b.name} clashed and left as rivals."
-    ]
-    text = random.choice(texts)
-    log_event(world, text, involved_ids=[a.id, b.id], event_type="rivalry")
-    return True
 
 
 def add_injury(world: World, dragon):
