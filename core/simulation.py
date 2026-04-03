@@ -261,6 +261,8 @@ def advance_moon(world: World):
             if dragon.resentment[k] < 0.1:
                 del dragon.resentment[k]
 
+    world.tension = max(0.0, min(5.0, world.tension))
+
     # ✅ THIS is where your new call goes
     run_event_phase(world)
 

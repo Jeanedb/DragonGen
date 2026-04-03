@@ -15,6 +15,10 @@ def add_injury(world: World, dragon):
         f"{dragon.name} returned to camp injured after a dangerous outing.",
         f"{dragon.name} suffered an injury during the moon."
     ]
+
     text = random.choice(texts)
+    
+    world.tension += 0.1
+
     log_event(world, text, involved_ids=[dragon.id], event_type="injury")
     return True

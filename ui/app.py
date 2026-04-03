@@ -59,6 +59,44 @@ class DragonGenApp(ctk.CTk):
         self.tribe_selector.set("Mixed")
         self.tribe_selector.pack(pady=(0, 10))
 
+        # Tribe Status Panel
+        self.status_frame = ctk.CTkFrame(self.header_frame)
+        self.status_frame.pack(fill="x", padx=10, pady=(0, 10))
+
+        self.status_title = ctk.CTkLabel(
+            self.status_frame,
+            text="Tribe Status",
+            font=("Arial", 14, "bold")
+        )
+        self.status_title.pack(anchor="w", padx=10, pady=(8, 2))
+
+        self.tension_value_label = ctk.CTkLabel(
+            self.status_frame,
+            text="Tension: 0.0 / 5.0",
+            font=("Arial", 12)
+        )
+        self.tension_value_label.pack(anchor="w", padx=10, pady=2)
+
+        self.tension_bar = ctk.CTkProgressBar(self.status_frame)
+        self.tension_bar.pack(fill="x", padx=10, pady=4)
+        self.tension_bar.set(0)
+
+        self.tension_status_label = ctk.CTkLabel(
+            self.status_frame,
+            text="Mood: Calm",
+            font=("Arial", 12, "bold")
+        )
+        self.tension_status_label.pack(anchor="w", padx=10, pady=(2, 0))
+
+        self.tension_desc_label = ctk.CTkLabel(
+            self.status_frame,
+            text="The tribe feels steady and cooperative.",
+            font=("Arial", 12),
+            wraplength=1000,
+            justify="left"
+        )
+        self.tension_desc_label.pack(anchor="w", padx=10, pady=(0, 8))
+
     def create_roster_panel(self):
         self.roster_frame = ctk.CTkFrame(self)
         self.roster_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
@@ -177,16 +215,44 @@ class DragonGenApp(ctk.CTk):
                 return dragon
         return None
 
+    def get_tension_status(self):
+        tension = getattr(self.world, "tension", 0.0)
+
+        if tension < 0.75:
+            return "Calm", "The tribe feels steady and cooperative."
+        elif tension < 1.5:
+            return "Uneasy", "Small frictions are starting to show."
+        elif tension < 2.5:
+            return "Strained", "Conflict is affecting daily life in the tribe."
+        elif tension < 3.5:
+            return "Volatile", "Tensions are high and conflict feels close."
+        else:
+            return "Crisis", "The tribe is on edge and stability is slipping."
+
     def select_dragon(self, dragon):
         self.selected_dragon = dragon
         self.refresh_details()
 
     def refresh_all(self):
         self.refresh_header()
+        self.refresh_status()
         self.refresh_roster()
         self.refresh_details()
         self.refresh_events()
         self.refresh_choice_panel()
+
+    def refresh_status(self):
+        tension = getattr(self.world, "tension", 0.0)
+        mood, description = self.get_tension_status()
+
+        clamped_tension = max(0.0, min(5.0, tension))
+
+        self.tension_value_label.configure(
+            text=f"Tension: {clamped_tension:.1f} / 5.0"
+        )
+        self.tension_bar.set(clamped_tension / 5.0)
+        self.tension_status_label.configure(text=f"Mood: {mood}")
+        self.tension_desc_label.configure(text=description)
 
     def refresh_header(self):
         living_count = sum(1 for d in self.world.dragons if d.status == "Alive")

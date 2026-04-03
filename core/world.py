@@ -10,3 +10,4 @@ class World:
     dragons: List[Dragon] = field(default_factory=list)
     event_log: List[Dict[str, Any]] = field(default_factory=list)
     pending_choice: Optional[Dict[str, Any]] = None
+    tension: float = 0.0
