@@ -1,11 +1,11 @@
 import random
 from core.sim.relationships import add_friendship, add_rivalry
+from core.sim.leadership import try_leadership_event
 
 
 def run_event_phase(world):
     from core.simulation import (
         get_living_dragons,
-        try_leadership_event,
         try_family_event,
         try_existing_relationship_event,
         choose_friendship_pair,

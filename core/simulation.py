@@ -6,6 +6,7 @@ from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.choices import resolve_choice
 from core.sim.progression import tick_dragon_progression
 from core.sim.events import run_event_phase
+from core.sim.leadership import maintain_hierarchy
 
 
 def are_family(a, b):
@@ -331,135 +332,6 @@ def try_existing_relationship_event(world: World, living):
 
     return False
 
-
-def get_current_leader(world: World):
-    for d in world.dragons:
-        if d.status == "Alive" and d.rank == "Leader":
-            return d
-    return None
-
-
-def get_current_deputy(world: World):
-    for d in world.dragons:
-        if d.status == "Alive" and d.rank == "Deputy":
-            return d
-    return None
-
-
-def choose_leadership_candidate(world: World, exclude_ids=None):
-    if exclude_ids is None:
-        exclude_ids = []
-
-    candidates = [
-        d for d in world.dragons
-        if d.status == "Alive"
-        and d.role != "Dragonet"
-        and d.id not in exclude_ids
-    ]
-
-    if not candidates:
-        return None
-
-    def candidate_weight(dragon):
-        weight = 1.0
-
-        if dragon.role in ["Warrior", "Scout", "Hunter"]:
-            weight += 0.5
-        if dragon.role == "Healer":
-            weight -= 0.2
-        if dragon.role == "Elder":
-            weight -= 0.3
-
-        if dragon.personality in ["Loyal", "Brave", "Clever", "Ambitious"]:
-            weight += 0.4
-        if dragon.personality == "Moody":
-            weight -= 0.2
-
-        return max(0.2, weight)
-
-    weights = [candidate_weight(d) for d in candidates]
-    return random.choices(candidates, weights=weights, k=1)[0]
-
-
-def maintain_hierarchy(world: World):
-    leader = get_current_leader(world)
-    deputy = get_current_deputy(world)
-
-    if leader is None:
-        if deputy is not None:
-            deputy.rank = "Leader"
-            log_event(
-                world,
-                f"{deputy.name} has become the new Leader of the tribe.",
-                involved_ids=[deputy.id],
-                event_type="leadership_change",
-                importance=5
-            )
-            leader = deputy
-            deputy = None
-        else:
-            new_leader = choose_leadership_candidate(world)
-            if new_leader:
-                new_leader.rank = "Leader"
-                log_event(
-                    world,
-                    f"{new_leader.name} has been chosen as Leader of the tribe.",
-                    involved_ids=[new_leader.id],
-                    event_type="leadership_change",
-                    importance=5
-                )
-                leader = new_leader
-
-    deputy = get_current_deputy(world)
-    if deputy is None:
-        exclude_ids = [leader.id] if leader else []
-        new_deputy = choose_leadership_candidate(world, exclude_ids=exclude_ids)
-
-        if new_deputy and new_deputy.rank != "Leader":
-            new_deputy.rank = "Deputy"
-            log_event(
-                world,
-                f"{new_deputy.name} has been appointed Deputy.",
-                involved_ids=[new_deputy.id],
-                event_type="leadership_change",
-                importance=5
-            )
-
-
-def add_leader_event(world, leader):
-    texts = [
-        f"{leader.name}, leader of the tribe, made a decision that shaped the moon.",
-        f"{leader.name} addressed the tribe, guiding them through the moon's challenges.",
-        f"{leader.name} took charge during a tense moment in the tribe.",
-    ]
-    text = random.choice(texts)
-    log_event(world, text, involved_ids=[leader.id], event_type="leader_event")
-    return True
-
-
-def add_deputy_event(world, deputy):
-    texts = [
-        f"{deputy.name}, the deputy, ensured order within the tribe.",
-        f"{deputy.name} stepped in to support the leader during the moon.",
-        f"{deputy.name} took responsibility and kept the tribe steady.",
-    ]
-    text = random.choice(texts)
-    log_event(world, text, involved_ids=[deputy.id], event_type="deputy_event")
-    return True
-
-
-def try_leadership_event(world):
-    leader = get_current_leader(world)
-    deputy = get_current_deputy(world)
-
-    roll = random.random()
-
-    if leader and roll < 0.7:
-        return add_leader_event(world, leader)
-    elif deputy:
-        return add_deputy_event(world, deputy)
-
-    return False
 
 
 # ---------- PLAYER CHOICES ----------
