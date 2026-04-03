@@ -1,0 +1,447 @@
+{
+    "tribe_name": "Sunset Tribe",
+    "moon": 30,
+    "event_log": [
+        "Reef and Cinder trained together and formed a friendship.",
+        "Orchid and Ash spent time together and grew closer.",
+        "Cobra and Cinder trained together and formed a friendship.",
+        "Ember was injured during a difficult patrol.",
+        "Ember recovered from their injuries.",
+        "Orchid suffered an injury during the moon.",
+        "Frost and Cinder shared a quiet moment and became friends.",
+        "Cobra and Cobra argued fiercely during the moon.",
+        "Reef and Tide shared a quiet moment and became friends.",
+        "Orchid recovered from their injuries.",
+        "Cinder and Snowfall spent time together and grew closer.",
+        "Cobra was injured during a difficult patrol.",
+        "Cobra and Cobra clashed and left as rivals.",
+        "Orchid suffered an injury during the moon.",
+        "Cobra recovered from their injuries.",
+        "Snowfall returned to camp injured after a dangerous outing.",
+        "Orchid and Cinder clashed and left as rivals.",
+        "Tension grew between Cobra and Coral.",
+        "Orchid suffered an injury during the moon.",
+        "Orchid recovered from their injuries.",
+        "Snowfall recovered from their injuries.",
+        "Tension grew between Reef and Ember.",
+        "Tension grew between Cobra and Sparrow.",
+        "Cobra and Reef shared a quiet moment and became friends.",
+        "Cobra and Sparrow spent time together and grew closer.",
+        "Orchid recovered from their injuries.",
+        "Sparrow was injured during a difficult patrol.",
+        "Snowfall and Cobra spent time together and grew closer.",
+        "Snowfall and Cobra argued fiercely during the moon.",
+        "Sparrow recovered from their injuries.",
+        "Orchid and Tide clashed and left as rivals.",
+        "Tension grew between Tide and Coral.",
+        "Frost was injured during a difficult patrol.",
+        "Ash and Reef shared a quiet moment and became friends.",
+        "An egg hatched, and Tide joined the tribe.",
+        "Frost recovered from their injuries.",
+        "Ember suffered an injury during the moon.",
+        "Cobra and Tide spent time together and grew closer.",
+        "Frost and Cobra spent time together and grew closer.",
+        "Ember recovered from their injuries.",
+        "Coral and Tide shared a quiet moment and became friends.",
+        "Frost and Tide spent time together and grew closer.",
+        "Orchid and Ember shared a quiet moment and became friends.",
+        "Tide returned to camp injured after a dangerous outing.",
+        "Cobra has died, leaving behind memories in the tribe.",
+        "The tribe mourns the loss of Tide.",
+        "Cobra suffered an injury during the moon.",
+        "Coral was injured during a difficult patrol.",
+        "Orchid returned to camp injured after a dangerous outing.",
+        "Ember and Cobra argued fiercely during the moon."
+    ],
+    "dragons": [
+        {
+            "id": 1,
+            "name": "Orchid",
+            "tribe": "RainWing",
+            "age_moons": 76,
+            "role": "Healer",
+            "personality": "Brave",
+            "health": "Injured",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                9,
+                15,
+                6
+            ],
+            "rivals": [
+                2,
+                8,
+                7,
+                9
+            ]
+        },
+        {
+            "id": 2,
+            "name": "Frost",
+            "tribe": "IceWing",
+            "age_moons": 104,
+            "role": "Healer",
+            "personality": "Kind",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                11,
+                14,
+                12,
+                9,
+                5,
+                16
+            ],
+            "rivals": [
+                11,
+                10,
+                7,
+                1,
+                15
+            ]
+        },
+        {
+            "id": 3,
+            "name": "Snowfall",
+            "tribe": "IceWing",
+            "age_moons": 202,
+            "role": "Hunter",
+            "personality": "Ambitious",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                14,
+                9,
+                5
+            ],
+            "rivals": [
+                10,
+                7,
+                5,
+                11,
+                4
+            ]
+        },
+        {
+            "id": 4,
+            "name": "Cobra",
+            "tribe": "SandWing",
+            "age_moons": 188,
+            "role": "Healer",
+            "personality": "Clever",
+            "health": "Injured",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                10,
+                6,
+                8,
+                11,
+                15,
+                9
+            ],
+            "rivals": [
+                14,
+                15,
+                5,
+                3
+            ]
+        },
+        {
+            "id": 5,
+            "name": "Cobra",
+            "tribe": "SandWing",
+            "age_moons": 208,
+            "role": "Elder",
+            "personality": "Brave",
+            "health": "Dead",
+            "status": "Dead",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                9,
+                3,
+                8,
+                2
+            ],
+            "rivals": [
+                3,
+                4,
+                11
+            ]
+        },
+        {
+            "id": 6,
+            "name": "Ember",
+            "tribe": "SkyWing",
+            "age_moons": 227,
+            "role": "Scout",
+            "personality": "Loyal",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                10,
+                4,
+                1
+            ],
+            "rivals": [
+                12,
+                13,
+                15
+            ]
+        },
+        {
+            "id": 7,
+            "name": "Orchid",
+            "tribe": "RainWing",
+            "age_moons": 231,
+            "role": "Scout",
+            "personality": "Moody",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                11,
+                15,
+                14
+            ],
+            "rivals": [
+                2,
+                3,
+                1,
+                10
+            ]
+        },
+        {
+            "id": 8,
+            "name": "Tide",
+            "tribe": "SeaWing",
+            "age_moons": 89,
+            "role": "Healer",
+            "personality": "Suspicious",
+            "health": "Dead",
+            "status": "Dead",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                9,
+                4,
+                13,
+                5,
+                11
+            ],
+            "rivals": [
+                13,
+                1
+            ]
+        },
+        {
+            "id": 9,
+            "name": "Cinder",
+            "tribe": "SkyWing",
+            "age_moons": 83,
+            "role": "Hunter",
+            "personality": "Brave",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                5,
+                1,
+                10,
+                8,
+                13,
+                4,
+                2,
+                3
+            ],
+            "rivals": [
+                10,
+                1
+            ]
+        },
+        {
+            "id": 10,
+            "name": "Tide",
+            "tribe": "SeaWing",
+            "age_moons": 103,
+            "role": "Hunter",
+            "personality": "Moody",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                4,
+                9,
+                6
+            ],
+            "rivals": [
+                2,
+                3,
+                9,
+                7,
+                11
+            ]
+        },
+        {
+            "id": 11,
+            "name": "Coral",
+            "tribe": "SeaWing",
+            "age_moons": 190,
+            "role": "Scout",
+            "personality": "Ambitious",
+            "health": "Injured",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                2,
+                7,
+                4,
+                14,
+                8
+            ],
+            "rivals": [
+                2,
+                3,
+                15,
+                5,
+                10
+            ]
+        },
+        {
+            "id": 12,
+            "name": "Sparrow",
+            "tribe": "SkyWing",
+            "age_moons": 207,
+            "role": "Scout",
+            "personality": "Ambitious",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                2,
+                15
+            ],
+            "rivals": [
+                6,
+                15
+            ]
+        },
+        {
+            "id": 13,
+            "name": "Reef",
+            "tribe": "SeaWing",
+            "age_moons": 50,
+            "role": "Scout",
+            "personality": "Moody",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                9,
+                8,
+                15,
+                14
+            ],
+            "rivals": [
+                8,
+                6
+            ]
+        },
+        {
+            "id": 14,
+            "name": "Ash",
+            "tribe": "SkyWing",
+            "age_moons": 46,
+            "role": "Warrior",
+            "personality": "Loyal",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                2,
+                3,
+                11,
+                7,
+                13
+            ],
+            "rivals": [
+                4
+            ]
+        },
+        {
+            "id": 15,
+            "name": "Cobra",
+            "tribe": "SandWing",
+            "age_moons": 42,
+            "role": "Healer",
+            "personality": "Suspicious",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                1,
+                4,
+                7,
+                13,
+                12
+            ],
+            "rivals": [
+                11,
+                2,
+                4,
+                12,
+                6
+            ]
+        },
+        {
+            "id": 16,
+            "name": "Tide",
+            "tribe": "SeaWing",
+            "age_moons": 4,
+            "role": "Dragonet",
+            "personality": "Ambitious",
+            "health": "Healthy",
+            "status": "Alive",
+            "mate_id": null,
+            "parents": [],
+            "dragonets": [],
+            "friends": [
+                2
+            ],
+            "rivals": []
+        }
+    ]
+}

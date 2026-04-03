@@ -1,0 +1,46 @@
+DragonGen/
+│
+├── main.py
+├── requirements.txt
+├── README.md
+│
+├── data/
+│   ├── names.py
+│   ├── tribes.py
+│   ├── personalities.py
+│   └── events.py
+│
+├── core/
+│   ├── dragon.py
+│   ├── world.py
+│   ├── generator.py
+│   ├── simulation.py
+│   └── save_manager.py
+│
+├── ui/
+│   ├── app.py
+│   ├── dragon_panel.py
+│   ├── event_log.py
+│   └── roster_panel.py
+│
+├── saves/
+│   └── .gitkeep
+│
+└── assets/
+    └── .gitkeep
+
+
+-change nomenclature to better suit WoF
+-"MOON" is not the proper term, use "NIGHT" or something else
+-roles and ranks need amending, there is no leader or deputy. add "QUEEN' and "KING"
+-Make "TRIBE" cultures and attributes more accurate to book lore e.g. mythos and camo and water breathing etc...
+-Specific specialty tribe skills e.g. fire scales, lower attribute factor to make "RARE"
+-HYBRIDS? Preference to mate with own tribe, hybrids do happen though
+-add Pantallian "TRIBES"
+-Make "DEAD" tab, cemetery
+xAdd "EVENT" selection e.g. "PATROL" choice A or B
+    >Make more choices now
+
+
+
+
