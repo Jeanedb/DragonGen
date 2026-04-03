@@ -2,6 +2,7 @@ import random
 from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.leadership import try_leadership_event
 from core.sim.family import try_family_event
+from core.sim.injury import add_injury
 from core.sim.selection import (
     choose_friendship_pair,
     choose_rivalry_pair,
@@ -13,7 +14,6 @@ def run_event_phase(world):
     from core.simulation import (
         get_living_dragons,
         try_existing_relationship_event,
-        add_injury,
     )
 
     event_count = random.randint(2, 4)
