@@ -255,6 +255,69 @@ class DragonGenApp(ctk.CTk):
         else:
             return "Crisis", "The tribe is on edge and stability is slipping."
 
+    def get_tribe_button_style(self, tribe):
+        styles = {
+            "MudWing": {
+                "fg_color": "#6B4F3A",
+                "hover_color": "#7A5A42", 
+                "text_color": "#F5E6D3",
+            },
+            "NightWing": {
+                "fg_color": "#2C2238",
+                "hover_color": "#3A2B4A",
+                "text_color": "#E8DDF5",
+            },
+            "SkyWing": {
+                "fg_color": "#8B2E1E",
+                "hover_color": "#A33824",
+                "text_color": "#FFE7E0",
+            },
+            "IceWing": {
+                "fg_color": "#6FAFCF",
+                "hover_color": "#80BDD9",
+                "text_color": "#0F2230",
+            },
+            "SandWing": {
+                "fg_color": "#B08A3E",
+                "hover_color": "#C49A45",
+                "text_color": "#2C2212",
+            },
+            "SeaWing": {
+                "fg_color": "#1F5D73",
+                "hover_color": "#2A7088",
+                "text_color": "#DFF6FF",
+            },
+            "RainWing": {
+                "fg_color": "#3E8B4A",
+                "hover_color": "#4BA85A",
+                "text_color": "#E8FFE8",
+            },
+            "HiveWing": {
+                "fg_color": "#7A5C1B",
+                "hover_color": "#8C6A20",
+                "text_color": "#FFF4CC",
+            },
+            "SilkWing": {
+                "fg_color": "#8C5FA8",
+                "hover_color": "#9E6DBD",
+                "text_color": "#F6ECFF",
+            },
+            "LeafWing": {
+                "fg_color": "#3F6B2F",
+                "hover_color": "#4C8038",
+                "text_color": "#E9F7E1",
+            },
+        }
+
+        return styles.get(
+            tribe,
+            {
+                "fg_color": "#2B5D8A",
+                "hover_color": "#3673A8",
+                "text_color": "#FFFFFF",
+            }
+        )
+
     def select_dragon(self, dragon):
         self.selected_dragon = dragon
         self.refresh_details()
@@ -329,11 +392,16 @@ class DragonGenApp(ctk.CTk):
             dragons_to_show = list(self.world.dragons)
 
         for d in dragons_to_show:
+            style = self.get_tribe_button_style(d.tribe)
+
             btn = ctk.CTkButton(
                 self.roster_scroll,
                 text=f"{d.name} ({d.tribe}) - {d.role} [{d.rank}] - {d.status}",
                 anchor="w",
-                command=lambda dragon=d: self.select_dragon(dragon)
+                command=lambda dragon=d: self.select_dragon(dragon),
+                fg_color=style["fg_color"],
+                hover_color=style["hover_color"],
+                text_color=style["text_color"],
             )
             btn.pack(fill="x", padx=5, pady=2)
             self.dragon_buttons.append(btn)

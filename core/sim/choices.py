@@ -8,6 +8,11 @@ def resolve_choice(world, option_id):
     if not choice:
         return
 
+    if choice["type"] == "leader_decision":
+        handle_leader_decision(world, option_id)
+        world.pending_choice = None
+        return
+
     involved_ids = choice.get("involved_ids", [])
     involved_dragons = [d for d in world.dragons if d.id in involved_ids]
 
@@ -135,9 +140,40 @@ def resolve_choice(world, option_id):
                     importance=3
                 )
 
-            if b.id not in a.rivals:
-                a.rivals.append(b.id)
-            if a.id not in b.rivals:
-                b.rivals.append(a.id)
-
     world.pending_choice = None
+
+def handle_leader_decision(world, option_id):
+    leader = getattr(world, "leader", None)
+
+    if not leader:
+        return
+
+    if option_id == "stabilize":
+        world.tension = max(0.0, world.tension - 0.3)
+        log_event(
+            world,
+            f"{leader.name} focused on unity, calming the tribe.",
+            involved_ids=[leader.id],
+            event_type="leader_decision",
+            importance=4
+        )
+
+    elif option_id == "push_strength":
+        world.tension += 0.25
+        log_event(
+            world,
+            f"{leader.name} pushed the tribe harder, raising pressure on everyone.",
+            involved_ids=[leader.id],
+            event_type="leader_decision",
+            importance=4
+        )
+
+    elif option_id == "watch_closely":
+        world.tension += 0.1
+        log_event(
+            world,
+            f"{leader.name} urged vigilance, making the tribe more watchful.",
+            involved_ids=[leader.id],
+            event_type="leader_decision",
+            importance=4
+        )

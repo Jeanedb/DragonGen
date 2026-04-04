@@ -658,7 +658,83 @@ def create_rival_confrontation_choice(world):
     }
     return True
 
+def try_leader_event(world):
+    leader = getattr(world, "leader", None)
 
+    if not leader or leader.status != "Alive":
+        return False
+
+    climate = get_tribe_climate(world)
+
+    # low chance — this should feel occasional, not spammy
+    if random.random() > 0.15:
+        return False
+
+    texts = []
+
+    traits = getattr(leader, "personality_traits", []) or []
+    name = leader.name
+
+    if "Kind" in traits:
+        texts.append(f"{name} took time to settle a dispute, easing tensions in the tribe.")
+        texts.append(f"{name} checked in on several dragons this moon, making the tribe feel more connected.")
+
+    if "Loyal" in traits:
+        texts.append(f"{name} publicly recognized the efforts of others, strengthening bonds within the tribe.")
+
+    if "Clever" in traits:
+        texts.append(f"{name} adjusted patrol strategies, avoiding unnecessary risk.")
+
+    if "Ambitious" in traits:
+        texts.append(f"{name} pushed the tribe harder this moon, urging them toward greater strength.")
+        texts.append(f"{name}'s drive pushed the tribe forward, though not everyone welcomed it.")
+
+    if "Moody" in traits:
+        texts.append(f"{name}'s shifting mood unsettled others this moon.")
+        texts.append(f"{name} reacted sharply to a minor issue, leaving others uneasy.")
+
+    if "Suspicious" in traits:
+        texts.append(f"{name} questioned the loyalty of others, casting a shadow over the tribe.")
+        texts.append(f"{name} kept a close watch on others this moon, trust feeling thin.")
+
+    # fallback if no traits exist
+    if not texts:
+        texts.append(f"{name} oversaw the tribe this moon.")
+
+    text = random.choice(texts)
+
+    log_event(
+        world,
+        text,
+        involved_ids=[leader.id],
+        event_type="leader_event",
+        importance=2
+    )
+
+    return True
+
+def create_leader_decision(world):
+    leader = getattr(world, "leader", None)
+
+    if not leader or leader.status != "Alive":
+        return False
+
+    # low frequency — this should feel meaningful
+    if random.random() > 0.12:
+        return False
+
+    world.pending_choice = {
+        "type": "leader_decision",
+        "text": f"As leader, {leader.name} must decide how to guide the tribe this moon.",
+        "involved_ids": [leader.id],
+        "options": [
+            {"id": "stabilize", "text": "Focus on unity and stability"},
+            {"id": "push_strength", "text": "Push the tribe to become stronger"},
+            {"id": "watch_closely", "text": "Encourage vigilance and caution"},
+        ]
+    }
+
+    return True
 
 
 def advance_moon(world: World):
@@ -678,17 +754,24 @@ def advance_moon(world: World):
     if random.random() < 0.20:
         add_new_dragonet(world)
 
+
     # occasional player choice
     if world.pending_choice is None:
         choice_roll = random.random()
 
-        if choice_roll < 0.08:
+        if choice_roll < 0.05:
+            created = create_leader_decision(world)
+            if created:
+                world.event_log = world.event_log[-100:]
+                return True
+
+        elif choice_roll < 0.11:
             created = create_injured_patrol_choice(world)
             if created:
                 world.event_log = world.event_log[-100:]
                 return True
 
-        elif choice_roll < 0.14:
+        elif choice_roll < 0.17:
             created = create_rival_confrontation_choice(world)
             if created:
                 world.event_log = world.event_log[-100:]
@@ -697,6 +780,7 @@ def advance_moon(world: World):
 
 
     run_event_phase(world)
+    try_leader_event(world)
 
     for dragon in world.dragons:
         for k in list(dragon.trust.keys()):
