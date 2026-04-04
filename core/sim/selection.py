@@ -62,6 +62,11 @@ def friendship_weight(a, b):
     if set(a.parents) & set(b.parents):
         weight += 0.6
 
+    if ("saved_by", b.id) in a.memory_flags:
+        weight += 0.6
+    if ("saved_by", a.id) in b.memory_flags:
+        weight += 0.6
+
     weight += a.trust.get(b.id, 0) * 0.25
     weight += b.trust.get(a.id, 0) * 0.25
 
@@ -103,6 +108,11 @@ def rivalry_weight(a, b):
     # if already rivals, reduce repeated selection a bit
     if b.id in a.rivals or a.id in b.rivals:
         weight -= 0.15
+
+    if ("abandoned_by", b.id) in a.memory_flags:
+        weight += 0.8
+    if ("abandoned_by", a.id) in b.memory_flags:
+        weight += 0.8
 
     weight += a.resentment.get(b.id, 0) * 0.30
     weight += b.resentment.get(a.id, 0) * 0.30

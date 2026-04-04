@@ -20,3 +20,4 @@ class Dragon:
     rivals: List[int] = field(default_factory=list)
     trust: dict = field(default_factory=dict)
     resentment: dict = field(default_factory=dict)
+    memory_flags: list = field(default_factory=list)

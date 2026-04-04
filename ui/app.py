@@ -334,6 +334,20 @@ class DragonGenApp(ctk.CTk):
             for pid in d.parents
             if self.get_dragon_by_id(pid)
         ]
+        memory_lines = []
+
+        for flag, other_id in d.memory_flags:
+            other = self.get_dragon_by_id(other_id)
+            if not other:
+                continue
+
+            if flag == "saved_by":
+                memory_lines.append(f"Saved by {other.name}")
+            elif flag == "abandoned_by":
+                memory_lines.append(f"Feels abandoned by {other.name}")
+
+        memory_text = ", ".join(memory_lines) if memory_lines else "None"
+
         child_names = [
             self.get_dragon_by_id(cid).name
             for cid in d.dragonets
@@ -382,6 +396,7 @@ class DragonGenApp(ctk.CTk):
             f"Status: {d.status}\n\n"
             f"Friends: {friends_text}\n"
             f"Rivals: {rivals_text}\n"
+            f"Notable History: {memory_text}\n"
             f"Mate: {mate_name}\n"
             f"Parents: {parents_text}\n"
             f"Dragonets: {children_text}\n\n"

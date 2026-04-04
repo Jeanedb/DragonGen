@@ -2,6 +2,7 @@ import random
 from core.sim.logging import log_event
 from core.sim.relationships import add_friendship, add_rivalry
 
+
 def resolve_choice(world, option_id):
     choice = world.pending_choice
     if not choice:
@@ -23,6 +24,13 @@ def resolve_choice(world, option_id):
                 a.friends.append(b.id)
             if a.id not in b.friends:
                 b.friends.append(a.id)
+
+            a.trust[b.id] = a.trust.get(b.id, 0) + 2
+            b.trust[a.id] = b.trust.get(a.id, 0) + 1
+
+            flag = ("saved_by", b.id)
+            if flag not in a.memory_flags:
+                a.memory_flags.append(flag)
 
             log_event(
                 world,
@@ -57,6 +65,13 @@ def resolve_choice(world, option_id):
                 if a.id not in b.rivals:
                     b.rivals.append(a.id)
 
+                a.resentment[b.id] = a.resentment.get(b.id, 0) + 2
+                b.resentment[a.id] = b.resentment.get(a.id, 0) + 1
+
+                flag = ("abandoned_by", b.id)
+                if flag not in a.memory_flags:
+                    a.memory_flags.append(flag)
+
                 log_event(
                     world,
                     f"{a.name} felt abandoned when {b.name} left to seek help.",
@@ -67,6 +82,14 @@ def resolve_choice(world, option_id):
 
     elif choice["type"] == "rival_confrontation_choice":
         if option_id == "back_down":
+            a.trust[b.id] = a.trust.get(b.id, 0) + 1
+            b.trust[a.id] = b.trust.get(a.id, 0) + 1
+
+            if b.id in a.resentment:
+                a.resentment[b.id] = max(0, a.resentment[b.id] - 1)
+            if a.id in b.resentment:
+                b.resentment[a.id] = max(0, b.resentment[a.id] - 1)
+
             log_event(
                 world,
                 f"{a.name} chose restraint and backed down rather than escalating the conflict with {b.name}.",
@@ -90,6 +113,9 @@ def resolve_choice(world, option_id):
                 )
 
         elif option_id == "confront":
+            a.resentment[b.id] = a.resentment.get(b.id, 0) + 2
+            b.resentment[a.id] = b.resentment.get(a.id, 0) + 2
+
             log_event(
                 world,
                 f"{a.name} confronted {b.name} directly, and the patrol turned hostile.",
