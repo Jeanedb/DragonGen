@@ -68,6 +68,9 @@ def friendship_weight(a, b):
     weight -= a.resentment.get(b.id, 0) * 0.30
     weight -= b.resentment.get(a.id, 0) * 0.30
 
+    if a.mate_id == b.id or b.mate_id == a.id:
+        weight += 1.5
+
     return max(0.2, weight)
 
 
@@ -106,6 +109,9 @@ def rivalry_weight(a, b):
 
     weight -= a.trust.get(b.id, 0) * 0.20
     weight -= b.trust.get(a.id, 0) * 0.20
+
+    if a.mate_id == b.id or b.mate_id == a.id:
+        weight -= 2.0
 
     return max(0.05, weight)
 

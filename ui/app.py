@@ -21,6 +21,7 @@ class DragonGenApp(ctk.CTk):
         self.selected_tribe = "Mixed"
         self.world = generate_starting_world(self.selected_tribe)
         self.selected_dragon = self.world.dragons[0] if self.world.dragons else None
+        self.roster_filter = "Living"
 
         # Layout
         self.grid_columnconfigure(0, weight=1)
@@ -61,33 +62,40 @@ class DragonGenApp(ctk.CTk):
 
         # Tribe Status Panel
         self.status_frame = ctk.CTkFrame(self.header_frame)
-        self.status_frame.pack(fill="x", padx=10, pady=(0, 10))
+        self.status_frame.pack(fill="x", padx=10, pady=(0, 6))
+
+        # Top line: Title + Tension
+        self.status_top_row = ctk.CTkFrame(self.status_frame, fg_color="transparent")
+        self.status_top_row.pack(fill="x", padx=10, pady=(4, 2))
 
         self.status_title = ctk.CTkLabel(
-            self.status_frame,
+            self.status_top_row,
             text="Tribe Status",
-            font=("Arial", 14, "bold")
+            font=("Arial", 13, "bold")
         )
-        self.status_title.pack(anchor="w", padx=10, pady=(8, 2))
+        self.status_title.pack(side="left")
 
         self.tension_value_label = ctk.CTkLabel(
-            self.status_frame,
+            self.status_top_row,
             text="Tension: 0.0 / 5.0",
             font=("Arial", 12)
         )
-        self.tension_value_label.pack(anchor="w", padx=10, pady=2)
+        self.tension_value_label.pack(side="left", padx=(15, 0))
 
-        self.tension_bar = ctk.CTkProgressBar(self.status_frame)
-        self.tension_bar.pack(fill="x", padx=10, pady=4)
+        # Bar
+        self.tension_bar = ctk.CTkProgressBar(self.status_frame, height=10)
+        self.tension_bar.pack(fill="x", padx=10, pady=(0, 3))
         self.tension_bar.set(0)
 
+        # Mood
         self.tension_status_label = ctk.CTkLabel(
             self.status_frame,
             text="Mood: Calm",
             font=("Arial", 12, "bold")
         )
-        self.tension_status_label.pack(anchor="w", padx=10, pady=(2, 0))
+        self.tension_status_label.pack(anchor="w", padx=10, pady=(0, 1))
 
+        # Blurb (kept, but tighter)
         self.tension_desc_label = ctk.CTkLabel(
             self.status_frame,
             text="The tribe feels steady and cooperative.",
@@ -95,16 +103,28 @@ class DragonGenApp(ctk.CTk):
             wraplength=1000,
             justify="left"
         )
-        self.tension_desc_label.pack(anchor="w", padx=10, pady=(0, 8))
+        self.tension_desc_label.pack(anchor="w", padx=10, pady=(0, 6))
 
     def create_roster_panel(self):
         self.roster_frame = ctk.CTkFrame(self)
         self.roster_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
 
+        self.roster_filter_menu = ctk.CTkOptionMenu(
+            self.roster_frame,
+            values=["Living", "All", "Dead"],
+            command=self.on_roster_filter_changed
+        )
+        self.roster_filter_menu.set("Living")
+        self.roster_filter_menu.pack(fill="x", padx=5, pady=(5, 0))
+
         self.roster_scroll = ctk.CTkScrollableFrame(self.roster_frame)
-        self.roster_scroll.pack(fill="both", expand=True)
+        self.roster_scroll.pack(fill="both", expand=True, padx=5, pady=5)
 
         self.dragon_buttons = []
+
+    def on_roster_filter_changed(self, choice):
+        self.roster_filter = choice
+        self.refresh_roster()
 
     def create_detail_panel(self):
         self.detail_frame = ctk.CTkFrame(self)
@@ -126,16 +146,14 @@ class DragonGenApp(ctk.CTk):
 
         self.choice_label = ctk.CTkLabel(
             self.choice_frame,
-            text="",
+            text="No current decision.",
             wraplength=1000,
             justify="left",
-            font=("Arial", 14, "bold")
+            font=("Arial", 12)
         )
-        self.choice_label.pack(padx=10, pady=(10, 5), anchor="w")
+        self.choice_label.pack(padx=10, pady=(6, 6), anchor="w")
 
         self.choice_buttons_frame = ctk.CTkFrame(self.choice_frame)
-        self.choice_buttons_frame.pack(fill="x", padx=10, pady=(0, 10))
-
         self.choice_buttons = []
 
     def create_controls(self):
@@ -176,6 +194,8 @@ class DragonGenApp(ctk.CTk):
     def on_new_tribe(self):
         self.world = generate_starting_world(self.selected_tribe)
         self.selected_dragon = self.world.dragons[0] if self.world.dragons else None
+        self.roster_filter = "Living"
+        self.roster_filter_menu.set("Living")
         self.refresh_all()
 
     def on_advance_moon(self):
@@ -203,6 +223,8 @@ class DragonGenApp(ctk.CTk):
         if filename:
             self.world = load_world(filename)
             self.selected_dragon = self.world.dragons[0] if self.world.dragons else None
+            self.roster_filter = "Living"
+            self.roster_filter_menu.set("Living")
             self.refresh_all()
 
     def on_choice_selected(self, option_id):
@@ -272,7 +294,14 @@ class DragonGenApp(ctk.CTk):
             btn.destroy()
         self.dragon_buttons.clear()
 
-        for d in self.world.dragons:
+        if self.roster_filter == "Living":
+            dragons_to_show = [d for d in self.world.dragons if d.status == "Alive"]
+        elif self.roster_filter == "Dead":
+            dragons_to_show = [d for d in self.world.dragons if d.status == "Dead"]
+        else:
+            dragons_to_show = list(self.world.dragons)
+
+        for d in dragons_to_show:
             btn = ctk.CTkButton(
                 self.roster_scroll,
                 text=f"{d.name} ({d.tribe}) - {d.role} [{d.rank}] - {d.status}",
@@ -310,6 +339,11 @@ class DragonGenApp(ctk.CTk):
             for cid in d.dragonets
             if self.get_dragon_by_id(cid)
         ]
+        mate_name = "None"
+        if d.mate_id is not None:
+            mate = self.get_dragon_by_id(d.mate_id)
+            if mate:
+                mate_name = mate.name
 
         friends_text = ", ".join(friends) if friends else "None"
         rivals_text = ", ".join(rivals) if rivals else "None"
@@ -348,6 +382,7 @@ class DragonGenApp(ctk.CTk):
             f"Status: {d.status}\n\n"
             f"Friends: {friends_text}\n"
             f"Rivals: {rivals_text}\n"
+            f"Mate: {mate_name}\n"
             f"Parents: {parents_text}\n"
             f"Dragonets: {children_text}\n\n"
             f"Recent Personal History:\n{personal_history_text}\n"
@@ -372,10 +407,17 @@ class DragonGenApp(ctk.CTk):
         choice = self.world.pending_choice
 
         if not choice:
-            self.choice_label.configure(text="No current decision.")
+            self.choice_label.configure(text="No current decision.", font=("Arial", 12))
+            self.choice_buttons_frame.pack_forget()
             return
 
-        self.choice_label.configure(text=choice.get("text", ""))
+        self.choice_label.configure(
+            text=choice.get("text", ""),
+            font=("Arial", 14, "bold")
+        )
+
+        if not self.choice_buttons_frame.winfo_ismapped():
+            self.choice_buttons_frame.pack(fill="x", padx=10, pady=(0, 10))
 
         for option in choice.get("options", []):
             btn = ctk.CTkButton(
