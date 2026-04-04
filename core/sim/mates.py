@@ -30,7 +30,7 @@ def mate_weight(a, b):
     if not can_become_mates(a, b):
         return 0.0
 
-    weight = 0.1
+    weight = 0.03
 
     # existing friendship helps
     if b.id in a.friends or a.id in b.friends:
@@ -105,7 +105,7 @@ def add_mate_bond(world, a, b):
 
     # calm the tribe a little
     if hasattr(world, "tension"):
-        world.tension = max(0.0, world.tension - 0.25)
+        world.tension = max(0.0, world.tension - 0.09)
 
     log_event(
         world,

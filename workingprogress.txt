@@ -41,7 +41,7 @@ DragonGen/
 x Add "EVENT" selection e.g. "PATROL" choice A or B
     > Make more choices now
 - Dragons live to 150 yrs ish
-
+- add dragons leaving/entering/returning (good or bad) events
 
 
 

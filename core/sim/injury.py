@@ -18,7 +18,7 @@ def add_injury(world: World, dragon):
 
     text = random.choice(texts)
     
-    world.tension += 0.1
+    world.tension += 0.09
 
     log_event(world, text, involved_ids=[dragon.id], event_type="injury")
     return True
