@@ -46,7 +46,7 @@ x Add "EVENT" selection e.g. "PATROL" choice A or B
 - Add leader choices
 - Add mood aware event text (e.g. calm vs crisis)
 - Add memory affecting future choices more strongly
-
+- Nameplates in UI reflective of dragon class with appropriate color scheme, texture and patterns as listed below:
 
 Tribe		Colors			Patterns		UI Motif
 

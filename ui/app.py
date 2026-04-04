@@ -3,7 +3,12 @@ from tkinter import filedialog
 
 from data.tribes import TRIBES
 from core.generator import generate_starting_world
-from core.simulation import advance_moon, resolve_choice
+from core.simulation import (
+    advance_moon,
+    resolve_choice,
+    get_world_mood,
+    get_tribe_climate,
+)
 from core.save_manager import save_world, load_world
 
 ctk.set_appearance_mode("dark")
@@ -89,11 +94,10 @@ class DragonGenApp(ctk.CTk):
 
         # Mood
         self.tension_status_label = ctk.CTkLabel(
-            self.status_frame,
-            text="Mood: Calm",
-            font=("Arial", 12, "bold")
+            self.status_frame, text="Mood: Calm", font=("Arial", 12, "bold")
         )
         self.tension_status_label.pack(anchor="w", padx=10, pady=(0, 1))
+
 
         # Blurb (kept, but tighter)
         self.tension_desc_label = ctk.CTkLabel(
@@ -265,9 +269,32 @@ class DragonGenApp(ctk.CTk):
 
     def refresh_status(self):
         tension = getattr(self.world, "tension", 0.0)
-        mood, description = self.get_tension_status()
-
         clamped_tension = max(0.0, min(5.0, tension))
+
+        mood = get_world_mood(self.world)
+        climate = get_tribe_climate(self.world)
+        leader = getattr(self.world, "leader", None)
+
+        # Base mood description
+        _, description = self.get_tension_status()
+ 
+        # Leader text
+        if leader:
+            traits = getattr(leader, "personality_traits", []) or []
+            if traits:
+                leader_text = f"Leader: {leader.name} ({', '.join(traits)})"
+            else:
+                leader_text = f"Leader: {leader.name}"
+        else:
+            leader_text = "Leader: None"
+
+        # Climate overlay on description
+        if climate["suspicion_bias"] > 0.25:
+            description += " Trust feels thin."
+        elif climate["recovery_bias"] > 0.25:
+            description += " The tribe still seems to be holding together."
+        elif climate["conflict_bias"] > 0.30:
+            description += " Conflict seems to surface easily."
 
         self.tension_value_label.configure(
             text=f"Tension: {clamped_tension:.1f} / 5.0"
