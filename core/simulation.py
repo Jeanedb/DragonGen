@@ -18,22 +18,49 @@ def are_family(a, b):
 def get_living_dragons(world: World):
     return [d for d in world.dragons if d.status == "Alive"]
 
+def get_world_mood(world):
+    tension = getattr(world, "tension", 0.0)
 
+    if tension < 0.75:
+        return "Calm"
+    elif tension < 1.5:
+        return "Uneasy"
+    elif tension < 2.5:
+        return "Strained"
+    elif tension < 3.5:
+        return "Volatile"
+    else:
+        return "Crisis"
 
 def add_friend_event(world, a, b):
+    mood = get_world_mood(world)
+
     if ("saved_by", b.id) in a.memory_flags:
         text = f"{a.name} stayed close to {b.name}, still remembering when {b.name} helped them in a moment of danger."
     elif ("saved_by", a.id) in b.memory_flags:
         text = f"{b.name} sought out {a.name}, remembering the help they were once given."
     elif a.trust.get(b.id, 0) >= 3 or b.trust.get(a.id, 0) >= 3:
-        text = f"{a.name} and {b.name} naturally fell into each other's company, their bond now an easy one."	
+        text = f"{a.name} and {b.name} naturally fell into each other's company, their bond now an easy one."
     else:
-        texts = [
-            f"{a.name} and {b.name} spent the moon in easy company.",
-            f"In the {world.tribe_name}, {a.name} and {b.name} spent time together.",
-            f"{a.name} and {b.name} worked well together and strengthened their bond.",
-            f"{a.name} sought out {b.name}, and the two enjoyed each other's company."
-        ]
+        if mood == "Calm":
+            texts = [
+                f"{a.name} and {b.name} spent the moon in easy company.",
+                f"In the {world.tribe_name}, {a.name} and {b.name} spent time together.",
+                f"{a.name} sought out {b.name}, and the two enjoyed each other's company."
+            ]
+        elif mood in {"Uneasy", "Strained"}:
+            texts = [
+                f"{a.name} and {b.name} spent time together, a welcome relief from the strain in the tribe.",
+                f"With tensions simmering in the {world.tribe_name}, {a.name} and {b.name} found comfort in each other's company.",
+                f"{a.name} and {b.name} stayed close this moon, steadying each other amid growing tension."
+            ]
+        else:  # Volatile / Crisis
+            texts = [
+                f"{a.name} and {b.name} found a brief moment of calm despite the tension gripping the tribe.",
+                f"Even with the tribe on edge, {a.name} and {b.name} stayed close and drew comfort from one another.",
+                f"In a tense and uneasy moon, {a.name} and {b.name} managed to find a little peace together."
+            ]
+
         text = random.choice(texts)
 
     log_event(world, text, involved_ids=[a.id, b.id], event_type="friend_event")
@@ -41,6 +68,8 @@ def add_friend_event(world, a, b):
 
 
 def add_rival_event(world, a, b):
+    mood = get_world_mood(world)
+
     if ("abandoned_by", b.id) in a.memory_flags:
         text = f"{a.name} clashed with {b.name}, still carrying the sting of being abandoned when it mattered."
     elif ("abandoned_by", a.id) in b.memory_flags:
@@ -48,12 +77,25 @@ def add_rival_event(world, a, b):
     elif a.resentment.get(b.id, 0) >= 3 or b.resentment.get(a.id, 0) >= 3:
         text = f"The hostility between {a.name} and {b.name} no longer feels like a passing disagreement."
     else:
-        texts = [
-            f"{a.name} and {b.name} argued again, and neither backed down.",
-            f"{a.name} and {b.name} clashed over a dispute in the tribe.",
-            f"In the {world.tribe_name}, {a.name} and {b.name} had a heated argument.",
-            f"Old tension flared between {a.name} and {b.name} this moon."
-        ]
+        if mood == "Calm":
+            texts = [
+                f"{a.name} and {b.name} argued, though the dispute passed without disturbing the tribe too deeply.",
+                f"{a.name} and {b.name} clashed over a minor dispute this moon.",
+                f"Old tension flickered briefly between {a.name} and {b.name}."
+            ]
+        elif mood in {"Uneasy", "Strained"}:
+            texts = [
+                f"{a.name} and {b.name} argued again, adding to the strain already running through the tribe.",
+                f"{a.name} and {b.name} clashed, and the mood in the tribe did little to soften it.",
+                f"In the {world.tribe_name}, tension flared again between {a.name} and {b.name}."
+            ]
+        else:  # Volatile / Crisis
+            texts = [
+                f"{a.name} and {b.name} clashed, and others nearby took notice in the already tense tribe.",
+                f"{a.name} and {b.name} argued fiercely, their hostility feeding the unrest around them.",
+                f"With the tribe already on edge, conflict between {a.name} and {b.name} quickly turned sharp."
+            ]
+
         text = random.choice(texts)
 
     log_event(world, text, involved_ids=[a.id, b.id], event_type="rival_event")
