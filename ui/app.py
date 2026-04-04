@@ -10,6 +10,7 @@ from core.simulation import (
     get_tribe_climate,
 )
 from core.save_manager import save_world, load_world
+from core.sim.leadership import maintain_hierarchy
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -25,6 +26,7 @@ class DragonGenApp(ctk.CTk):
         # Game state
         self.selected_tribe = "Mixed"
         self.world = generate_starting_world(self.selected_tribe)
+        maintain_hierarchy(self.world)
         self.selected_dragon = self.world.dragons[0] if self.world.dragons else None
         self.roster_filter = "Living"
 
@@ -197,6 +199,7 @@ class DragonGenApp(ctk.CTk):
 
     def on_new_tribe(self):
         self.world = generate_starting_world(self.selected_tribe)
+        maintain_hierarchy(self.world)
         self.selected_dragon = self.world.dragons[0] if self.world.dragons else None
         self.roster_filter = "Living"
         self.roster_filter_menu.set("Living")
@@ -226,6 +229,7 @@ class DragonGenApp(ctk.CTk):
         )
         if filename:
             self.world = load_world(filename)
+            maintain_hierarchy(self.world)
             self.selected_dragon = self.world.dragons[0] if self.world.dragons else None
             self.roster_filter = "Living"
             self.roster_filter_menu.set("Living")

@@ -52,9 +52,11 @@ def choose_leadership_candidate(world, exclude_ids=None):
 
 
 def maintain_hierarchy(world):
+    # Find current alive leader/deputy by rank
     leader = get_current_leader(world)
     deputy = get_current_deputy(world)
 
+    # Fill leader vacancy
     if leader is None:
         if deputy is not None:
             deputy.rank = "Leader"
@@ -80,7 +82,10 @@ def maintain_hierarchy(world):
                 )
                 leader = new_leader
 
+    # Re-scan deputy after any leader promotion
     deputy = get_current_deputy(world)
+
+    # Fill deputy vacancy
     if deputy is None:
         exclude_ids = [leader.id] if leader else []
         new_deputy = choose_leadership_candidate(world, exclude_ids=exclude_ids)
@@ -94,7 +99,27 @@ def maintain_hierarchy(world):
                 event_type="leadership_change",
                 importance=5
             )
+            deputy = new_deputy
 
+    # Final authoritative re-scan
+    leader = get_current_leader(world)
+    deputy = get_current_deputy(world)
+
+    # Remove stale/duplicate leadership ranks from everyone else
+    for dragon in world.dragons:
+        if dragon.status != "Alive":
+            continue
+
+        if dragon == leader:
+            dragon.rank = "Leader"
+        elif dragon == deputy:
+            dragon.rank = "Deputy"
+        elif dragon.rank in ("Leader", "Deputy"):
+            dragon.rank = "None"
+
+    # Sync world pointers
+    world.leader = leader
+    world.deputy = deputy
 
 def add_leader_event(world, leader):
     if leader.personality == "Loyal":

@@ -719,10 +719,6 @@ def create_leader_decision(world):
     if not leader or leader.status != "Alive":
         return False
 
-    # low frequency — this should feel meaningful
-    if random.random() > 0.12:
-        return False
-
     world.pending_choice = {
         "type": "leader_decision",
         "text": f"As leader, {leader.name} must decide how to guide the tribe this moon.",
@@ -759,19 +755,19 @@ def advance_moon(world: World):
     if world.pending_choice is None:
         choice_roll = random.random()
 
-        if choice_roll < 0.05:
+        if choice_roll < 0.08:
             created = create_leader_decision(world)
             if created:
                 world.event_log = world.event_log[-100:]
                 return True
 
-        elif choice_roll < 0.11:
+        elif choice_roll < 0.14:
             created = create_injured_patrol_choice(world)
             if created:
                 world.event_log = world.event_log[-100:]
                 return True
 
-        elif choice_roll < 0.17:
+        elif choice_roll < 0.20:
             created = create_rival_confrontation_choice(world)
             if created:
                 world.event_log = world.event_log[-100:]
