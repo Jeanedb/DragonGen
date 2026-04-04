@@ -75,7 +75,38 @@ def add_new_dragonet(world: World):
     ]
 
     parents = []
-    if len(candidates) >= 2:
+
+    # Prefer living mate pairs
+    mate_pairs = []
+    seen_pairs = set()
+
+    for d in candidates:
+        if d.mate_id is None:
+            continue
+
+        mate = next((x for x in candidates if x.id == d.mate_id), None)
+        if not mate:
+            continue
+
+        pair_key = tuple(sorted((d.id, mate.id)))
+        if pair_key in seen_pairs:
+            continue
+
+        seen_pairs.add(pair_key)
+
+        # optional light weighting by trust
+        trust_bonus = d.trust.get(mate.id, 0) + mate.trust.get(d.id, 0)
+        weight = 1.0 + (trust_bonus * 0.1)
+
+        mate_pairs.append((d, mate, weight))
+
+    if mate_pairs and random.random() < 0.8:
+        pair_choices = [(a, b) for a, b, _ in mate_pairs]
+        pair_weights = [w for _, _, w in mate_pairs]
+        p1, p2 = random.choices(pair_choices, weights=pair_weights, k=1)[0]
+        parents = [p1, p2]
+
+    elif len(candidates) >= 2:
         parents = random.sample(candidates, 2)
     elif len(candidates) == 1:
         parents = [candidates[0]]
@@ -123,14 +154,42 @@ def handle_possible_death(world: World, dragon):
         dragon.status = "Dead"
         dragon.health = "Dead"
 
-        texts = [
-            f"{dragon.name} passed away under the stars.",
-            f"The tribe mourns the loss of {dragon.name}.",
-            f"In the {world.tribe_name}, {dragon.name} ascended to the sky after death.",
-            f"{dragon.name} has died, leaving behind memories in the tribe."
-        ]
+        surviving_mate = None
+
+        if dragon.mate_id is not None:
+            surviving_mate = next(
+                (d for d in world.dragons if d.id == dragon.mate_id and d.status == "Alive"),
+                None
+            )
+
+            if surviving_mate:
+                flag = ("lost_mate", dragon.id)
+                if flag not in surviving_mate.memory_flags:
+                    surviving_mate.memory_flags.append(flag)
+
+                surviving_mate.mate_id = None
+
+                if hasattr(world, "tension"):
+                    world.tension += 0.18
+
+        if surviving_mate:
+            texts = [
+                f"{dragon.name} passed away under the stars, leaving {surviving_mate.name} behind in grief.",
+                f"The tribe mourns the loss of {dragon.name}, and {surviving_mate.name} seems deeply shaken.",
+                f"In the {world.tribe_name}, {dragon.name} died, leaving their mate {surviving_mate.name} to carry the loss.",
+            ]
+        else:
+            texts = [
+                f"{dragon.name} passed away under the stars.",
+                f"The tribe mourns the loss of {dragon.name}.",
+                f"In the {world.tribe_name}, {dragon.name} ascended to the sky after death.",
+                f"{dragon.name} has died, leaving behind memories in the tribe."
+            ]
+
         text = random.choice(texts)
         log_event(world, text, involved_ids=[dragon.id], event_type="death", importance=5)
+
+        dragon.mate_id = None
         return True
 
     return False
@@ -152,6 +211,30 @@ def try_existing_relationship_event(world: World, living):
 
     if not candidates:
         return False
+
+    # grief check first
+    grief_candidates = [
+        d for d in living
+        if any(flag == "lost_mate" for flag, _ in d.memory_flags)
+    ]
+
+    if grief_candidates and random.random() < 0.25:
+        d = random.choice(grief_candidates)
+
+        texts = [
+            f"{d.name} kept to themselves this moon, still grieving their loss.",
+            f"{d.name} seemed distant and withdrawn, the loss of their mate still weighing heavily.",
+            f"{d.name} avoided others this moon, grief still close beneath the surface."
+        ]
+
+        log_event(
+            world,
+            random.choice(texts),
+            involved_ids=[d.id],
+            event_type="grief_event",
+            importance=3
+        )
+        return True
 
     event_type, a, b = random.choice(candidates)
 
@@ -175,7 +258,41 @@ def create_injured_patrol_choice(world):
     if len(candidates) < 2:
         return False
 
-    a, b = random.sample(candidates, 2)
+    possible_pairs = []
+
+    for i in range(len(candidates)):
+        for j in range(len(candidates)):
+            if i == j:
+                continue
+
+            a = candidates[i]  # injured dragon
+            b = candidates[j]  # helper dragon
+
+            weight = 1.0
+
+            # If b once saved a, make it more likely they end up in this kind of moment again
+            if ("saved_by", b.id) in a.memory_flags:
+                weight += 1.5
+
+            # If b once abandoned a, also make it more likely they cross paths again
+            if ("abandoned_by", b.id) in a.memory_flags:
+                weight += 1.2
+
+            if a.mate_id == b.id or b.mate_id == a.id:
+                weight += 1.8
+
+            # existing strong feelings also increase likelihood of meaningful encounters
+            weight += a.trust.get(b.id, 0) * 0.15
+            weight += a.resentment.get(b.id, 0) * 0.20
+
+            possible_pairs.append((a, b, weight))
+
+    if not possible_pairs:
+        return False
+
+    pairs = [(a, b) for a, b, _ in possible_pairs]
+    weights = [w for _, _, w in possible_pairs]
+    a, b = random.choices(pairs, weights=weights, k=1)[0]
 
     if a.health != "Injured":
         a.health = "Injured"
@@ -187,12 +304,30 @@ def create_injured_patrol_choice(world):
             importance=3
         )
 
-    world.pending_choice = {
-        "type": "injured_patrol_choice",
-        "text": (
+    if a.mate_id == b.id or b.mate_id == a.id:
+        prompt_text = (
+            f"{a.name} and {b.name} are on patrol together. When {a.name} is injured and rival dragons can be heard approaching, "
+            f"{b.name} must decide whether to stay with their mate or run for help."
+        )
+    elif ("saved_by", b.id) in a.memory_flags:
+        prompt_text = (
+            f"{a.name} and {b.name} are on patrol. {a.name} is injured again, and rival dragons can be heard approaching. "
+            f"{a.name} still remembers that {b.name} once stayed when it mattered. What should {b.name} do now?"
+        )
+    elif ("abandoned_by", b.id) in a.memory_flags:
+        prompt_text = (
+            f"{a.name} and {b.name} are on patrol. {a.name} is injured, and rival dragons can be heard approaching. "
+            f"{a.name} has never forgotten the last time {b.name} left. What should {b.name} do now?"
+        )
+    else:
+        prompt_text = (
             f"{a.name} and {b.name} are on patrol. {a.name} is injured, and "
             f"rival dragons can be heard approaching. What should {b.name} do?"
-        ),
+        )
+
+    world.pending_choice = {
+        "type": "injured_patrol_choice",
+        "text": prompt_text,
         "involved_ids": [a.id, b.id],
         "options": [
             {"id": "stay_and_help", "text": f"Stay and help {a.name}"},
@@ -206,23 +341,56 @@ def create_rival_confrontation_choice(world):
     living = get_living_dragons(world)
 
     rival_pairs = []
+    weights = []
+
     for dragon in living:
         for rival_id in dragon.rivals:
             rival = next((d for d in living if d.id == rival_id), None)
             if rival and dragon.id < rival.id:
+                weight = 1.0
+
+                # abandonment history makes confrontation more likely
+                if ("abandoned_by", rival.id) in dragon.memory_flags:
+                    weight += 1.2
+                if ("abandoned_by", dragon.id) in rival.memory_flags:
+                    weight += 1.2
+
+                # stronger resentment makes this pair more likely to surface
+                weight += dragon.resentment.get(rival.id, 0) * 0.20
+                weight += rival.resentment.get(dragon.id, 0) * 0.20
+
                 rival_pairs.append((dragon, rival))
+                weights.append(weight)
 
     if not rival_pairs:
         return False
 
-    a, b = random.choice(rival_pairs)
+    a, b = random.choices(rival_pairs, weights=weights, k=1)[0]
+
+    if ("abandoned_by", b.id) in a.memory_flags:
+        prompt_text = (
+            f"{a.name} and {b.name}, long-standing rivals, cross paths during a tense patrol. "
+            f"{a.name} still carries the memory of being abandoned by {b.name}. What should {a.name} do?"
+        )
+    elif ("abandoned_by", a.id) in b.memory_flags:
+        prompt_text = (
+            f"{a.name} and {b.name}, long-standing rivals, cross paths during a tense patrol. "
+            f"Old resentment still hangs between them. What should {a.name} do?"
+        )
+    elif a.resentment.get(b.id, 0) >= 3 or b.resentment.get(a.id, 0) >= 3:
+        prompt_text = (
+            f"{a.name} and {b.name}, long-standing rivals, cross paths during a tense patrol. "
+            f"The hostility between them no longer feels like a passing disagreement. What should {a.name} do?"
+        )
+    else:
+        prompt_text = (
+            f"{a.name} and {b.name}, long-standing rivals, cross paths during a tense patrol. "
+            f"What should {a.name} do?"
+        )
 
     world.pending_choice = {
         "type": "rival_confrontation_choice",
-        "text": (
-            f"{a.name} and {b.name}, long-standing rivals, cross paths during a tense patrol. "
-            f"What should {a.name} do?"
-        ),
+        "text": prompt_text,
         "involved_ids": [a.id, b.id],
         "options": [
             {"id": "back_down", "text": f"Have {a.name} back down and avoid a fight"},
@@ -266,6 +434,10 @@ def advance_moon(world: World):
                 world.event_log = world.event_log[-100:]
                 return True
         
+
+
+    run_event_phase(world)
+
     for dragon in world.dragons:
         for k in list(dragon.trust.keys()):
             dragon.trust[k] *= 0.95
@@ -278,9 +450,6 @@ def advance_moon(world: World):
                 del dragon.resentment[k]
 
     world.tension = max(0.0, min(5.0, world.tension))
-
-    # ✅ THIS is where your new call goes
-    run_event_phase(world)
 
     world.event_log = world.event_log[-100:]
     return True

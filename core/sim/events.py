@@ -3,7 +3,7 @@ from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.leadership import try_leadership_event
 from core.sim.family import try_family_event
 from core.sim.injury import add_injury
-from core.sim.mates import try_mate_event
+from core.sim.mates import try_mate_event, try_mate_bond_event
 from core.sim.selection import (
     choose_friendship_pair,
     choose_rivalry_pair,
@@ -37,13 +37,15 @@ def run_event_phase(world):
                 success = try_family_event(world, living)
             elif roll < 0.55:
                 success = try_existing_relationship_event(world, living)
-            elif roll < 0.75:
+            elif roll < 0.72:
                 a, b = choose_friendship_pair(living)
                 if a and b:
                     success = add_friendship(world, a, b)
-            elif roll < 0.80:
+            elif roll < 0.78:
+                success = try_mate_bond_event(world, living)
+            elif roll < 0.84:
                 success = try_mate_event(world, living)
-            elif roll < 0.85:
+            elif roll < 0.94:
                 a, b = choose_rivalry_pair(living)
                 if a and b:
                     success = add_rivalry(world, a, b)

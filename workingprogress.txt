@@ -36,12 +36,26 @@ DragonGen/
 - Make "TRIBE" cultures and attributes more accurate to book lore e.g. mythos and camo and water breathing etc...
 - Specific specialty tribe skills e.g. fire scales, lower attribute factor to make "RARE"
 - HYBRIDS? Preference to mate with own tribe, hybrids do happen though
-- add Pantallian "TRIBES"
+- add Pyrrhian/Pantalan "TRIBES"
 - Make "DEAD" tab, cemetery
 x Add "EVENT" selection e.g. "PATROL" choice A or B
     > Make more choices now
 - Dragons live to 150 yrs ish
 - add dragons leaving/entering/returning (good or bad) events
+
+- Pyrrhian Tribes:
+    > IceWings: Ice blue
+    > MudWings: Deep brown
+    > NightWings: Primarily black with hints of blue, purple, or green
+    > RainWings: Color-changing scales, often bright and vibrant
+    > SandWings: Pale gold or white with a venomous barbed tail
+    > SeaWings: Bioluminescent stripes
+    > SkyWings: Larger wings compared to other tribes
+- Pantalan Tribes:
+    > HiveWings: Various colors, including red and green
+    > LeafWings: Green and brown scales with leaf-like features
+    > SilkWings: Nearly any color except black, with silk-like scales
+
 
 
 

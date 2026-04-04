@@ -365,6 +365,13 @@ class DragonGenApp(ctk.CTk):
                         f"Has never quite forgiven {other.name} for leaving when it mattered."
                     )
 
+            elif flag == "lost_mate":
+                other = self.get_dragon_by_id(other_id)
+                if other:
+                    memory_lines.append(
+                        f"Still grieves the loss of {other.name}, their former mate."
+                    )
+
         memory_text = "\n".join(memory_lines) if memory_lines else "None"
 
         child_names = [

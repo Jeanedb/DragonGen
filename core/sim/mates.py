@@ -125,3 +125,63 @@ def try_mate_event(world, living):
         return False
 
     return add_mate_bond(world, a, b)
+
+def add_mate_event(world, a, b):
+    texts = [
+        f"{a.name} and {b.name} spent quiet time together, strengthening their bond.",
+        f"{a.name} stayed close to {b.name}, and the two seemed steadier for it.",
+        f"In the {world.tribe_name}, {a.name} and {b.name} shared a rare peaceful moment together.",
+        f"{a.name} and {b.name} found comfort in each other's company this moon."
+    ]
+    text = random.choice(texts)
+
+    # small trust reinforcement
+    a.trust[b.id] = a.trust.get(b.id, 0) + 0.5
+    b.trust[a.id] = b.trust.get(a.id, 0) + 0.5
+
+    # small calming effect
+    if hasattr(world, "tension"):
+        world.tension = max(0.0, world.tension - 0.04)
+
+    log_event(
+        world,
+        text,
+        involved_ids=[a.id, b.id],
+        event_type="mate_event",
+        importance=2,
+    )
+    return True
+
+
+def try_mate_bond_event(world, living):
+    mate_pairs = []
+    seen_pairs = set()
+
+    for d in living:
+        if d.mate_id is None:
+            continue
+
+        mate = next((x for x in living if x.id == d.mate_id), None)
+        if not mate:
+            continue
+
+        pair_key = tuple(sorted((d.id, mate.id)))
+        if pair_key in seen_pairs:
+            continue
+
+        seen_pairs.add(pair_key)
+
+        weight = 1.0
+        weight += d.trust.get(mate.id, 0) * 0.08
+        weight += mate.trust.get(d.id, 0) * 0.08
+
+        mate_pairs.append((d, mate, weight))
+
+    if not mate_pairs:
+        return False
+
+    pair_choices = [(a, b) for a, b, _ in mate_pairs]
+    pair_weights = [w for _, _, w in mate_pairs]
+    a, b = random.choices(pair_choices, weights=pair_weights, k=1)[0]
+
+    return add_mate_event(world, a, b)

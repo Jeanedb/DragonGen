@@ -76,6 +76,11 @@ def friendship_weight(a, b):
     if a.mate_id == b.id or b.mate_id == a.id:
         weight += 1.5
 
+    if any(flag == "lost_mate" for flag, _ in a.memory_flags):
+        weight -= 0.15
+    if any(flag == "lost_mate" for flag, _ in b.memory_flags):
+        weight -= 0.15
+
     return max(0.2, weight)
 
 
@@ -122,6 +127,11 @@ def rivalry_weight(a, b):
 
     if a.mate_id == b.id or b.mate_id == a.id:
         weight -= 2.0
+
+    if any(flag == "lost_mate" for flag, _ in a.memory_flags):
+        weight += 0.12
+    if any(flag == "lost_mate" for flag, _ in b.memory_flags):
+        weight += 0.12
 
     return max(0.05, weight)
 
