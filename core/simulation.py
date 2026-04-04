@@ -32,7 +32,93 @@ def get_world_mood(world):
     else:
         return "Crisis"
 
+def get_tribe_climate(world):
+    """
+    Short-term tribe atmosphere for this moon.
+
+    Mood = current emotional weather
+    Leader = long-term cultural pressure
+
+    Returns a dict of soft biases that other systems can use to
+    weight events, tone, and choices.
+    """
+    mood = get_world_mood(world)
+    leader = getattr(world, "leader", None)
+
+    climate = {
+        "bonding_bias": 0.0,
+        "conflict_bias": 0.0,
+        "mercy_bias": 0.0,
+        "risk_bias": 0.0,
+        "suspicion_bias": 0.0,
+        "recovery_bias": 0.0,
+        "tone_tags": []
+    }
+
+    # ---- Mood effects: short-term emotional weather ----
+    if mood == "Calm":
+        climate["bonding_bias"] += 0.20
+        climate["recovery_bias"] += 0.15
+        climate["tone_tags"].append("settled")
+
+    elif mood == "Uneasy":
+        climate["suspicion_bias"] += 0.10
+        climate["tone_tags"].append("watchful")
+
+    elif mood == "Strained":
+        climate["conflict_bias"] += 0.15
+        climate["suspicion_bias"] += 0.15
+        climate["tone_tags"].append("strained")
+
+    elif mood == "Volatile":
+        climate["conflict_bias"] += 0.30
+        climate["risk_bias"] += 0.20
+        climate["tone_tags"].append("volatile")
+
+    elif mood == "Crisis":
+        climate["conflict_bias"] += 0.45
+        climate["risk_bias"] += 0.30
+        climate["mercy_bias"] -= 0.15
+        climate["tone_tags"].append("crisis")
+
+    # ---- Leader effects: long-term cultural pressure ----
+    if leader:
+        traits = getattr(leader, "personality_traits", []) or []
+
+        if "Kind" in traits:
+            climate["bonding_bias"] += 0.20
+            climate["mercy_bias"] += 0.25
+            climate["recovery_bias"] += 0.20
+            climate["tone_tags"].append("gentle_leadership")
+
+        if "Loyal" in traits:
+            climate["bonding_bias"] += 0.15
+            climate["recovery_bias"] += 0.10
+            climate["tone_tags"].append("steady_leadership")
+
+        if "Clever" in traits:
+            climate["risk_bias"] -= 0.10
+            climate["tone_tags"].append("measured_leadership")
+
+        if "Ambitious" in traits:
+            climate["conflict_bias"] += 0.20
+            climate["risk_bias"] += 0.15
+            climate["tone_tags"].append("pressured_leadership")
+
+        if "Moody" in traits:
+            climate["conflict_bias"] += 0.15
+            climate["recovery_bias"] -= 0.15
+            climate["tone_tags"].append("unstable_leadership")
+
+        if "Suspicious" in traits:
+            climate["suspicion_bias"] += 0.30
+            climate["bonding_bias"] -= 0.10
+            climate["tone_tags"].append("paranoid_leadership")
+
+    return climate
+
 def add_friend_event(world, a, b):
+    climate = get_tribe_climate(world)
     mood = get_world_mood(world)
 
     if ("saved_by", b.id) in a.memory_flags:
@@ -48,18 +134,35 @@ def add_friend_event(world, a, b):
                 f"In the {world.tribe_name}, {a.name} and {b.name} spent time together.",
                 f"{a.name} sought out {b.name}, and the two enjoyed each other's company."
             ]
+
+            if climate["bonding_bias"] >= 0.35:
+                texts.append(
+                    f"With the tribe feeling unusually steady, {a.name} and {b.name} easily fell into one another's company."
+                )
+
         elif mood in {"Uneasy", "Strained"}:
             texts = [
                 f"{a.name} and {b.name} spent time together, a welcome relief from the strain in the tribe.",
                 f"With tensions simmering in the {world.tribe_name}, {a.name} and {b.name} found comfort in each other's company.",
                 f"{a.name} and {b.name} stayed close this moon, steadying each other amid growing tension."
             ]
-        else:  # Volatile / Crisis
+
+            if climate["recovery_bias"] > 0.20:
+                texts.append(
+                    f"Even with unease hanging over the tribe, {a.name} and {b.name} seemed determined to keep each other grounded."
+                )
+
+        else:
             texts = [
                 f"{a.name} and {b.name} found a brief moment of calm despite the tension gripping the tribe.",
                 f"Even with the tribe on edge, {a.name} and {b.name} stayed close and drew comfort from one another.",
                 f"In a tense and uneasy moon, {a.name} and {b.name} managed to find a little peace together."
             ]
+
+            if climate["bonding_bias"] > climate["conflict_bias"]:
+                texts.append(
+                    f"Though the tribe felt dangerously strained, {a.name} and {b.name} still managed to hold onto each other."
+                )
 
         text = random.choice(texts)
 
@@ -237,47 +340,108 @@ def handle_possible_death(world: World, dragon):
 
 
 def try_existing_relationship_event(world: World, living):
-    candidates = []
+    climate = get_tribe_climate(world)
+
+    weighted_candidates = []
 
     for dragon in living:
         for friend_id in dragon.friends:
             friend = next((d for d in living if d.id == friend_id), None)
             if friend and dragon.id < friend.id:
-                candidates.append(("friend", dragon, friend))
+                weight = 1.0
+
+                # Stronger trust = more likely this bond surfaces
+                weight += dragon.trust.get(friend.id, 0) * 0.20
+                weight += friend.trust.get(dragon.id, 0) * 0.20
+
+                # Saved-by memories make friend echoes more likely
+                if ("saved_by", friend.id) in dragon.memory_flags:
+                    weight += 1.0
+                if ("saved_by", dragon.id) in friend.memory_flags:
+                    weight += 1.0
+
+                # Climate support for bonding / recovery
+                weight *= max(0.2, 1.0 + climate["bonding_bias"] + (climate["recovery_bias"] * 0.5))
+
+                weighted_candidates.append(("friend", dragon, friend, weight))
 
         for rival_id in dragon.rivals:
             rival = next((d for d in living if d.id == rival_id), None)
             if rival and dragon.id < rival.id:
-                candidates.append(("rival", dragon, rival))
+                weight = 1.0
 
-    if not candidates:
+                # Stronger resentment = more likely this conflict resurfaces
+                weight += dragon.resentment.get(rival.id, 0) * 0.20
+                weight += rival.resentment.get(dragon.id, 0) * 0.20
+
+                # Abandonment memories make rival echoes more likely
+                if ("abandoned_by", rival.id) in dragon.memory_flags:
+                    weight += 1.0
+                if ("abandoned_by", dragon.id) in rival.memory_flags:
+                    weight += 1.0
+
+                # Climate support for conflict / suspicion
+                weight *= max(0.2, 1.0 + climate["conflict_bias"] + (climate["suspicion_bias"] * 0.5))
+
+                weighted_candidates.append(("rival", dragon, rival, weight))
+
+    if not weighted_candidates:
         return False
 
-    # grief check first
+    # ---- Grief event weighting ----
     grief_candidates = [
         d for d in living
         if any(flag == "lost_mate" for flag, _ in d.memory_flags)
     ]
 
-    if grief_candidates and random.random() < 0.25:
-        d = random.choice(grief_candidates)
+    grief_pool = []
+    for d in grief_candidates:
+        weight = 1.0
 
+        # In calmer or more merciful climates, grief can surface as visible withdrawal
+        weight += max(0.0, climate["recovery_bias"] * 0.5)
+        weight += max(0.0, climate["mercy_bias"] * 0.5)
+
+        # In suspicious / conflict-heavy climates, grief may be suppressed a bit
+        weight -= max(0.0, climate["conflict_bias"] * 0.25)
+        weight -= max(0.0, climate["suspicion_bias"] * 0.25)
+
+        weight = max(0.25, weight)
+        grief_pool.append(("grief", d, None, weight))
+
+    # Combine all possible relationship-surface events
+    combined = weighted_candidates + grief_pool
+
+    selections = [(etype, a, b) for etype, a, b, _ in combined]
+    weights = [w for _, _, _, w in combined]
+
+    event_type, a, b = random.choices(selections, weights=weights, k=1)[0]
+
+    if event_type == "grief":
         texts = [
-            f"{d.name} kept to themselves this moon, still grieving their loss.",
-            f"{d.name} seemed distant and withdrawn, the loss of their mate still weighing heavily.",
-            f"{d.name} avoided others this moon, grief still close beneath the surface."
+            f"{a.name} kept to themselves this moon, still grieving their loss.",
+            f"{a.name} seemed distant and withdrawn, the loss of their mate still weighing heavily.",
+            f"{a.name} avoided others this moon, grief still close beneath the surface."
         ]
+
+        # climate-aware grief tone
+        if climate["mercy_bias"] > 0.2:
+            texts.append(
+                f"In a tribe that seemed gentler than usual, {a.name}'s grief was quietly noticed by others."
+            )
+        if climate["suspicion_bias"] > 0.2:
+            texts.append(
+                f"With the tribe feeling watchful and tense, {a.name} withdrew further into their grief."
+            )
 
         log_event(
             world,
             random.choice(texts),
-            involved_ids=[d.id],
+            involved_ids=[a.id],
             event_type="grief_event",
             importance=3
         )
         return True
-
-    event_type, a, b = random.choice(candidates)
 
     if event_type == "friend":
         return add_friend_event(world, a, b)
@@ -291,6 +455,8 @@ def try_existing_relationship_event(world: World, living):
 # ---------- PLAYER CHOICES ----------
 
 def create_injured_patrol_choice(world):
+    climate = get_tribe_climate(world)
+
     candidates = [
         d for d in world.dragons
         if d.status == "Alive" and d.role != "Dragonet"
@@ -326,6 +492,16 @@ def create_injured_patrol_choice(world):
             weight += a.trust.get(b.id, 0) * 0.15
             weight += a.resentment.get(b.id, 0) * 0.20
 
+            # climate effect:
+            # dangerous, unstable tribes surface more injury/rescue dilemmas
+            weight *= max(
+                0.25,
+                1.0
+                + climate["risk_bias"]
+                + (climate["conflict_bias"] * 0.35)
+                - (climate["recovery_bias"] * 0.20)
+            )
+
             possible_pairs.append((a, b, weight))
 
     if not possible_pairs:
@@ -345,6 +521,8 @@ def create_injured_patrol_choice(world):
             importance=3
         )
 
+    mood = get_world_mood(world)
+
     if a.mate_id == b.id or b.mate_id == a.id:
         prompt_text = (
             f"{a.name} and {b.name} are on patrol together. When {a.name} is injured and rival dragons can be heard approaching, "
@@ -361,10 +539,21 @@ def create_injured_patrol_choice(world):
             f"{a.name} has never forgotten the last time {b.name} left. What should {b.name} do now?"
         )
     else:
-        prompt_text = (
-            f"{a.name} and {b.name} are on patrol. {a.name} is injured, and "
-            f"rival dragons can be heard approaching. What should {b.name} do?"
-        )
+        if mood in {"Volatile", "Crisis"}:
+            prompt_text = (
+                f"{a.name} and {b.name} are on patrol in a tribe already on edge. {a.name} is injured, and "
+                f"rival dragons can be heard approaching through the darkness. What should {b.name} do?"
+            )
+        elif climate["recovery_bias"] > 0.20:
+            prompt_text = (
+                f"{a.name} and {b.name} are on patrol. {a.name} is injured, and rival dragons can be heard approaching. "
+                f"In a tribe that still seems to hold together, what should {b.name} do?"
+            )
+        else:
+            prompt_text = (
+                f"{a.name} and {b.name} are on patrol. {a.name} is injured, and "
+                f"rival dragons can be heard approaching. What should {b.name} do?"
+            )
 
     world.pending_choice = {
         "type": "injured_patrol_choice",
@@ -379,6 +568,8 @@ def create_injured_patrol_choice(world):
 
 
 def create_rival_confrontation_choice(world):
+    climate = get_tribe_climate(world)
+    mood = get_world_mood(world)
     living = get_living_dragons(world)
 
     rival_pairs = []
@@ -400,6 +591,17 @@ def create_rival_confrontation_choice(world):
                 weight += dragon.resentment.get(rival.id, 0) * 0.20
                 weight += rival.resentment.get(dragon.id, 0) * 0.20
 
+                # climate effect:
+                # tense, suspicious, conflict-heavy tribes surface more confrontation dilemmas
+                weight *= max(
+                    0.25,
+                    1.0
+                    + climate["conflict_bias"]
+                    + (climate["suspicion_bias"] * 0.40)
+                    - (climate["recovery_bias"] * 0.20)
+                    - (climate["mercy_bias"] * 0.15)
+                )
+
                 rival_pairs.append((dragon, rival))
                 weights.append(weight)
 
@@ -410,24 +612,40 @@ def create_rival_confrontation_choice(world):
 
     if ("abandoned_by", b.id) in a.memory_flags:
         prompt_text = (
-            f"{a.name} and {b.name}, long-standing rivals, cross paths during a tense patrol. "
+            f"{a.name} and {b.name}, long-standing rivals, cross paths on patrol. "
             f"{a.name} still carries the memory of being abandoned by {b.name}. What should {a.name} do?"
         )
     elif ("abandoned_by", a.id) in b.memory_flags:
         prompt_text = (
-            f"{a.name} and {b.name}, long-standing rivals, cross paths during a tense patrol. "
+            f"{a.name} and {b.name}, long-standing rivals, cross paths on patrol. "
             f"Old resentment still hangs between them. What should {a.name} do?"
         )
     elif a.resentment.get(b.id, 0) >= 3 or b.resentment.get(a.id, 0) >= 3:
         prompt_text = (
-            f"{a.name} and {b.name}, long-standing rivals, cross paths during a tense patrol. "
+            f"{a.name} and {b.name}, long-standing rivals, cross paths on patrol. "
             f"The hostility between them no longer feels like a passing disagreement. What should {a.name} do?"
         )
     else:
-        prompt_text = (
-            f"{a.name} and {b.name}, long-standing rivals, cross paths during a tense patrol. "
-            f"What should {a.name} do?"
-        )
+        if mood in {"Volatile", "Crisis"}:
+            prompt_text = (
+                f"{a.name} and {b.name}, long-standing rivals, cross paths during a patrol while the tribe is already on edge. "
+                f"What should {a.name} do?"
+            )
+        elif climate["mercy_bias"] > 0.20:
+            prompt_text = (
+                f"{a.name} and {b.name}, long-standing rivals, cross paths on patrol. "
+                f"The tribe seems steadier than usual, but the tension between them remains. What should {a.name} do?"
+            )
+        elif climate["suspicion_bias"] > 0.20:
+            prompt_text = (
+                f"{a.name} and {b.name}, long-standing rivals, cross paths on patrol in a tribe grown watchful and uneasy. "
+                f"What should {a.name} do?"
+            )
+        else:
+            prompt_text = (
+                f"{a.name} and {b.name}, long-standing rivals, cross paths on patrol. "
+                f"What should {a.name} do?"
+            )
 
     world.pending_choice = {
         "type": "rival_confrontation_choice",
