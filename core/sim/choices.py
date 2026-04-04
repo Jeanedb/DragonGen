@@ -158,6 +158,9 @@ def handle_leader_decision(world, option_id):
             importance=4
         )
 
+        world.direction = "stabilizing"
+        world.direction_timer = 3
+
     elif option_id == "push_strength":
         world.tension += 0.25
         log_event(
@@ -168,6 +171,9 @@ def handle_leader_decision(world, option_id):
             importance=4
         )
 
+        world.direction = "pressuring"
+        world.direction_timer = 3
+
     elif option_id == "watch_closely":
         world.tension += 0.1
         log_event(
@@ -177,3 +183,8 @@ def handle_leader_decision(world, option_id):
             event_type="leader_decision",
             importance=4
         )
+
+        world.direction = "watchful"
+        world.direction_timer = 3
+
+    

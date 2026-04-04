@@ -81,6 +81,19 @@ def get_tribe_climate(world):
         climate["mercy_bias"] -= 0.15
         climate["tone_tags"].append("crisis")
 
+    direction = getattr(world, "direction", None)
+
+    if direction == "stabilizing":
+        climate["bonding_bias"] += 0.20
+        climate["recovery_bias"] += 0.25
+
+    elif direction == "pressuring":
+        climate["conflict_bias"] += 0.25
+        climate["risk_bias"] += 0.20
+
+    elif direction == "watchful":
+        climate["suspicion_bias"] += 0.30
+
     # ---- Leader effects: long-term cultural pressure ----
     if leader:
         traits = getattr(leader, "personality_traits", []) or []
@@ -118,6 +131,7 @@ def get_tribe_climate(world):
     return climate
 
 def add_friend_event(world, a, b):
+    direction = getattr(world, "direction", None)
     climate = get_tribe_climate(world)
     mood = get_world_mood(world)
 
@@ -159,18 +173,27 @@ def add_friend_event(world, a, b):
                 f"In a tense and uneasy moon, {a.name} and {b.name} managed to find a little peace together."
             ]
 
-            if climate["bonding_bias"] > climate["conflict_bias"]:
-                texts.append(
-                    f"Though the tribe felt dangerously strained, {a.name} and {b.name} still managed to hold onto each other."
-                )
+        if climate["bonding_bias"] > climate["conflict_bias"]:
+            texts.append(
+                f"Though the tribe felt dangerously strained, {a.name} and {b.name} still managed to hold onto each other."
+
+            )
 
         text = random.choice(texts)
+
+        if direction == "stabilizing":
+             text += " The tribe seems to be trying to hold together."
+        elif direction == "pressuring":
+            text += " The pace of the tribe leaves little room for rest."
+        elif direction == "watchful":
+            text += " Others nearby seemed alert to everything happening."
 
     log_event(world, text, involved_ids=[a.id, b.id], event_type="friend_event")
     return True
 
 
 def add_rival_event(world, a, b):
+    direction = getattr(world, "direction", None)
     mood = get_world_mood(world)
 
     if ("abandoned_by", b.id) in a.memory_flags:
@@ -200,6 +223,13 @@ def add_rival_event(world, a, b):
             ]
 
         text = random.choice(texts)
+
+        if direction == "stabilizing":
+            text += " Even so, the tribe seemed reluctant to let things escalate."
+        elif direction == "pressuring":
+            text += " Tension like this has become more common under the current pace."
+        elif direction == "watchful":
+            text += " Others nearby watched closely, as if expecting trouble."
 
     log_event(world, text, involved_ids=[a.id, b.id], event_type="rival_event")
     return True
@@ -736,6 +766,11 @@ def create_leader_decision(world):
 def advance_moon(world: World):
     if world.pending_choice is not None:
         return False
+
+    if getattr(world, "direction_timer", 0) > 0:
+        world.direction_timer -= 1
+        if world.direction_timer <= 0:
+            world.direction = None
 
     world.moon += 1
     living = get_living_dragons(world)
