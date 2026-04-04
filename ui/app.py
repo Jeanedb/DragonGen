@@ -342,11 +342,30 @@ class DragonGenApp(ctk.CTk):
                 continue
 
             if flag == "saved_by":
-                memory_lines.append(f"Saved by {other.name}")
-            elif flag == "abandoned_by":
-                memory_lines.append(f"Feels abandoned by {other.name}")
+                trust_value = d.trust.get(other.id, 0)
 
-        memory_text = ", ".join(memory_lines) if memory_lines else "None"
+                if trust_value >= 4:
+                    memory_lines.append(
+                        f"Deeply trusts {other.name}, remembering when they stood by them in a moment of danger."
+                    )
+                else:
+                    memory_lines.append(
+                        f"Still trusts {other.name} after they stood by them in a moment of danger."
+                    )
+
+            elif flag == "abandoned_by":
+                resentment_value = d.resentment.get(other.id, 0)
+
+                if resentment_value >= 4:
+                    memory_lines.append(
+                        f"Holds a deep grudge against {other.name} for abandoning them when it mattered."
+                    )
+                else:
+                    memory_lines.append(
+                        f"Has never quite forgiven {other.name} for leaving when it mattered."
+                    )
+
+        memory_text = "\n".join(memory_lines) if memory_lines else "None"
 
         child_names = [
             self.get_dragon_by_id(cid).name
@@ -363,6 +382,7 @@ class DragonGenApp(ctk.CTk):
         rivals_text = ", ".join(rivals) if rivals else "None"
         parents_text = ", ".join(parent_names) if parent_names else "Unknown"
         children_text = ", ".join(child_names) if child_names else "None"
+
 
         personal_events = []
         for event in self.world.event_log:
@@ -396,10 +416,10 @@ class DragonGenApp(ctk.CTk):
             f"Status: {d.status}\n\n"
             f"Friends: {friends_text}\n"
             f"Rivals: {rivals_text}\n"
-            f"Notable History: {memory_text}\n"
             f"Mate: {mate_name}\n"
             f"Parents: {parents_text}\n"
             f"Dragonets: {children_text}\n\n"
+            f"Notable Personal History:\n{memory_text}\n\n"
             f"Recent Personal History:\n{personal_history_text}\n"
         )
 

@@ -21,26 +21,42 @@ def get_living_dragons(world: World):
 
 
 
-def add_friend_event(world: World, a, b):
-    texts = [
-        f"{a.name} and {b.name} spent the moon in easy company.",
-        f"In the {world.tribe_name}, {a.name} and {b.name} spent time together.",
-        f"{a.name} and {b.name} worked well together and strengthened their bond.",
-        f"{a.name} sought out {b.name}, and the two enjoyed each other's company."
-    ]
-    text = random.choice(texts)
+def add_friend_event(world, a, b):
+    if ("saved_by", b.id) in a.memory_flags:
+        text = f"{a.name} stayed close to {b.name}, still remembering when {b.name} helped them in a moment of danger."
+    elif ("saved_by", a.id) in b.memory_flags:
+        text = f"{b.name} sought out {a.name}, remembering the help they were once given."
+    elif a.trust.get(b.id, 0) >= 3 or b.trust.get(a.id, 0) >= 3:
+        text = f"{a.name} and {b.name} naturally fell into each other's company, their bond now an easy one."	
+    else:
+        texts = [
+            f"{a.name} and {b.name} spent the moon in easy company.",
+            f"In the {world.tribe_name}, {a.name} and {b.name} spent time together.",
+            f"{a.name} and {b.name} worked well together and strengthened their bond.",
+            f"{a.name} sought out {b.name}, and the two enjoyed each other's company."
+        ]
+        text = random.choice(texts)
+
     log_event(world, text, involved_ids=[a.id, b.id], event_type="friend_event")
     return True
 
 
-def add_rival_event(world: World, a, b):
-    texts = [
-        f"{a.name} and {b.name} argued again, and neither backed down.",
-        f"{a.name} and {b.name} clashed over a dispute in the tribe.",
-        f"In the {world.tribe_name}, {a.name} and {b.name} had a heated argument.",
-        f"Old tension flared between {a.name} and {b.name} this moon."
-    ]
-    text = random.choice(texts)
+def add_rival_event(world, a, b):
+    if ("abandoned_by", b.id) in a.memory_flags:
+        text = f"{a.name} clashed with {b.name}, still carrying the sting of being abandoned when it mattered."
+    elif ("abandoned_by", a.id) in b.memory_flags:
+        text = f"{b.name} met {a.name} with open hostility, old resentment still hanging between them."
+    elif a.resentment.get(b.id, 0) >= 3 or b.resentment.get(a.id, 0) >= 3:
+        text = f"The hostility between {a.name} and {b.name} no longer feels like a passing disagreement."
+    else:
+        texts = [
+            f"{a.name} and {b.name} argued again, and neither backed down.",
+            f"{a.name} and {b.name} clashed over a dispute in the tribe.",
+            f"In the {world.tribe_name}, {a.name} and {b.name} had a heated argument.",
+            f"Old tension flared between {a.name} and {b.name} this moon."
+        ]
+        text = random.choice(texts)
+
     log_event(world, text, involved_ids=[a.id, b.id], event_type="rival_event")
     return True
 
