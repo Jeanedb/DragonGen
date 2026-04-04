@@ -6,8 +6,7 @@ from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.choices import resolve_choice
 from core.sim.progression import tick_dragon_progression
 from core.sim.events import run_event_phase
-from core.sim.leadership import maintain_hierarchy
-
+from core.sim.leadership import maintain_hierarchy, apply_leader_influence
 
 def are_family(a, b):
     if a.id in b.parents or b.id in a.parents:
@@ -414,6 +413,7 @@ def advance_moon(world: World):
         handle_possible_death(world, dragon)
 
     maintain_hierarchy(world)
+    apply_leader_influence(world)
 
     if random.random() < 0.20:
         add_new_dragonet(world)

@@ -365,20 +365,20 @@ class DragonGenApp(ctk.CTk):
                         f"Has never quite forgiven {other.name} for leaving when it mattered."
                     )
 
-                elif flag == "lost_mate":
-                    other = self.get_dragon_by_id(other_id)
-                    if other:
-                        # how long ago did they die (approximation)
-                        time_since_loss = d.age_moons - other.age_moons
+            elif flag == "lost_mate":
+                other = self.get_dragon_by_id(other_id)
+                if other:
+                    # how long ago did they die (approximation)
+                    time_since_loss = d.age_moons - other.age_moons
 
-                        if time_since_loss < 10:
-                            memory_lines.append(
-                                f"The loss of {other.name} is still fresh, and it shows."
-                            )
-                        else:
-                            memory_lines.append(
-                                f"Still carries the memory of losing {other.name}, though time has dulled the edge."
-                            )
+                    if time_since_loss < 10:
+                        memory_lines.append(
+                            f"The loss of {other.name} is still fresh, and it shows."
+                        )
+                    else:
+                        memory_lines.append(
+                            f"Still carries the memory of losing {other.name}, though time has dulled the edge."
+                        )
 
         memory_text = "\n".join(memory_lines) if memory_lines else "None"
 

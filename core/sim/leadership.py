@@ -97,11 +97,43 @@ def maintain_hierarchy(world):
 
 
 def add_leader_event(world, leader):
-    texts = [
-        f"{leader.name}, leader of the tribe, made a decision that shaped the moon.",
-        f"{leader.name} addressed the tribe, guiding them through the moon's challenges.",
-        f"{leader.name} took charge during a tense moment in the tribe.",
-    ]
+    if leader.personality == "Loyal":
+        texts = [
+            f"{leader.name} reassured the tribe and kept everyone steady through the moon.",
+            f"{leader.name} led with quiet consistency, helping the tribe hold together.",
+        ]
+    elif leader.personality == "Kind":
+        texts = [
+            f"{leader.name} took care to ease tensions and keep the tribe united.",
+            f"{leader.name} guided the tribe with warmth, calming nerves through the moon.",
+        ]
+    elif leader.personality == "Clever":
+        texts = [
+            f"{leader.name} made a careful decision that helped the tribe avoid greater trouble.",
+            f"{leader.name}'s planning kept the tribe steady through a difficult moon.",
+        ]
+    elif leader.personality == "Ambitious":
+        texts = [
+            f"{leader.name} pushed the tribe hard this moon, and not everyone welcomed it.",
+            f"{leader.name}'s forceful direction drove the tribe forward, though tensions followed.",
+        ]
+    elif leader.personality == "Moody":
+        texts = [
+            f"{leader.name}'s shifting temper left the tribe uneasy this moon.",
+            f"{leader.name} led through the moon, but their mood made the tribe hard to settle.",
+        ]
+    elif leader.personality == "Suspicious":
+        texts = [
+            f"{leader.name} watched the tribe closely, and their distrust put others on edge.",
+            f"{leader.name}'s wary leadership made the tribe feel tense and guarded.",
+        ]
+    else:
+        texts = [
+            f"{leader.name}, leader of the tribe, made a decision that shaped the moon.",
+            f"{leader.name} addressed the tribe, guiding them through the moon's challenges.",
+            f"{leader.name} took charge during a tense moment in the tribe.",
+        ]
+
     text = random.choice(texts)
     log_event(world, text, involved_ids=[leader.id], event_type="leader_event")
     return True
@@ -130,3 +162,21 @@ def try_leadership_event(world):
         return add_deputy_event(world, deputy)
 
     return False
+
+def apply_leader_influence(world):
+    leader = get_current_leader(world)
+    if not leader or not hasattr(world, "tension"):
+        return
+
+    if leader.personality == "Loyal":
+        world.tension = max(0.0, world.tension - 0.06)
+    elif leader.personality == "Kind":
+        world.tension = max(0.0, world.tension - 0.07)
+    elif leader.personality == "Clever":
+        world.tension = max(0.0, world.tension - 0.04)
+    elif leader.personality == "Ambitious":
+        world.tension = min(5.0, world.tension + 0.06)
+    elif leader.personality == "Moody":
+        world.tension = min(5.0, world.tension + 0.07)
+    elif leader.personality == "Suspicious":
+        world.tension = min(5.0, world.tension + 0.05)
