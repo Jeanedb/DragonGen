@@ -178,10 +178,12 @@ def add_friend_event(world, a, b):
                 f"In a tense and uneasy moon, {a.name} and {b.name} managed to find a little peace together."
             ]
 
-        if climate["bonding_bias"] > climate["conflict_bias"]:
-            texts.append(
-                f"Though the tribe felt dangerously strained, {a.name} and {b.name} still managed to hold onto each other."
-            )
+            if climate["bonding_bias"] > climate["conflict_bias"]:
+                texts.append(
+                    f"Though the tribe felt dangerously strained, {a.name} and {b.name} still managed to hold onto each other."
+                )
+
+        text = random.choice(texts)
 
         text = random.choice(texts)
 

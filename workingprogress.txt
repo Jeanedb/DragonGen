@@ -31,7 +31,7 @@ DragonGen/
 
 
 - change nomenclature to better suit WoF
-- "MOON" is not the proper term, use "NIGHT" or something else. Only needs to be on UI, not system.
+- "MOON" is not the proper term, use "NIGHT", "WEEKS" or something else. Only needs to be on UI, not system.
 - roles and ranks need amending, there is no leader or deputy. add "QUEEN' and "KING", Only needs to be on UI, not system
 - Make "TRIBE" cultures and attributes more accurate to book lore e.g. mythos and camo and water breathing etc...
 - Specific specialty tribe skills e.g. fire scales, lower attribute factor to make "RARE"
@@ -39,14 +39,15 @@ DragonGen/
 - add Pyrrhian/Pantalan "TRIBES"
 X Make "DEAD" tab, cemetery: (COMPLETED-DROP DOWN TAB FOR DEAD) 
 x Add "EVENT" selection e.g. "PATROL" choice A or B
-    > Make more choices now
+    > Make more choices, events
 - Dragons live to 150 yrs ish
-- add dragons leaving/entering/returning (good or bad) events
-- Add leader influence on tension
-- Add leader choices
-- Add mood aware event text (e.g. calm vs crisis)
-- Add memory affecting future choices more strongly
-- Nameplates in UI reflective of dragon class with appropriate color scheme, texture and patterns as listed below:
+- add dragons leaving/entering/returning. Good and bad events
+x Add leader influence on tension (COMPLETED)
+x Add leader choices (COMPLETED)
+x Add mood aware event text e.g. calm vs crisis (COMPLETED)
+x Add memory affecting future choices more strongly (COMPLETED, I think)
+- Add appropriate icon for pygame .exe file
+- Nameplates in UI reflective of dragon class with appropriate color scheme, texture and patterns as listed below: (WORKING TEMP COLOR SCHEME, NOT COMPLETED)
 
 Tribe		Colors			Patterns		UI Motif
 
