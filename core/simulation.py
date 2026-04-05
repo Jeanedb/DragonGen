@@ -135,12 +135,17 @@ def add_friend_event(world, a, b):
     climate = get_tribe_climate(world)
     mood = get_world_mood(world)
 
+    used_memory = False  # <-- ADD THIS LINE
+
     if ("saved_by", b.id) in a.memory_flags:
         text = f"{a.name} stayed close to {b.name}, still remembering when {b.name} helped them in a moment of danger."
+        used_memory = True
     elif ("saved_by", a.id) in b.memory_flags:
         text = f"{b.name} sought out {a.name}, remembering the help they were once given."
+        used_memory = True
     elif a.trust.get(b.id, 0) >= 3 or b.trust.get(a.id, 0) >= 3:
         text = f"{a.name} and {b.name} naturally fell into each other's company, their bond now an easy one."
+        used_memory = True
     else:
         if mood == "Calm":
             texts = [
@@ -176,17 +181,37 @@ def add_friend_event(world, a, b):
         if climate["bonding_bias"] > climate["conflict_bias"]:
             texts.append(
                 f"Though the tribe felt dangerously strained, {a.name} and {b.name} still managed to hold onto each other."
-
             )
 
         text = random.choice(texts)
 
-        if direction == "stabilizing":
-             text += " The tribe seems to be trying to hold together."
-        elif direction == "pressuring":
-            text += " The pace of the tribe leaves little room for rest."
+    if direction == "stabilizing":
+         text += " The tribe seems to be trying to hold together."
+    elif direction == "pressuring":
+         text += " The pace of the tribe leaves little room for rest."
+    elif direction == "watchful":
+        text += " Others nearby seemed alert to everything happening."
+
+    # light personality reaction echoes
+    # light personality reaction echoes (ONLY if not memory-based)
+    if not used_memory:
+        if direction == "pressuring":
+            if a.personality == "Kind" or b.personality == "Kind":
+                text += " The harsher pace seems to weigh on them."
+            elif a.personality == "Ambitious" or b.personality == "Ambitious":
+                text += " Neither seemed especially troubled by the tribe's demanding pace."
+
+        elif direction == "stabilizing":
+            if a.personality == "Loyal" or b.personality == "Loyal":
+                text += " Both seemed to respond well to the tribe's effort to steady itself."
+            elif a.personality == "Moody" or b.personality == "Moody":
+                text += " Even with the tribe trying to steady itself, the calm felt fragile."
+
         elif direction == "watchful":
-            text += " Others nearby seemed alert to everything happening."
+            if a.personality == "Suspicious" or b.personality == "Suspicious":
+                text += " The tense, alert atmosphere seemed almost natural to them."
+            elif a.personality == "Kind" or b.personality == "Kind":
+                text += " The constant vigilance made the moment feel more precious."
 
     log_event(world, text, involved_ids=[a.id, b.id], event_type="friend_event")
     return True
@@ -196,12 +221,17 @@ def add_rival_event(world, a, b):
     direction = getattr(world, "direction", None)
     mood = get_world_mood(world)
 
+    used_memory = False
+
     if ("abandoned_by", b.id) in a.memory_flags:
         text = f"{a.name} clashed with {b.name}, still carrying the sting of being abandoned when it mattered."
+        used_memory = True
     elif ("abandoned_by", a.id) in b.memory_flags:
         text = f"{b.name} met {a.name} with open hostility, old resentment still hanging between them."
+        used_memory = True
     elif a.resentment.get(b.id, 0) >= 3 or b.resentment.get(a.id, 0) >= 3:
         text = f"The hostility between {a.name} and {b.name} no longer feels like a passing disagreement."
+        used_memory = True
     else:
         if mood == "Calm":
             texts = [
@@ -224,12 +254,32 @@ def add_rival_event(world, a, b):
 
         text = random.choice(texts)
 
-        if direction == "stabilizing":
-            text += " Even so, the tribe seemed reluctant to let things escalate."
-        elif direction == "pressuring":
-            text += " Tension like this has become more common under the current pace."
+    if direction == "stabilizing":
+        text += " Even so, the tribe seemed reluctant to let things escalate."
+    elif direction == "pressuring":
+        text += " Tension like this has become more common under the current pace."
+    elif direction == "watchful":
+        text += " Others nearby watched closely, as if expecting trouble."
+
+    # light personality reaction echoes
+    if not used_memory:
+        if direction == "pressuring":
+            if a.personality == "Ambitious" or b.personality == "Ambitious":
+                text += f" The tribe's demanding pace only seemed to sharpen the conflict."
+            elif a.personality == "Kind" or b.personality == "Kind":
+                text += f" At least one of them seemed ill at ease with how harsh things have become."
+
+        elif direction == "stabilizing":
+            if a.personality == "Loyal" or b.personality == "Loyal":
+                text += f" Even in conflict, there was a sense that the tribe wanted to keep itself from splintering."
+            elif a.personality == "Moody" or b.personality == "Moody":
+                text += f" The tribe's attempt at calm did little to soften the mood."
+
         elif direction == "watchful":
-            text += " Others nearby watched closely, as if expecting trouble."
+            if a.personality == "Suspicious" or b.personality == "Suspicious":
+                text += f" The atmosphere of caution seemed to encourage mistrust."
+            elif a.personality == "Clever" or b.personality == "Clever":
+                text += f" Both seemed careful not to misstep under so many watchful eyes."
 
     log_event(world, text, involved_ids=[a.id, b.id], event_type="rival_event")
     return True
