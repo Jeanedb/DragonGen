@@ -3,6 +3,8 @@ from tkinter import filedialog
 
 from data.tribes import TRIBES
 from core.generator import generate_starting_world
+from core.sim.flavor import ensure_dragon_flavor
+from core.sim.flavor import generate_dragon_bio
 from core.simulation import (
     advance_moon,
     resolve_choice,
@@ -26,7 +28,11 @@ class DragonGenApp(ctk.CTk):
         # Game state
         self.selected_tribe = "Mixed"
         self.world = generate_starting_world(self.selected_tribe)
+       
         maintain_hierarchy(self.world)
+        for dragon in self.world.dragons:
+            ensure_dragon_flavor(dragon)
+
         self.selected_dragon = self.world.dragons[0] if self.world.dragons else None
         self.roster_filter = "Living"
 
@@ -199,7 +205,11 @@ class DragonGenApp(ctk.CTk):
 
     def on_new_tribe(self):
         self.world = generate_starting_world(self.selected_tribe)
+
         maintain_hierarchy(self.world)
+        for dragon in self.world.dragons:
+             ensure_dragon_flavor(dragon)
+
         self.selected_dragon = self.world.dragons[0] if self.world.dragons else None
         self.roster_filter = "Living"
         self.roster_filter_menu.set("Living")
@@ -229,7 +239,12 @@ class DragonGenApp(ctk.CTk):
         )
         if filename:
             self.world = load_world(filename)
+
             maintain_hierarchy(self.world)
+            for dragon in self.world.dragons:
+                ensure_dragon_flavor(dragon)
+
+
             self.selected_dragon = self.world.dragons[0] if self.world.dragons else None
             self.roster_filter = "Living"
             self.roster_filter_menu.set("Living")
