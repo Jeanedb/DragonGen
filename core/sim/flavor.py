@@ -79,6 +79,19 @@ def ensure_dragon_flavor(dragon):
     if not hasattr(dragon, "random_fact"):
         dragon.random_fact = random.choice(RANDOM_FACTS)
 
+def get_life_stage(dragon):
+    age = dragon.age_moons
+
+    if age < 24:
+        return "Dragonet"
+    elif age < 60:
+        return "Young"
+    elif age < 120:
+        return "Adult"
+    elif age < 200:
+        return "Mature"
+    else:
+        return "Elder"
 
 def maybe_gain_scar(dragon, chance=0.35):
     """
@@ -93,6 +106,58 @@ def maybe_gain_scar(dragon, chance=0.35):
             return scar
     return None
 
+def generate_legacy_text(dragon, world):
+    parts = []
+
+    if dragon.status != "Dead":
+        return ""
+
+    friend_count = len(getattr(dragon, "friends", []))
+    rival_count = len(getattr(dragon, "rivals", []))
+    scar_count = len(getattr(dragon, "scars", [])) if hasattr(dragon, "scars") else 0
+    dragonet_count = len(getattr(dragon, "dragonets", []))
+    mate = None
+
+    surviving_mates = []
+    for other in world.dragons:
+        for flag, other_id in getattr(other, "memory_flags", []):
+            if flag == "lost_mate" and other_id == dragon.id:
+                surviving_mates.append(other.name)
+
+    if surviving_mates:
+        if len(surviving_mates) == 1:
+            parts.append(f"They left behind their mate, {surviving_mates[0]}.")
+        else:
+            parts.append(f"They left behind mates who still remember them: {', '.join(surviving_mates)}.")
+
+    if getattr(dragon, "mate_id", None) is not None:
+        mate = next((d for d in world.dragons if d.id == dragon.mate_id), None)
+
+    if dragon.role == "Leader":
+        parts.append(f"They are remembered as one of the tribe's leaders.")
+    elif dragon.role == "Healer":
+        parts.append(f"They are remembered for the care they offered the tribe.")
+    elif dragon.role in {"Warrior", "Hunter", "Scout"}:
+        parts.append(f"They are remembered as a dragon who served the tribe directly.")
+
+    if friend_count >= 3:
+        parts.append("They left behind many bonds within the tribe.")
+    elif friend_count >= 1:
+        parts.append("They are still remembered by those who were close to them.")
+
+    if rival_count >= 3:
+        parts.append("Not all memories of them are gentle, and old tensions have not entirely faded.")
+
+    if dragonet_count > 0:
+        parts.append("Part of their legacy lives on through the dragonets they left behind.")
+
+    if scar_count >= 2:
+        parts.append("Their body bore clear signs of a difficult life.")
+
+    if not parts:
+        parts.append("Their memory lingers quietly in the tribe.")
+
+    return " ".join(parts)
 
 def _name_list(ids, world, limit=3):
     names = []
@@ -121,8 +186,31 @@ def generate_dragon_bio(dragon, world):
 
     parts = []
 
-    intro = f"{dragon.name} is a {dragon.personality.lower()} {dragon.tribe.lower()}."
-    parts.append(intro)
+    stage = get_life_stage(dragon)
+
+    parts.append(
+        f"{dragon.name} is a {dragon.personality.lower()} {stage.lower()} {dragon.tribe.lower()}."
+    )
+
+    if stage == "Dragonet":
+        parts.append("They are still early in life, with much of their future yet to unfold.")
+
+    elif stage == "Young":
+        parts.append("They are still finding their place within the tribe.")
+
+    elif stage == "Adult":
+        parts.append("They are firmly part of the tribe’s daily life.")
+
+    elif stage == "Mature":
+        parts.append("They have seen enough of the tribe to understand its deeper currents.")
+
+    elif stage == "Elder":
+        parts.append("They carry a long memory of the tribe and what it has endured.")
+
+    if dragon.scars and stage in ["Mature", "Elder"]:
+        parts.append(
+            f"They carry {dragon.scars[0]}, one of many signs of a life that has not been easy."
+        )
 
     parent_names = _name_list(getattr(dragon, "parents", []), world, limit=2)
     if parent_names:
@@ -157,6 +245,18 @@ def generate_dragon_bio(dragon, world):
         mate = next((d for d in world.dragons if d.id == dragon.mate_id), None)
         if mate:
             parts.append(f"They are closely bonded to {mate.name}.")
+
+    lost_mate_ids = [
+        other_id for flag, other_id in getattr(dragon, "memory_flags", [])
+        if flag == "lost_mate"
+    ]
+
+    if lost_mate_ids:
+        lost_mate = next((d for d in world.dragons if d.id == lost_mate_ids[-1]), None)
+        if lost_mate:
+            parts.append(
+                f"They still carry the loss of {lost_mate.name}, and that absence remains part of who they are."
+            )
 
     friend_names = _name_list(getattr(dragon, "friends", []), world)
     if friend_names:

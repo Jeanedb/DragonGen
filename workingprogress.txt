@@ -35,10 +35,12 @@ DragonGen/
 - roles and ranks need amending, there is no leader or deputy. add "QUEEN' and "KING", Only needs to be on UI, not system
 - Make "TRIBE" cultures and attributes more accurate to book lore e.g. mythos and camo and water breathing etc...
 - Specific specialty tribe skills e.g. fire scales, lower attribute factor to make "RARE"
------ ADD NAMES FOR DIVERSE GAMEPLAY
+- Add CONVERSATION option. Dragon A and B convo with choises, personality impacts
+x Add names for diverse gameplay (COMPLETED, one class remains for current dragon tribes)
 - HYBRIDS? Preference to mate with own tribe, hybrids do happen though
 - add Pyrrhian/Pantalan "TRIBES"
 X Make "DEAD" tab, cemetery: (COMPLETED-DROP DOWN TAB FOR DEAD) 
+- Make dead remember name of past MATE in attibutes
 x Add "EVENT" selection e.g. "PATROL" choice A or B
     > Make more choices, events
 - Dragons live to 150 yrs ish

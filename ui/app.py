@@ -5,6 +5,7 @@ from data.tribes import TRIBES
 from core.generator import generate_starting_world
 from core.sim.flavor import ensure_dragon_flavor
 from core.sim.flavor import generate_dragon_bio
+from ui.encyclopedia import EncyclopediaWindow
 from core.simulation import (
     advance_moon,
     resolve_choice,
@@ -54,6 +55,12 @@ class DragonGenApp(ctk.CTk):
 
         self.refresh_all()
 
+    def open_encyclopedia(self):
+        if hasattr(self, "encyclopedia_window") and self.encyclopedia_window.winfo_exists():
+            self.encyclopedia_window.focus()
+            self.encyclopedia_window.refresh_all()
+        else:
+            self.encyclopedia_window = EncyclopediaWindow(self, self.world)
     def create_header(self):
         self.header_frame = ctk.CTkFrame(self)
         self.header_frame.grid(row=0, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
@@ -199,6 +206,13 @@ class DragonGenApp(ctk.CTk):
             command=self.on_new_tribe
         )
         self.new_button.pack(side="left", padx=10, pady=10)
+
+        self.encyclopedia_button = ctk.CTkButton(
+            self.control_frame,
+            text="Encyclopedia",
+            command=self.open_encyclopedia
+        )
+        self.encyclopedia_button.pack(side="left", padx=10, pady=10)
 
     def on_tribe_selected(self, choice):
         self.selected_tribe = choice
