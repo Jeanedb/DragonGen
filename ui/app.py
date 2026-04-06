@@ -181,7 +181,7 @@ class DragonGenApp(ctk.CTk):
 
         self.advance_button = ctk.CTkButton(
             self.control_frame,
-            text="Advance Moon",
+            text="Advance Week",
             command=self.on_advance_moon
         )
         self.advance_button.pack(side="left", padx=10, pady=10)
