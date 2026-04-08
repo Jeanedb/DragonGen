@@ -13,7 +13,7 @@ from core.simulation import (
     get_tribe_climate,
 )
 from core.save_manager import save_world, load_world
-from core.sim.leadership import maintain_hierarchy
+from core.sim.leadership import maintain_hierarchy, get_leader_by_id
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -61,6 +61,7 @@ class DragonGenApp(ctk.CTk):
             self.encyclopedia_window.refresh_all()
         else:
             self.encyclopedia_window = EncyclopediaWindow(self, self.world)
+
     def create_header(self):
         self.header_frame = ctk.CTkFrame(self)
         self.header_frame.grid(row=0, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
@@ -112,6 +113,13 @@ class DragonGenApp(ctk.CTk):
             self.status_frame, text="Mood: Calm", font=("Arial", 12, "bold")
         )
         self.tension_status_label.pack(anchor="w", padx=10, pady=(0, 1))
+
+        self.leader_label = ctk.CTkLabel(
+            self.status_frame,
+            text="Leader: None",
+            font=("Arial", 12)
+        )
+        self.leader_label.pack(anchor="w", padx=10, pady=(0, 4))
 
 
         # Blurb (kept, but tighter)
@@ -369,7 +377,7 @@ class DragonGenApp(ctk.CTk):
 
         mood = get_world_mood(self.world)
         climate = get_tribe_climate(self.world)
-        leader = getattr(self.world, "leader", None)
+        leader = get_leader_by_id(self.world)
 
         # Base mood description
         _, description = self.get_tension_status()
@@ -377,12 +385,29 @@ class DragonGenApp(ctk.CTk):
         # Leader text
         if leader:
             traits = getattr(leader, "personality_traits", []) or []
+
             if traits:
-                leader_text = f"Leader: {leader.name} ({', '.join(traits)})"
+                trait_text = ", ".join(traits)
+
+                # add flavor tone
+                if "Kind" in traits:
+                    tone = "gentle leadership"
+                elif "Ambitious" in traits:
+                    tone = "driven leadership"
+                elif "Suspicious" in traits:
+                    tone = "watchful leadership"
+                elif "Moody" in traits:
+                    tone = "unstable leadership"
+                else:
+                    tone = "steady leadership"
+
+                leader_text = f"Leader: {leader.name} ({trait_text}) — {tone}"
             else:
                 leader_text = f"Leader: {leader.name}"
         else:
             leader_text = "Leader: None"
+
+        self.leader_label.configure(text=leader_text)
 
         # Climate overlay on description
         if climate["suspicion_bias"] > 0.25:

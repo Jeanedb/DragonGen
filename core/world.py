@@ -7,7 +7,15 @@ from core.dragon import Dragon
 class World:
     tribe_name: str
     moon: int = 0
-    dragons: List[Dragon] = field(default_factory=list)
-    event_log: List[Dict[str, Any]] = field(default_factory=list)
-    pending_choice: Optional[Dict[str, Any]] = None
+    dragons: list[Dragon] = field(default_factory=list)
+    event_log: list[dict] = field(default_factory=list)
+    pending_choice: dict | None = None
     tension: float = 0.0
+
+    leader_id: int | None = None
+    deputy_id: int | None = None
+
+    direction: str | None = None
+    direction_timer: int = 0
+
+    tribal_relations: dict = field(default_factory=dict)

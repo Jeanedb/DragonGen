@@ -3,13 +3,24 @@ from dataclasses import asdict
 from core.world import World
 from core.dragon import Dragon
 
+SAVE_VERSION = 1
+
 
 def save_world(world: World, filename: str):
     data = {
+        "save_version": SAVE_VERSION,
         "tribe_name": world.tribe_name,
         "moon": world.moon,
         "event_log": world.event_log,
-        "dragons": [asdict(dragon) for dragon in world.dragons]
+        "dragons": [asdict(dragon) for dragon in world.dragons],
+
+        "tension": world.tension,
+        "pending_choice": world.pending_choice,
+        "leader_id": world.leader_id,
+        "deputy_id": world.deputy_id,
+        "direction": world.direction,
+        "direction_timer": world.direction_timer,
+        "tribal_relations": world.tribal_relations,
     }
 
     with open(filename, "w", encoding="utf-8") as f:
@@ -20,14 +31,42 @@ def load_world(filename: str) -> World:
     with open(filename, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    world = World(
-        tribe_name=data["tribe_name"],
-        moon=data["moon"],
-        event_log=data["event_log"],
-        dragons=[]
-    )
+    version = data.get("save_version", 0)
 
-    for d in data["dragons"]:
+    if version == 0:
+        world = World(
+            tribe_name=data["tribe_name"],
+            moon=data["moon"],
+            event_log=data.get("event_log", []),
+            dragons=[],
+            tension=0.0,
+            pending_choice=None,
+            leader_id=None,
+            deputy_id=None,
+            direction=None,
+            direction_timer=0,
+            tribal_relations={},
+        )
+
+    elif version == 1:
+        world = World(
+            tribe_name=data["tribe_name"],
+            moon=data["moon"],
+            event_log=data.get("event_log", []),
+            dragons=[],
+            tension=data.get("tension", 0.0),
+            pending_choice=data.get("pending_choice"),
+            leader_id=data.get("leader_id"),
+            deputy_id=data.get("deputy_id"),
+            direction=data.get("direction"),
+            direction_timer=data.get("direction_timer", 0),
+            tribal_relations=data.get("tribal_relations", {}),
+        )
+
+    else:
+        raise ValueError(f"Unsupported save version: {version}")
+
+    for d in data.get("dragons", []):
         dragon = Dragon(**d)
         world.dragons.append(dragon)
 

@@ -6,7 +6,11 @@ from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.choices import resolve_choice
 from core.sim.progression import tick_dragon_progression
 from core.sim.events import run_event_phase
-from core.sim.leadership import maintain_hierarchy, apply_leader_influence
+from core.sim.leadership import (
+    maintain_hierarchy,
+    apply_leader_influence,
+    get_leader_by_id,
+)
 
 def are_family(a, b):
     if a.id in b.parents or b.id in a.parents:
@@ -43,7 +47,7 @@ def get_tribe_climate(world):
     weight events, tone, and choices.
     """
     mood = get_world_mood(world)
-    leader = getattr(world, "leader", None)
+    leader = get_leader_by_id(world)
 
     climate = {
         "bonding_bias": 0.0,
@@ -182,8 +186,6 @@ def add_friend_event(world, a, b):
                 texts.append(
                     f"Though the tribe felt dangerously strained, {a.name} and {b.name} still managed to hold onto each other."
                 )
-
-        text = random.choice(texts)
 
         text = random.choice(texts)
 
@@ -373,14 +375,15 @@ def handle_possible_death(world: World, dragon):
     if dragon.role == "Elder":
         death_chance += 0.03
 
-    if dragon.health == "Injured":
+    was_injured = (dragon.health == "Injured")
+    if was_injured:
         death_chance += 0.05
 
     if random.random() < death_chance:
         dragon.status = "Dead"
         dragon.health = "Dead"
 
-        if dragon.health == "Injured":
+        if was_injured:
             dragon.cause_of_death = "injury"
         elif dragon.age_moons >= 180 or dragon.role == "Elder":
             dragon.cause_of_death = "natural"
@@ -748,7 +751,7 @@ def create_rival_confrontation_choice(world):
     return True
 
 def try_leader_event(world):
-    leader = getattr(world, "leader", None)
+    leader = get_leader_by_id(world)
 
     if not leader or leader.status != "Alive":
         return False
@@ -803,7 +806,7 @@ def try_leader_event(world):
     return True
 
 def create_leader_decision(world):
-    leader = getattr(world, "leader", None)
+    leader = get_leader_by_id(world)
 
     if not leader or leader.status != "Alive":
         return False
