@@ -131,14 +131,31 @@ def resolve_choice(world, option_id):
 
             if random.random() < 0.45:
                 injured = random.choice([a, b])
-                injured.health = "Injured"
-                log_event(
-                    world,
-                    f"{injured.name} was injured in the confrontation between {a.name} and {b.name}.",
-                    involved_ids=[a.id, b.id],
-                    event_type="injury",
-                    importance=3
-                )
+
+                # 20% chance the confrontation is lethal
+                if random.random() < 0.2:
+                    injured.status = "Dead"
+                    injured.health = "Dead"
+                    injured.cause_of_death = "conflict"
+
+                    log_event(
+                        world,
+                        f"{injured.name} was killed during the confrontation between {a.name} and {b.name}.",
+                        involved_ids=[a.id, b.id, injured.id],
+                        event_type="death",
+                        importance=5 
+                    )
+
+                else:
+                    injured.health = "Injured"
+
+                    log_event(
+                        world,
+                        f"{injured.name} was injured in the confrontation between {a.name} and {b.name}.",
+                        involved_ids=[a.id, b.id],
+                        event_type="injury",
+                        importance=3
+                    )
 
     world.pending_choice = None
 

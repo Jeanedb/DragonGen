@@ -112,6 +112,15 @@ def generate_legacy_text(dragon, world):
     if dragon.status != "Dead":
         return ""
 
+    cause = getattr(dragon, "cause_of_death", None)
+
+    if cause == "conflict":
+        parts.append("They died in a moment of conflict, a reminder of how quickly tension can turn deadly.")
+    elif cause == "injury":
+        parts.append("Their injuries ultimately claimed them, despite surviving the first blow.")
+    elif cause == "natural":
+        parts.append("They passed at the end of their life, their time in the tribe complete.")
+
     friend_count = len(getattr(dragon, "friends", []))
     rival_count = len(getattr(dragon, "rivals", []))
     scar_count = len(getattr(dragon, "scars", [])) if hasattr(dragon, "scars") else 0
@@ -280,5 +289,8 @@ def generate_dragon_bio(dragon, world):
 
     if dragon.status == "Dead":
         parts.append(f"They are now dead, but their place in the tribe's memory remains.")
+
+    if not hasattr(dragon, "cause_of_death"):
+        dragon.cause_of_death = None
 
     return " ".join(parts)

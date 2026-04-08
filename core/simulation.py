@@ -380,6 +380,13 @@ def handle_possible_death(world: World, dragon):
         dragon.status = "Dead"
         dragon.health = "Dead"
 
+        if dragon.health == "Injured":
+            dragon.cause_of_death = "injury"
+        elif dragon.age_moons >= 180 or dragon.role == "Elder":
+            dragon.cause_of_death = "natural"
+        else:
+            dragon.cause_of_death = "natural"
+
         surviving_mate = None
 
         if dragon.mate_id is not None:
