@@ -4,6 +4,8 @@ from core.world import World
 from data.names import NAMES_BY_TRIBE
 from data.personalities import PERSONALITIES
 from data.tribes import TRIBES, TRIBE_PERSONALITY_BIAS
+from core.sim.politics import initialize_tribal_relations
+
 
 
 def pick_role(age_moons: int) -> str:
@@ -62,9 +64,11 @@ def generate_starting_world(selected_tribe=None) -> World:
     if selected_tribe is None or selected_tribe == "Mixed":
         world = World(tribe_name="Sunset Tribe")
         forced_tribe = None
+        initialize_tribal_relations(world)
     else:
         world = World(tribe_name=f"{selected_tribe} Tribe")
         forced_tribe = selected_tribe
+        initialize_tribal_relations(world, selected_tribe)
 
     for i in range(12):
         world.dragons.append(generate_dragon(i + 1, forced_tribe))

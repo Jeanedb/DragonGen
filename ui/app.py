@@ -6,6 +6,8 @@ from core.generator import generate_starting_world
 from core.sim.flavor import ensure_dragon_flavor
 from core.sim.flavor import generate_dragon_bio
 from ui.encyclopedia import EncyclopediaWindow
+from core.sim.politics import get_relation_status
+from ui.tribal_relations import TribalRelationsWindow
 from core.simulation import (
     advance_moon,
     resolve_choice,
@@ -55,6 +57,42 @@ class DragonGenApp(ctk.CTk):
 
         self.refresh_all()
 
+    def open_relations_window(self):
+        if hasattr(self, "relations_window") and self.relations_window.winfo_exists():
+            self.relations_window.focus()
+            self.relations_window.refresh_all()
+        else:
+            self.relations_window = TribalRelationsWindow(self, self.world)
+
+    def get_external_climate_summary(self):
+        relations = getattr(self.world, "tribal_relations", {})
+
+        if not relations:
+            return "External Climate: No data"
+
+        counts = {
+            "Allied": 0,
+            "Friendly": 0,
+            "Neutral": 0,
+            "Uneasy": 0,
+            "Hostile": 0,
+            "War": 0,
+        }
+
+        for score in relations.values():
+            status = get_relation_status(score)
+            counts[status] += 1
+
+        summary_parts = []
+        for status in ["Allied", "Friendly", "Neutral", "Uneasy", "Hostile", "War"]:
+            if counts[status] > 0:
+                summary_parts.append(f"{counts[status]} {status}")
+
+        if not summary_parts:
+            return "External Climate: Neutral"
+
+        return "External Climate: " + " | ".join(summary_parts)
+
     def open_encyclopedia(self):
         if hasattr(self, "encyclopedia_window") and self.encyclopedia_window.winfo_exists():
             self.encyclopedia_window.focus()
@@ -65,6 +103,8 @@ class DragonGenApp(ctk.CTk):
     def create_header(self):
         self.header_frame = ctk.CTkFrame(self)
         self.header_frame.grid(row=0, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+
+
 
         self.header_label = ctk.CTkLabel(
             self.header_frame,
@@ -120,6 +160,13 @@ class DragonGenApp(ctk.CTk):
             font=("Arial", 12)
         )
         self.leader_label.pack(anchor="w", padx=10, pady=(0, 4))
+
+        self.external_relations_label = ctk.CTkLabel(
+            self.status_frame,
+            text="External Climate: Unknown",
+            font=("Arial", 12)
+        )
+        self.external_relations_label.pack(anchor="w", padx=10, pady=(0, 4))
 
 
         # Blurb (kept, but tighter)
@@ -221,6 +268,14 @@ class DragonGenApp(ctk.CTk):
             command=self.open_encyclopedia
         )
         self.encyclopedia_button.pack(side="left", padx=10, pady=10)
+
+        self.relations_button = ctk.CTkButton(
+            self.control_frame,
+            text="Relations",
+            command=self.open_relations_window
+        )
+        self.relations_button.pack(side="left", padx=10, pady=10)
+
 
     def on_tribe_selected(self, choice):
         self.selected_tribe = choice
@@ -423,6 +478,10 @@ class DragonGenApp(ctk.CTk):
         self.tension_bar.set(clamped_tension / 5.0)
         self.tension_status_label.configure(text=f"Mood: {mood}")
         self.tension_desc_label.configure(text=description)
+
+        self.external_relations_label.configure(
+            text=self.get_external_climate_summary()
+        )
 
     def refresh_header(self):
         living_count = sum(1 for d in self.world.dragons if d.status == "Alive")
