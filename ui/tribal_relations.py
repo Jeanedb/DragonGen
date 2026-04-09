@@ -112,13 +112,19 @@ class TribalRelationsWindow(ctk.CTkToplevel):
         status = get_relation_status(score)
         description = self.get_relation_description(score)
 
+        incidents = getattr(self.world, "tribal_incidents", {}).get(self.selected_tribe, [])
+
+        if incidents:
+            incident_text = "\n".join(f"- {i}" for i in incidents)
+        else:
+            incident_text = "None yet."
+
         detail_block = (
             f"Tribe: {self.selected_tribe}\n"
             f"Status: {status}\n"
             f"Score: {score}\n\n"
             f"Description:\n{description}\n\n"
-            f"Recent Incidents:\n"
-            f"None yet.\n"
+            f"Recent Incidents:\n{incident_text}\n"
         )
 
         self.detail_text.insert("end", detail_block)

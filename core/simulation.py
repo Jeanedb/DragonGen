@@ -6,7 +6,7 @@ from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.choices import resolve_choice
 from core.sim.progression import tick_dragon_progression
 from core.sim.events import run_event_phase
-from core.sim.politics import drift_relations, clamp_relations
+from core.sim.politics import run_politics_phase, drift_relations, clamp_relations
 from core.sim.leadership import (
     maintain_hierarchy,
     apply_leader_influence,
@@ -889,6 +889,8 @@ def advance_moon(world: World):
             if dragon.resentment[k] < 0.1:
                 del dragon.resentment[k]
 
+
+    run_politics_phase(world)
     drift_relations(world)
     clamp_relations(world)
 

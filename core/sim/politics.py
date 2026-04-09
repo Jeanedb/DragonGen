@@ -1,5 +1,75 @@
 import random
 from data.tribes import TRIBES
+from core.sim.logging import log_event
+
+
+def run_politics_phase(world):
+
+    if not world.tribal_relations:
+        return False
+
+    if random.random() > 0.35:
+        return False
+
+    tribe = random.choice(list(world.tribal_relations.keys()))
+    roll = random.random()
+
+    if roll < 0.35:
+        shift_relation(world, tribe, -4)
+        log_event(
+            world,
+            f"Tension rose with the {tribe}s after a minor border dispute.",
+            event_type="politics",
+            importance=2
+        )
+
+        incident_text = "Border dispute"
+
+        if tribe not in world.tribal_incidents:
+            world.tribal_incidents[tribe] = []
+
+        world.tribal_incidents[tribe].append(incident_text)
+        world.tribal_incidents[tribe] = world.tribal_incidents[tribe][-5:]
+
+
+    elif roll < 0.70:
+        shift_relation(world, tribe, +3)
+        log_event(
+            world,
+            f"Relations with the {tribe}s improved after a peaceful exchange.",
+            event_type="politics",
+            importance=2
+        )
+
+        incident_text = "Peaceful exchange"
+
+        if tribe not in world.tribal_incidents:
+            world.tribal_incidents[tribe] = []
+
+        world.tribal_incidents[tribe].append(incident_text)
+        world.tribal_incidents[tribe] = world.tribal_incidents[tribe][-5:]
+
+
+    else:
+        shift_relation(world, tribe, -2)
+        log_event(
+            world,
+            f"Trust with the {tribe}s weakened slightly after a suspicious encounter.",
+            event_type="politics",
+            importance=1,
+        )
+
+        incident_text = "Suspicious encounter"
+
+        if tribe not in world.tribal_incidents:
+            world.tribal_incidents[tribe] = []
+
+        world.tribal_incidents[tribe].append(incident_text)
+        world.tribal_incidents[tribe] = world.tribal_incidents[tribe][-5:]
+
+
+
+    return True
 
 
 def initialize_tribal_relations(world, player_tribe: str | None = None):
@@ -55,12 +125,9 @@ def shift_relation(world, tribe: str, amount: int):
 
 
 def drift_relations(world):
-    """
-    Small natural drift toward center so relations do not stay extreme forever
-    unless events keep pushing them.
-    """
     for tribe, score in world.tribal_relations.items():
-        if score > 0:
-            world.tribal_relations[tribe] -= 1
-        elif score < 0:
-            world.tribal_relations[tribe] += 1
+        if random.random() < 0.25:
+            if score > 0:
+                world.tribal_relations[tribe] -= 1
+            elif score < 0:
+                world.tribal_relations[tribe] += 1

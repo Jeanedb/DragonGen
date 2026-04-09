@@ -18,4 +18,5 @@ class World:
     direction: str | None = None
     direction_timer: int = 0
 
-    tribal_relations: dict[str, int] = field(default_factory=dict)    
+    tribal_relations: dict[str, int] = field(default_factory=dict)
+    tribal_incidents: dict[str, list] = field(default_factory=dict)    
