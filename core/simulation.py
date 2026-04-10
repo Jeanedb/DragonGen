@@ -6,7 +6,13 @@ from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.choices import resolve_choice
 from core.sim.progression import tick_dragon_progression
 from core.sim.events import run_event_phase
-from core.sim.politics import run_politics_phase, drift_relations, clamp_relations
+from core.sim.politics import (
+    run_politics_phase,
+    drift_relations,
+    clamp_relations,
+    get_most_hostile_relation,
+    get_random_foreign_tribe,
+)
 from core.sim.leadership import (
     maintain_hierarchy,
     apply_leader_influence,
@@ -549,6 +555,7 @@ def try_existing_relationship_event(world: World, living):
 
 def create_injured_patrol_choice(world):
     climate = get_tribe_climate(world)
+    hostile_tribe, hostile_score = get_most_hostile_relation(world)
 
     candidates = [
         d for d in world.dragons
@@ -570,23 +577,18 @@ def create_injured_patrol_choice(world):
 
             weight = 1.0
 
-            # If b once saved a, make it more likely they end up in this kind of moment again
             if ("saved_by", b.id) in a.memory_flags:
                 weight += 1.5
 
-            # If b once abandoned a, also make it more likely they cross paths again
             if ("abandoned_by", b.id) in a.memory_flags:
                 weight += 1.2
 
             if a.mate_id == b.id or b.mate_id == a.id:
                 weight += 1.8
 
-            # existing strong feelings also increase likelihood of meaningful encounters
             weight += a.trust.get(b.id, 0) * 0.15
             weight += a.resentment.get(b.id, 0) * 0.20
 
-            # climate effect:
-            # dangerous, unstable tribes surface more injury/rescue dilemmas
             weight *= max(
                 0.25,
                 1.0
@@ -594,6 +596,11 @@ def create_injured_patrol_choice(world):
                 + (climate["conflict_bias"] * 0.35)
                 - (climate["recovery_bias"] * 0.20)
             )
+
+            if hostile_score <= -40:
+                weight *= 1.35
+            elif hostile_score <= -20:
+                weight *= 1.15
 
             possible_pairs.append((a, b, weight))
 
@@ -606,9 +613,18 @@ def create_injured_patrol_choice(world):
 
     if a.health != "Injured":
         a.health = "Injured"
+
+        if hostile_tribe and hostile_score <= -20:
+            injury_text = (
+                f"{a.name} was injured while out on patrol with {b.name}, "
+                f"not far from territory where tension with the {hostile_tribe}s has been rising."
+            )
+        else:
+            injury_text = f"{a.name} was injured while out on patrol with {b.name}."
+
         log_event(
             world,
-            f"{a.name} was injured while out on patrol with {b.name}.",
+            injury_text,
             involved_ids=[a.id, b.id],
             event_type="injury",
             importance=3
@@ -616,36 +632,48 @@ def create_injured_patrol_choice(world):
 
     mood = get_world_mood(world)
 
+    approaching_tribe_text = "rival dragons"
+    if hostile_tribe and hostile_score <= -20:
+        approaching_tribe_text = f"{hostile_tribe} dragons"
+
     if a.mate_id == b.id or b.mate_id == a.id:
         prompt_text = (
-            f"{a.name} and {b.name} are on patrol together. When {a.name} is injured and rival dragons can be heard approaching, "
+            f"{a.name} and {b.name} are on patrol together. When {a.name} is injured and "
+            f"{approaching_tribe_text} can be heard approaching, "
             f"{b.name} must decide whether to stay with their mate or run for help."
         )
     elif ("saved_by", b.id) in a.memory_flags:
         prompt_text = (
-            f"{a.name} and {b.name} are on patrol. {a.name} is injured again, and rival dragons can be heard approaching. "
-            f"{a.name} still remembers that {b.name} once stayed when it mattered. What should {b.name} do now?"
+            f"{a.name} and {b.name} are on patrol. {a.name} is injured again, and "
+            f"{approaching_tribe_text} can be heard approaching. "
+            f"{a.name} still remembers that {b.name} once stayed when it mattered. "
+            f"What should {b.name} do now?"
         )
     elif ("abandoned_by", b.id) in a.memory_flags:
         prompt_text = (
-            f"{a.name} and {b.name} are on patrol. {a.name} is injured, and rival dragons can be heard approaching. "
-            f"{a.name} has never forgotten the last time {b.name} left. What should {b.name} do now?"
+            f"{a.name} and {b.name} are on patrol. {a.name} is injured, and "
+            f"{approaching_tribe_text} can be heard approaching. "
+            f"{a.name} has never forgotten the last time {b.name} left. "
+            f"What should {b.name} do now?"
         )
     else:
         if mood in {"Volatile", "Crisis"}:
             prompt_text = (
-                f"{a.name} and {b.name} are on patrol in a tribe already on edge. {a.name} is injured, and "
-                f"rival dragons can be heard approaching through the darkness. What should {b.name} do?"
+                f"{a.name} and {b.name} are on patrol in a tribe already on edge. "
+                f"{a.name} is injured, and {approaching_tribe_text} can be heard approaching through the darkness. "
+                f"What should {b.name} do?"
             )
         elif climate["recovery_bias"] > 0.20:
             prompt_text = (
-                f"{a.name} and {b.name} are on patrol. {a.name} is injured, and rival dragons can be heard approaching. "
+                f"{a.name} and {b.name} are on patrol. {a.name} is injured, and "
+                f"{approaching_tribe_text} can be heard approaching. "
                 f"In a tribe that still seems to hold together, what should {b.name} do?"
             )
         else:
             prompt_text = (
                 f"{a.name} and {b.name} are on patrol. {a.name} is injured, and "
-                f"rival dragons can be heard approaching. What should {b.name} do?"
+                f"{approaching_tribe_text} can be heard approaching. "
+                f"What should {b.name} do?"
             )
 
     world.pending_choice = {
@@ -826,6 +854,104 @@ def create_leader_decision(world):
     return True
 
 
+def create_diplomatic_choice(world):
+    tribe = get_random_foreign_tribe(world)
+    if not tribe:
+        return False
+
+    score = world.tribal_relations.get(tribe, 0)
+
+    if score <= -40:
+        scenario = random.choices(
+            ["border_misunderstanding", "wounded_outsider", "safe_passage"],
+            weights=[0.5, 0.3, 0.2]
+        )[0]
+
+    elif score <= -10:
+        scenario = random.choices(
+            ["border_misunderstanding", "wounded_outsider", "safe_passage"],
+            weights=[0.4, 0.3, 0.3]
+        )[0]
+
+    elif score < 10:
+        scenario = random.choice([
+            "safe_passage",
+            "wounded_outsider",
+            "border_misunderstanding"
+        ])
+
+    else:
+        scenario = random.choices(
+            ["safe_passage", "wounded_outsider", "border_misunderstanding"],
+            weights=[0.5, 0.3, 0.2]
+        )[0]
+
+    if scenario == "safe_passage":
+
+        if score <= -40:
+            prompt_text = (
+                f"A small group of {tribe}s appears near the edge of your territory under a flag of truce. "
+                f"Relations are already hostile. They ask for safe passage. How should the tribe respond?"
+            )
+        elif score <= -10:
+            prompt_text = (
+                f"A small group of {tribe}s approaches the edge of your territory seeking safe passage. "
+                f"Relations are uneasy. How should the tribe respond?"
+            )
+        elif score < 10:
+            prompt_text = (
+                f"A small group of {tribe}s approaches the edge of your territory seeking safe passage. "
+                f"Relations are neutral. How should the tribe respond?"
+            )
+        else:
+            prompt_text = (
+                f"A small group of {tribe}s approaches in peace, asking to pass safely through nearby territory. "
+                f"Relations are reasonably positive. How should the tribe respond?"
+            )
+
+        options = [
+            {"id": "allow_passage", "text": "Allow them safe passage"},
+            {"id": "refuse_passage", "text": "Refuse and turn them away"},
+            {"id": "escort_passage", "text": "Escort them through your territory"},
+        ]
+
+    elif scenario == "wounded_outsider":
+
+        prompt_text = (
+            f"A wounded {tribe} is found near the edge of your territory, separated from their own kind. "
+            f"How should the tribe respond?"
+        )
+
+        options = [
+            {"id": "help_wounded", "text": "Help them recover"},
+            {"id": "ignore_wounded", "text": "Leave them and move on"},
+            {"id": "detain_wounded", "text": "Detain and question them"},
+        ]
+
+    else:
+
+        prompt_text = (
+            f"A patrol from the {tribe}s is spotted near your border. They claim they crossed by mistake. "
+            f"How should the tribe respond?"
+        )
+
+        options = [
+            {"id": "accept_explanation", "text": "Accept the explanation and let them leave"},
+            {"id": "issue_warning", "text": "Warn them harshly and send them away"},
+            {"id": "escalate_border", "text": "Escalate and challenge their presence"},
+        ]
+
+    world.pending_choice = {
+        "type": "diplomatic_choice",
+        "scenario": scenario,
+        "tribe": tribe,
+        "text": prompt_text,
+        "options": options,
+    }
+
+    return True
+
+
 def advance_moon(world: World):
     if world.pending_choice is not None:
         return False
@@ -871,6 +997,11 @@ def advance_moon(world: World):
                 world.event_log = world.event_log[-100:]
                 return True
         
+        elif choice_roll < 0.25:
+            created = create_diplomatic_choice(world)
+            if created:
+                world.event_log = world.event_log[-100:]
+                return True
 
 
     run_event_phase(world)

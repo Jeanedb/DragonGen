@@ -124,6 +124,19 @@ def shift_relation(world, tribe: str, amount: int):
     world.tribal_relations[tribe] = max(-100, min(100, world.tribal_relations[tribe]))
 
 
+def get_most_hostile_relation(world):
+    if not world.tribal_relations:
+        return None, 0
+
+    tribe, score = min(world.tribal_relations.items(), key=lambda item: item[1])
+    return tribe, score
+
+def get_random_foreign_tribe(world):
+    if not world.tribal_relations:
+        return None
+    return random.choice(list(world.tribal_relations.keys()))
+
+
 def drift_relations(world):
     for tribe, score in world.tribal_relations.items():
         if random.random() < 0.25:
