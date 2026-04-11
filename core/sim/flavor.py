@@ -5,6 +5,95 @@ EYE_COLORS = [
     "amber", "green", "blue", "violet", "gold", "brown", "gray"
 ]
 
+HEAD_TYPES = [
+    "round",
+    "angular",
+    "narrow",
+    "heavy",
+]
+
+SNOUT_TYPES = [
+    "short",
+    "standard",
+    "long",
+    "hooked",
+]
+
+EYE_STYLES = [
+    "soft",
+    "sharp",
+    "wide",
+]
+
+HORN_TYPES = [
+    "straight",
+    "wide",
+    "curved",
+    "stubby",
+]
+
+TAIL_TYPES = [
+    "standard",
+    "long",
+    "spiked",
+    "thin",
+]
+
+LEG_TYPES = [
+    "standard",
+    "thick",
+    "long",
+    "short",
+]
+
+WING_TYPES = [
+    "standard",
+    "large",
+    "sleek",
+    "tattered",
+]
+
+BODY_TYPES = [
+    "lean",
+    "broad",
+    "tall",
+    "compact",
+]
+
+MARKING_TYPES = [
+    "none",
+    "stripes",
+    "spots",
+    "belly",
+]
+
+TRIBE_PALETTES = {
+    "MudWing": ["mud_dark", "mud_warm", "mud_ash"],
+    "NightWing": ["night_black", "night_purple", "night_blue"],
+    "SkyWing": ["sky_crimson", "sky_orange", "sky_rust"],
+    "IceWing": ["ice_pale", "ice_blue", "ice_silver"],
+    "SandWing": ["sand_gold", "sand_tan", "sand_bronze"],
+    "SeaWing": ["sea_teal", "sea_deep", "sea_blue"],
+    "RainWing": ["rain_green", "rain_lime", "rain_jade"],
+    "HiveWing": ["hive_gold", "hive_olive", "hive_amber"],
+    "SilkWing": ["silk_lilac", "silk_pink", "silk_blue"],
+    "LeafWing": ["leaf_moss", "leaf_bright", "leaf_deep"],
+}
+
+VISUAL_RARE_TRAITS = {
+    "MudWing": ["amber_underscales"],
+    "SkyWing": ["bright_scales", "pale_scales"],
+    "SeaWing": ["bright_bioluminescence"],
+    "SandWing": ["black_diamond_pattern"],
+    "RainWing": ["vivid_scales"],
+    "NightWing": ["strong_star_pattern"],
+    "IceWing": ["silver_sheen"],
+    "HiveWing": ["heavy_black_marking"],
+    "SilkWing": ["vivid_wings"],
+    "LeafWing": ["leaf_vein_pattern"],
+}
+
+
 HOBBIES = [
     "flying",
     "hunting",
@@ -61,23 +150,70 @@ def ensure_dragon_flavor(dragon):
     Add persistent flavor traits if they do not already exist.
     Safe to call repeatedly.
     """
-    if not hasattr(dragon, "height"):
+    if not dragon.height:
         dragon.height = round(random.uniform(4.0, 7.5), 1)
 
-    if not hasattr(dragon, "eye_color"):
+    if not dragon.eye_color:
         dragon.eye_color = random.choice(EYE_COLORS)
 
-    if not hasattr(dragon, "hobbies"):
+    if not dragon.hobbies:
         dragon.hobbies = random.sample(HOBBIES, k=2)
 
-    if not hasattr(dragon, "skills"):
+    if not dragon.skills:
         dragon.skills = random.sample(SKILLS, k=2)
 
-    if not hasattr(dragon, "scars"):
+    if dragon.scars is None:
         dragon.scars = []
 
     if not hasattr(dragon, "random_fact"):
         dragon.random_fact = random.choice(RANDOM_FACTS)
+
+    if not hasattr(dragon, "horn_type") or not dragon.horn_type:
+        dragon.horn_type = random.choice(HORN_TYPES)
+
+    if not hasattr(dragon, "tail_type") or not dragon.tail_type:
+        dragon.tail_type = random.choice(TAIL_TYPES)
+
+    if not hasattr(dragon, "body_type") or not dragon.body_type:
+        dragon.body_type = random.choice(BODY_TYPES)
+
+    if not hasattr(dragon, "marking_type") or not dragon.marking_type:
+        dragon.marking_type = random.choice(MARKING_TYPES)
+
+    if not hasattr(dragon, "scale_palette") or not dragon.scale_palette:
+        dragon.scale_palette = pick_scale_palette(dragon.tribe)
+
+    if not hasattr(dragon, "wing_type") or not dragon.wing_type:
+        dragon.wing_type = random.choice(WING_TYPES)
+
+    if not hasattr(dragon, "leg_type") or not dragon.leg_type:
+        dragon.leg_type = random.choice(LEG_TYPES)
+
+    if not hasattr(dragon, "head_type") or not dragon.head_type:
+        dragon.head_type = random.choice(HEAD_TYPES)
+
+    if not hasattr(dragon, "snout_type") or not dragon.snout_type:
+        dragon.snout_type = random.choice(SNOUT_TYPES)
+
+    if not hasattr(dragon, "eye_style") or not dragon.eye_style:
+        dragon.eye_style = random.choice(EYE_STYLES)
+
+    if not dragon.behavior_type:
+        dragon.behavior_type = random.choice(["calm", "aggressive", "timid"])
+
+    if not hasattr(dragon, "special_visual_traits") or not dragon.special_visual_traits:
+        dragon.special_visual_traits = []
+
+        # ~10% chance to have a special visual trait
+        if random.random() < 0.10:
+            options = VISUAL_RARE_TRAITS.get(dragon.tribe, [])
+            if options:
+                dragon.special_visual_traits.append(random.choice(options))
+
+
+def pick_scale_palette(tribe):
+    options = TRIBE_PALETTES.get(tribe, ["default"])
+    return random.choice(options)
 
 def get_life_stage(dragon):
     age = dragon.age_moons

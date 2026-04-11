@@ -26,9 +26,22 @@ class Dragon:
     memory_flags: list[tuple[str, int]] = field(default_factory=list)
 
     personality_traits: list[str] = field(default_factory=list)
+    behavior_type: str = ""
 
     height: float = 0.0
     eye_color: str = ""
+    horn_type: str = ""
+    head_type: str = ""
+    snout_type: str = ""
+    eye_style: str = ""
+    tail_type: str = ""
+    leg_type: str = ""
+    wing_type: str = ""
+    body_type: str = ""
+    marking_type: str = ""
+    scale_palette: str = ""
+    special_visual_traits: list[str] = field(default_factory=list)
+
     hobbies: list[str] = field(default_factory=list)
     skills: list[str] = field(default_factory=list)
     scars: list[str] = field(default_factory=list)

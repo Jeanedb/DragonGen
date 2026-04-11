@@ -46,7 +46,7 @@ X Make "DEAD" tab, cemetery: (COMPLETED-DROP DOWN TAB FOR DEAD)
 x Add "EVENT" selection e.g. "PATROL" choice A or B
     > Make more choices, events
 - Dragons live to 150 yrs ish, not 250+
-- Add conflit kills/deaths
+- Add conflict kills/deaths
 - add dragons leaving/entering/returning. Good and bad events
 - Tribe to Tribe relations/events/friendship/rivals/allies/enemies. interactions with other tribes
 x Add leader influence on tension (COMPLETED)

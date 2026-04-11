@@ -2,6 +2,7 @@ import customtkinter as ctk
 
 from core.sim.flavor import ensure_dragon_flavor, generate_dragon_bio
 from core.sim.flavor import generate_legacy_text
+from ui.dragon_panel import DragonPortraitPanel
 
 
 class EncyclopediaWindow(ctk.CTkToplevel):
@@ -130,6 +131,9 @@ class EncyclopediaWindow(ctk.CTkToplevel):
         )
         self.title_label.pack(anchor="w", padx=12, pady=(12, 6))
 
+        self.portrait_panel = DragonPortraitPanel(self.detail_frame, width=320, height=240)
+        self.portrait_panel.pack(fill="x", padx=12, pady=(0, 12))
+
         self.detail_text = ctk.CTkTextbox(self.detail_frame)
         self.detail_text.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
@@ -202,6 +206,7 @@ class EncyclopediaWindow(ctk.CTkToplevel):
             return
 
         d = self.selected_dragon
+        self.portrait_panel.set_dragon(d)
         ensure_dragon_flavor(d)
 
         bio_text = generate_dragon_bio(d, self.world)
@@ -254,6 +259,17 @@ class EncyclopediaWindow(ctk.CTkToplevel):
             f"Status: {d.status}\n"
             f"Height: {d.height:.1f} m\n"
             f"Eye Color: {d.eye_color}\n"
+            f"Horn Type: {d.horn_type}\n"
+            f"Head Type: {d.head_type}\n"
+            f"Snout Type: {d.snout_type}\n"
+            f"Eye Style: {d.eye_style}\n"
+            f"Tail Type: {d.tail_type}\n"
+            f"Leg Type: {d.leg_type}\n"
+            f"Wing Type: {d.wing_type}\n"
+            f"Body Type: {d.body_type}\n"
+            f"Markings: {d.marking_type}\n"
+            f"Scale Palette: {d.scale_palette}\n"
+            f"Special Traits: {', '.join(d.special_visual_traits) if d.special_visual_traits else 'None'}\n"
             f"Skills: {skills_text}\n"
             f"Hobbies: {hobbies_text}\n"
             f"Scars: {scars_text}\n"
