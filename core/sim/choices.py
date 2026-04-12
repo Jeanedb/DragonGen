@@ -136,8 +136,28 @@ def resolve_choice(world, option_id):
             if a.id not in b.friends:
                 b.friends.append(a.id)
 
-            a.trust[b.id] = a.trust.get(b.id, 0) + 2
+            helper_bonus = 0
+
+            if "The Peacemaker" in b.earned_titles:
+                helper_bonus += 1
+            if "The Harbinger" in b.earned_titles:
+                helper_bonus -= 1
+            if "The Watchful" in b.earned_titles:
+                helper_bonus -= 1
+
+            a_gain = max(0, 2 + helper_bonus)
+
+            a.trust[b.id] = a.trust.get(b.id, 0) + a_gain
             b.trust[a.id] = b.trust.get(a.id, 0) + 1
+
+            if "The Peacemaker" in b.earned_titles and random.random() < 0.25:
+                log_event(
+                    world,
+                    f"{a.name} seemed especially reassured by {b.name}'s reputation for steadiness.",
+                    involved_ids=[a.id, b.id],
+                    event_type="title_influence",
+                    importance=2
+                )
 
             b.peace_actions += 1
             b.legend_flags["loyal_responses"] = b.legend_flags.get("loyal_responses", 0) + 1
@@ -184,7 +204,18 @@ def resolve_choice(world, option_id):
                 if a.id not in b.rivals:
                     b.rivals.append(a.id)
 
-                a.resentment[b.id] = a.resentment.get(b.id, 0) + 2
+                resentment_bonus = 0
+
+                if "The Harbinger" in b.earned_titles:
+                    resentment_bonus += 1
+                if "The Betrayed" in a.earned_titles:
+                    resentment_bonus += 1
+                if "The Peacemaker" in b.earned_titles:
+                    resentment_bonus -= 1
+
+                a_gain = max(0, 2 + resentment_bonus)
+
+                a.resentment[b.id] = a.resentment.get(b.id, 0) + a_gain
                 b.resentment[a.id] = b.resentment.get(a.id, 0) + 1
 
                 flag = ("abandoned_by", b.id)
@@ -208,6 +239,9 @@ def resolve_choice(world, option_id):
             if "The Peacemaker" in a.earned_titles:
                 a.trust[b.id] = a.trust.get(b.id, 0) + 1
                 b.trust[a.id] = b.trust.get(a.id, 0) + 1
+
+            if "The Harbinger" in a.earned_titles:
+                b.trust[a.id] = max(0, b.trust.get(a.id, 0) - 1)
 
             if "The Peacemaker" in a.earned_titles and random.random() < 0.25:
                 log_event(
@@ -254,8 +288,26 @@ def resolve_choice(world, option_id):
 
         elif option_id == "confront":
 
-            a.resentment[b.id] = a.resentment.get(b.id, 0) + 2
-            b.resentment[a.id] = b.resentment.get(a.id, 0) + 2
+            a_bonus = 0
+            b_bonus = 0
+
+            if "The Harbinger" in a.earned_titles:
+                b_bonus += 1
+            if "The Harbinger" in b.earned_titles:
+                a_bonus += 1
+
+            if "The Betrayed" in a.earned_titles:
+                b_bonus += 1
+            if "The Betrayed" in b.earned_titles:
+                a_bonus += 1
+
+            if "The Peacemaker" in a.earned_titles:
+                b_bonus -= 1
+            if "The Peacemaker" in b.earned_titles:
+                a_bonus -= 1
+
+            a.resentment[b.id] = a.resentment.get(b.id, 0) + max(0, 2 + a_bonus)
+            b.resentment[a.id] = b.resentment.get(a.id, 0) + max(0, 2 + b_bonus)
 
             injury_chance = 0.45
 
@@ -290,7 +342,8 @@ def resolve_choice(world, option_id):
                 injury_weights = [1.0, 1.0]
 
                 if "The Harbinger" in a.earned_titles:
-                    injury_weights = [0.8, 1.2]
+                    injury_weights[0] -= 0.2
+                    injury_weights[1] += 0.2
 
                 if "The Watchful" in a.earned_titles:
                     injury_weights[0] -= 0.2
@@ -347,6 +400,10 @@ def handle_leader_decision(world, option_id):
 
         leader.peace_actions += 1
 
+        for dragon in world.dragons:
+            if dragon.id != leader.id and dragon.status == "Alive":
+                dragon.trust[leader.id] = dragon.trust.get(leader.id, 0) + 1
+
         log_event(
             world,
             f"{leader.name} focused on unity, calming the tribe.",
@@ -360,6 +417,12 @@ def handle_leader_decision(world, option_id):
 
     elif option_id == "push_strength":
         world.tension += 0.25
+
+        if "The Harbinger" in leader.earned_titles:
+            for dragon in world.dragons:
+                if dragon.id != leader.id and dragon.status == "Alive":
+                    dragon.resentment[leader.id] = dragon.resentment.get(leader.id, 0) + 0.5
+
         log_event(
             world,
             f"{leader.name} pushed the tribe harder, raising pressure on everyone.",
@@ -380,6 +443,11 @@ def handle_leader_decision(world, option_id):
         world.tension += tension_increase
 
         leader.watchful_actions += 1
+
+        for dragon in world.dragons:
+            if dragon.id != leader.id and dragon.status == "Alive":
+                dragon.trust[leader.id] = max(0, dragon.trust.get(leader.id, 0) - 0.25)
+                dragon.resentment[leader.id] = dragon.resentment.get(leader.id, 0) + 0.25
 
         log_event(
             world,
