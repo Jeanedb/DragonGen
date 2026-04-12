@@ -28,6 +28,26 @@ class DragonPortraitPanel(ctk.CTkFrame):
         self.after(50, self.animate)
 
 
+    def get_visual_state(self):
+        d = self.dragon
+
+        return {
+            "body_type": d.body_type,
+            "wing_type": d.wing_type,
+            "leg_type": d.leg_type,
+            "head_type": d.head_type,
+            "snout_type": d.snout_type,
+            "eye_style": d.eye_style,
+            "tail_type": d.tail_type,
+            "marking_type": d.marking_type,
+            "scale_palette": d.scale_palette,
+            "special_traits": d.special_visual_traits,
+            "behavior": getattr(d, "behavior_type", "calm"),
+            "personality": getattr(d, "personality", ""),
+        }
+
+
+
     def get_body_color(self, tribe):
         palette_name = getattr(self.dragon, "scale_palette", "")
 
@@ -824,8 +844,10 @@ class DragonPortraitPanel(ctk.CTkFrame):
             )
             return
 
-        # breathing animation/behavior based
-        behavior = getattr(self.dragon, "behavior_type", "calm")
+        state = self.get_visual_state()
+
+        # breathing animation / behavior based
+        behavior = state["behavior"]
 
         speed = 8
         amplitude = 2
@@ -833,11 +855,9 @@ class DragonPortraitPanel(ctk.CTkFrame):
         if "aggressive" in behavior:
             speed = 5
             amplitude = 3
-
         elif "calm" in behavior:
             speed = 10
             amplitude = 2
-
         elif "timid" in behavior:
             speed = 12
             amplitude = 1
@@ -869,18 +889,11 @@ class DragonPortraitPanel(ctk.CTkFrame):
         leg_base_y = bottom + (breath_offset // 2)
         wing_mid_y = top + 40 + breath_offset
 
-
-        behavior = getattr(self.dragon, "behavior_type", "calm")
-
-        if "brave" in behavior:
-            top -= 5   # stands taller
-
-        elif "timid" in behavior:
-            top += 5   # crouched
-
+        if "timid" in behavior:
+            top += 5
         elif "aggressive" in behavior:
             left -= 5
-            right -= 5  # leaning forward
+            right -= 5
 
         # tail
         self.draw_tail(center_x, bottom, breath_offset)
@@ -897,7 +910,7 @@ class DragonPortraitPanel(ctk.CTkFrame):
         # markings
         self.draw_markings(left, right, top, bottom)
 
-        # special traits       
+        # special traits
         self.draw_special_traits(left, right, top, bottom)
 
         # head

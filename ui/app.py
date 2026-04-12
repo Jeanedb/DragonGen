@@ -609,6 +609,7 @@ class DragonGenApp(ctk.CTk):
         rivals_text = ", ".join(rivals) if rivals else "None"
         parents_text = ", ".join(parent_names) if parent_names else "Unknown"
         children_text = ", ".join(child_names) if child_names else "None"
+        titles_text = ", ".join(d.earned_titles) if d.earned_titles else "None"
 
 
         personal_events = []
@@ -642,6 +643,7 @@ class DragonGenApp(ctk.CTk):
             f"Health: {d.health}\n"
             f"Status: {d.status}\n\n"
             f"Friends: {friends_text}\n"
+            f"Titles: {titles_text}\n\n"
             f"Rivals: {rivals_text}\n"
             f"Mate: {mate_name}\n"
             f"Parents: {parents_text}\n"

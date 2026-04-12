@@ -47,8 +47,9 @@ x Add "EVENT" selection e.g. "PATROL" choice A or B
     > Make more choices, events
 - Dragons live to 150 yrs ish, not 250+
 - Add conflict kills/deaths
+- finish SCAR system
 - add dragons leaving/entering/returning. Good and bad events
-- Tribe to Tribe relations/events/friendship/rivals/allies/enemies. interactions with other tribes
+- Tribe to Tribe relations/events/friendship/rivals/allies/enemies. interactions with other tribes(WORKING ON IT, NEED TO EXPAND)
 x Add leader influence on tension (COMPLETED)
 x Add leader choices (COMPLETED)
 x Add mood aware event text e.g. calm vs crisis (COMPLETED)

@@ -20,3 +20,6 @@ class World:
 
     tribal_relations: dict[str, int] = field(default_factory=dict)
     tribal_incidents: dict[str, list] = field(default_factory=dict)    
+
+    tribe_titles: list[str] = field(default_factory=list)
+    world_flags: dict[str, int] = field(default_factory=dict)

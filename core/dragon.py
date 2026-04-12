@@ -21,6 +21,16 @@ class Dragon:
     friends: list[int] = field(default_factory=list)
     rivals: list[int] = field(default_factory=list)
 
+    earned_titles: list[str] = field(default_factory=list)
+    legend_flags: dict[str, int] = field(default_factory=dict)  
+
+    combat_skill: int = 0
+    combat_wins: int = 0
+    combat_losses: int = 0
+    hardship_survived: int = 0
+    peace_actions: int = 0
+    watchful_actions: int = 0
+
     trust: dict[int, float] = field(default_factory=dict)
     resentment: dict[int, float] = field(default_factory=dict)
     memory_flags: list[tuple[str, int]] = field(default_factory=list)

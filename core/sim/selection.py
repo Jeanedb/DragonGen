@@ -1,6 +1,67 @@
 import random
 
 
+def has_title(dragon, title):
+    return title in getattr(dragon, "earned_titles", [])
+
+
+def friendship_title_bonus(a, b):
+    bonus = 0.0
+
+    if has_title(a, "The Peacemaker"):
+        bonus += 0.35
+    if has_title(b, "The Peacemaker"):
+        bonus += 0.35
+
+    if has_title(a, "The Watchful"):
+        bonus -= 0.10
+    if has_title(b, "The Watchful"):
+        bonus -= 0.10
+
+    if has_title(a, "The Harbinger"):
+        bonus -= 0.20
+    if has_title(b, "The Harbinger"):
+        bonus -= 0.20
+
+    return bonus
+
+
+def rivalry_title_bonus(a, b):
+    bonus = 0.0
+
+    if has_title(a, "The Harbinger"):
+        bonus += 0.40
+    if has_title(b, "The Harbinger"):
+        bonus += 0.40
+
+    if has_title(a, "The Betrayed"):
+        bonus += 0.25
+    if has_title(b, "The Betrayed"):
+        bonus += 0.25
+
+    if has_title(a, "The Peacemaker"):
+        bonus -= 0.30
+    if has_title(b, "The Peacemaker"):
+        bonus -= 0.30
+
+    return bonus
+
+
+def injury_title_bonus(dragon):
+    bonus = 0.0
+
+    if has_title(dragon, "The Watchful"):
+        bonus -= 0.30
+
+    if has_title(dragon, "The Harbinger"):
+        bonus += 0.20
+
+    if has_title(dragon, "The Survivor"):
+        bonus += 0.10
+
+    return bonus
+
+
 def choose_friendship_pair(living):
     pairs = []
 
@@ -81,6 +142,8 @@ def friendship_weight(a, b):
     if any(flag == "lost_mate" for flag, _ in b.memory_flags):
         weight -= 0.15
 
+    weight += friendship_title_bonus(a, b)
+
     return max(0.2, weight)
 
 
@@ -133,6 +196,8 @@ def rivalry_weight(a, b):
     if any(flag == "lost_mate" for flag, _ in b.memory_flags):
         weight += 0.12
 
+    weight += rivalry_title_bonus(a, b)
+
     return max(0.05, weight)
 
 
@@ -152,5 +217,7 @@ def injury_weight(dragon):
         weight -= 0.25
     elif dragon.role == "Dragonet":
         weight -= 0.40
+
+    weight += injury_title_bonus(dragon)
 
     return max(0.2, weight)

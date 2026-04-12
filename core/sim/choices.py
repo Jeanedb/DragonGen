@@ -139,6 +139,10 @@ def resolve_choice(world, option_id):
             a.trust[b.id] = a.trust.get(b.id, 0) + 2
             b.trust[a.id] = b.trust.get(a.id, 0) + 1
 
+            b.peace_actions += 1
+            b.legend_flags["loyal_responses"] = b.legend_flags.get("loyal_responses", 0) + 1
+            a.legend_flags["hardship_marks"] = a.legend_flags.get("hardship_marks", 0) + 1
+
             flag = ("saved_by", b.id)
             if flag not in a.memory_flags:
                 a.memory_flags.append(flag)
@@ -162,6 +166,10 @@ def resolve_choice(world, option_id):
                 )
 
         elif option_id == "run_for_help":
+
+            b.watchful_actions += 1
+            a.legend_flags["hardship_marks"] = a.legend_flags.get("hardship_marks", 0) + 1
+
             log_event(
                 world,
                 f"{b.name} ran back to camp to get help for {a.name}.",
@@ -193,8 +201,24 @@ def resolve_choice(world, option_id):
 
     elif choice["type"] == "rival_confrontation_choice":
         if option_id == "back_down":
+
             a.trust[b.id] = a.trust.get(b.id, 0) + 1
             b.trust[a.id] = b.trust.get(a.id, 0) + 1
+
+            if "The Peacemaker" in a.earned_titles:
+                a.trust[b.id] = a.trust.get(b.id, 0) + 1
+                b.trust[a.id] = b.trust.get(a.id, 0) + 1
+
+            if "The Peacemaker" in a.earned_titles and random.random() < 0.25:
+                log_event(
+                    world,
+                    f"{a.name}'s reputation as a peacemaker seemed to soften the encounter.",
+                    involved_ids=[a.id, b.id],
+                    event_type="title_influence",
+                    importance=2
+                )
+
+            a.peace_actions += 1
 
             if b.id in a.resentment:
                 a.resentment[b.id] = max(0, a.resentment[b.id] - 1)
@@ -209,7 +233,12 @@ def resolve_choice(world, option_id):
                 importance=4
             )
 
-            if random.random() < 0.35:
+            ease_chance = 0.35
+
+            if "The Peacemaker" in a.earned_titles:
+                ease_chance += 0.20
+
+            if random.random() < ease_chance:
                 if b.id in a.rivals:
                     a.rivals.remove(b.id)
                 if a.id in b.rivals:
@@ -224,8 +253,29 @@ def resolve_choice(world, option_id):
                 )
 
         elif option_id == "confront":
+
             a.resentment[b.id] = a.resentment.get(b.id, 0) + 2
             b.resentment[a.id] = b.resentment.get(a.id, 0) + 2
+
+            injury_chance = 0.45
+
+            if "The Harbinger" in a.earned_titles:
+                injury_chance += 0.15
+
+            if "The Watchful" in b.earned_titles:
+                injury_chance -= 0.10
+
+            a.combat_wins += 1
+            b.combat_losses += 1
+
+            if "The Harbinger" in a.earned_titles and random.random() < 0.25:
+                log_event(
+                    world,
+                    f"{a.name}'s reputation made the confrontation feel more dangerous from the start.",
+                    involved_ids=[a.id, b.id],
+                    event_type="title_influence",
+                    importance=2
+                )
 
             log_event(
                 world,
@@ -235,8 +285,22 @@ def resolve_choice(world, option_id):
                 importance=4
             )
 
-            if random.random() < 0.45:
-                injured = random.choice([a, b])
+            if random.random() < injury_chance:
+                injury_pool = [a, b]
+                injury_weights = [1.0, 1.0]
+
+                if "The Harbinger" in a.earned_titles:
+                    injury_weights = [0.8, 1.2]
+
+                if "The Watchful" in a.earned_titles:
+                    injury_weights[0] -= 0.2
+                if "The Watchful" in b.earned_titles:
+                    injury_weights[1] -= 0.2
+
+                injury_weights = [max(0.2, w) for w in injury_weights]
+                injured = random.choices(injury_pool, weights=injury_weights, k=1)[0]
+
+                injured.legend_flags["hardship_marks"] = injured.legend_flags.get("hardship_marks", 0) + 1
 
                 # 20% chance the confrontation is lethal
                 if random.random() < 0.2:
@@ -254,6 +318,7 @@ def resolve_choice(world, option_id):
 
                 else:
                     injured.health = "Injured"
+                    injured.legend_flags["pending_survival_check"] = 1
 
                     log_event(
                         world,
@@ -273,7 +338,15 @@ def handle_leader_decision(world, option_id):
         return
 
     if option_id == "stabilize":
-        world.tension = max(0.0, world.tension - 0.3)
+        calm_amount = 0.3
+
+        if "The Peacemaker" in leader.earned_titles:
+            calm_amount += 0.15
+
+        world.tension = max(0.0, world.tension - calm_amount)
+
+        leader.peace_actions += 1
+
         log_event(
             world,
             f"{leader.name} focused on unity, calming the tribe.",
@@ -299,7 +372,15 @@ def handle_leader_decision(world, option_id):
         world.direction_timer = 3
 
     elif option_id == "watch_closely":
-        world.tension += 0.1
+        tension_increase = 0.1
+
+        if "The Watchful" in leader.earned_titles:
+            tension_increase += 0.05
+
+        world.tension += tension_increase
+
+        leader.watchful_actions += 1
+
         log_event(
             world,
             f"{leader.name} urged vigilance, making the tribe more watchful.",

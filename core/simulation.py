@@ -6,6 +6,7 @@ from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.choices import resolve_choice
 from core.sim.progression import tick_dragon_progression
 from core.sim.events import run_event_phase
+from core.sim.titles import evaluate_world_titles
 from core.sim.politics import (
     run_politics_phase,
     drift_relations,
@@ -968,6 +969,10 @@ def advance_moon(world: World):
         tick_dragon_progression(world, dragon, living)
         handle_possible_death(world, dragon)
 
+        if dragon.status == "Alive" and dragon.legend_flags.get("pending_survival_check") == 1:
+            dragon.hardship_survived += 1
+            dragon.legend_flags["pending_survival_check"] = 0
+
     maintain_hierarchy(world)
     apply_leader_influence(world)
 
@@ -1026,6 +1031,8 @@ def advance_moon(world: World):
     clamp_relations(world)
 
     world.tension = max(0.0, min(5.0, world.tension))
+
+    evaluate_world_titles(world)
 
     world.event_log = world.event_log[-100:]
     return True
