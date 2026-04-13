@@ -1107,6 +1107,51 @@ def create_diplomatic_choice(world):
     return True
 
 
+def create_tribal_policy_choice(world):
+    tribes = list(getattr(world, "tribal_relations", {}).keys())
+
+    if not tribes:
+        return False
+
+    tribe = random.choice(tribes)
+    score = world.tribal_relations.get(tribe, 0)
+
+    if score <= -30:
+        prompt_text = (
+            f"The tribe has an opportunity to shape its stance toward the {tribe}s this moon. "
+            f"Relations are already hostile. What approach should it take?"
+        )
+    elif score <= -10:
+        prompt_text = (
+            f"The tribe has an opportunity to shape its stance toward the {tribe}s this moon. "
+            f"Relations are uneasy. What approach should it take?"
+        )
+    elif score < 10:
+        prompt_text = (
+            f"The tribe has an opportunity to shape its stance toward the {tribe}s this moon. "
+            f"Relations are neutral. What approach should it take?"
+        )
+    else:
+        prompt_text = (
+            f"The tribe has an opportunity to shape its stance toward the {tribe}s this moon. "
+            f"Relations are already fairly positive. What approach should it take?"
+        )
+
+    world.pending_choice = {
+        "type": "tribal_policy_choice",
+        "tribe": tribe,
+        "text": prompt_text,
+        "options": [
+            {"id": "peace_gesture", "text": "Send a peace gesture"},
+            {"id": "border_patrol", "text": "Increase border patrols"},
+            {"id": "border_pressure", "text": "Apply border pressure"},
+            {"id": "offer_aid", "text": "Offer practical aid"},
+        ]
+    }
+
+    return True
+
+
 def advance_moon(world: World):
     if world.pending_choice is not None:
         return False
@@ -1164,6 +1209,12 @@ def advance_moon(world: World):
         
         elif choice_roll < 0.25:
             created = create_diplomatic_choice(world)
+            if created:
+                world.event_log = world.event_log[-100:]
+                return True
+
+        elif choice_roll < 0.31:
+            created = create_tribal_policy_choice(world)
             if created:
                 world.event_log = world.event_log[-100:]
                 return True

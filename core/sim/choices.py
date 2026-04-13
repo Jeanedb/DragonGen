@@ -119,6 +119,114 @@ def resolve_choice(world, option_id):
         world.pending_choice = None
         return
 
+    elif choice["type"] == "tribal_policy_choice":
+        tribe = choice.get("tribe")
+
+        if not tribe:
+            world.pending_choice = None
+            return
+
+        if tribe not in world.tribal_incidents:
+            world.tribal_incidents[tribe] = []
+
+        other_tribes = [t for t in world.tribal_relations.keys() if t != tribe]
+        secondary_tribe = random.choice(other_tribes) if other_tribes else None
+
+        if option_id == "peace_gesture":
+            shift_relation(world, tribe, 4)
+            log_event(
+                world,
+                f"The tribe sent a peace gesture to the {tribe}s, improving relations.",
+                event_type="politics",
+                importance=3
+            )
+            world.tribal_incidents[tribe].append("Peace gesture sent")
+
+            if secondary_tribe:
+                shift_relation(world, secondary_tribe, -2)
+                if secondary_tribe not in world.tribal_incidents:
+                    world.tribal_incidents[secondary_tribe] = []
+                world.tribal_incidents[secondary_tribe].append(
+                    f"Became suspicious after peace gesture toward {tribe}"
+                )
+                log_event(
+                    world,
+                    f"The {secondary_tribe}s viewed the peace gesture toward the {tribe}s with suspicion.",
+                    event_type="politics",
+                    importance=2
+                )
+
+        elif option_id == "border_patrol":
+            shift_relation(world, tribe, -2)
+            log_event(
+                world,
+                f"The tribe increased patrols near {tribe} territory, making relations more tense.",
+                event_type="politics",
+                importance=3
+            )
+            world.tribal_incidents[tribe].append("Border patrols increased")
+
+            leader = get_leader_by_id(world)
+            if leader:
+                leader.watchful_actions += 1
+
+        elif option_id == "border_pressure":
+            shift_relation(world, tribe, -5)
+            world.tension += 0.2
+
+            log_event(
+                world,
+                f"The tribe applied pressure along the {tribe} border, sharply worsening relations.",
+                event_type="politics",
+                importance=4
+            )
+            world.tribal_incidents[tribe].append("Border pressure applied")
+
+            if secondary_tribe:
+                shift_relation(world, secondary_tribe, 2)
+                if secondary_tribe not in world.tribal_incidents:
+                    world.tribal_incidents[secondary_tribe] = []
+                world.tribal_incidents[secondary_tribe].append(
+                    f"Approved of pressure against {tribe}"
+                )
+                log_event(
+                    world,
+                    f"The {secondary_tribe}s seemed to approve of the tribe's harder stance toward the {tribe}s.",
+                    event_type="politics",
+                    importance=2
+                )
+
+        elif option_id == "offer_aid":
+            shift_relation(world, tribe, 5)
+            log_event(
+                world,
+                f"The tribe offered practical aid to the {tribe}s, improving relations noticeably.",
+                event_type="politics",
+                importance=3
+            )
+            world.tribal_incidents[tribe].append("Practical aid offered")
+
+            if secondary_tribe:
+                shift_relation(world, secondary_tribe, -1)
+                if secondary_tribe not in world.tribal_incidents:
+                    world.tribal_incidents[secondary_tribe] = []
+                world.tribal_incidents[secondary_tribe].append(
+                    f"Disliked aid being offered to {tribe}"
+                )
+                log_event(
+                    world,
+                    f"The {secondary_tribe}s did not seem pleased by aid being offered to the {tribe}s.",
+                    event_type="politics",
+                    importance=2
+                )
+
+        world.tribal_incidents[tribe] = world.tribal_incidents[tribe][-5:]
+        if secondary_tribe and secondary_tribe in world.tribal_incidents:
+            world.tribal_incidents[secondary_tribe] = world.tribal_incidents[secondary_tribe][-5:]
+
+        world.pending_choice = None
+        return
+
     involved_ids = choice.get("involved_ids", [])
     involved_dragons = [d for d in world.dragons if d.id in involved_ids]
 
