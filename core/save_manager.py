@@ -79,6 +79,7 @@ def load_world(filename: str) -> World:
             direction=data.get("direction"),
             direction_timer=data.get("direction_timer", 0),
             tribal_relations=data.get("tribal_relations", {}),
+            tribal_incidents=data.get("tribal_incidents", {}),
             tribe_titles=data.get("tribe_titles", []),
             world_flags=data.get("world_flags", {}),
         )

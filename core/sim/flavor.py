@@ -1,5 +1,14 @@
 import random
 
+def parse_memory(memory):
+    if len(memory) >= 2:
+        flag = memory[0]
+        other_id = memory[1]
+        memory_moon = memory[2] if len(memory) > 2 else None
+        return flag, other_id, memory_moon
+
+    return None, None, None
+
 
 EYE_COLORS = [
     "amber", "green", "blue", "violet", "gold", "brown", "gray"
@@ -165,7 +174,7 @@ def ensure_dragon_flavor(dragon):
     if dragon.scars is None:
         dragon.scars = []
 
-    if not hasattr(dragon, "random_fact"):
+    if not getattr(dragon, "random_fact", ""):
         dragon.random_fact = random.choice(RANDOM_FACTS)
 
     if not hasattr(dragon, "horn_type") or not dragon.horn_type:
@@ -265,7 +274,9 @@ def generate_legacy_text(dragon, world):
 
     surviving_mates = []
     for other in world.dragons:
-        for flag, other_id in getattr(other, "memory_flags", []):
+        for memory in getattr(other, "memory_flags", []):
+            flag, other_id, memory_moon = parse_memory(memory)
+
             if flag == "lost_mate" and other_id == dragon.id:
                 surviving_mates.append(other.name)
 
@@ -391,10 +402,11 @@ def generate_dragon_bio(dragon, world):
         if mate:
             parts.append(f"They are closely bonded to {mate.name}.")
 
-    lost_mate_ids = [
-        other_id for flag, other_id in getattr(dragon, "memory_flags", [])
-        if flag == "lost_mate"
-    ]
+    lost_mate_ids = []
+    for memory in getattr(dragon, "memory_flags", []):
+        flag, other_id, memory_moon = parse_memory(memory)
+        if flag == "lost_mate":
+            lost_mate_ids.append(other_id)
 
     if lost_mate_ids:
         lost_mate = next((d for d in world.dragons if d.id == lost_mate_ids[-1]), None)

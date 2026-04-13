@@ -5,6 +5,7 @@ from data.names import NAMES_BY_TRIBE
 from data.personalities import PERSONALITIES
 from data.tribes import TRIBES, TRIBE_PERSONALITY_BIAS
 from core.sim.politics import initialize_tribal_relations
+from core.sim.logging import log_event
 
 
 
@@ -84,5 +85,12 @@ def generate_starting_world(selected_tribe=None) -> World:
             deputy = random.choice(deputy_candidates)
             deputy.rank = "Deputy"
 
-    world.event_log.append("The tribe was founded.")
+    log_event(
+        world,
+        "The tribe was founded.",
+        involved_ids=[],
+        event_type="founding",
+        importance=5,
+    )
+
     return world

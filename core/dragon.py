@@ -33,7 +33,10 @@ class Dragon:
 
     trust: dict[int, float] = field(default_factory=dict)
     resentment: dict[int, float] = field(default_factory=dict)
-    memory_flags: list[tuple[str, int]] = field(default_factory=list)
+    grief_level: int = 0
+    leadership_pressure: int = 0
+    rivalry_levels: dict = field(default_factory=dict)
+    memory_flags: list[tuple[str, int] | tuple[str, int, int]] = field(default_factory=list)
 
     personality_traits: list[str] = field(default_factory=list)
     behavior_type: str = ""

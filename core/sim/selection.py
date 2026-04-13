@@ -137,10 +137,11 @@ def friendship_weight(a, b):
     if a.mate_id == b.id or b.mate_id == a.id:
         weight += 1.5
 
-    if any(flag == "lost_mate" for flag, _ in a.memory_flags):
-        weight -= 0.15
-    if any(flag == "lost_mate" for flag, _ in b.memory_flags):
-        weight -= 0.15
+    if getattr(a, "grief_level", 0) > 0:
+        weight -= min(0.4, a.grief_level * 0.03)
+
+    if getattr(b, "grief_level", 0) > 0:
+        weight -= min(0.4, b.grief_level * 0.03)
 
     weight += friendship_title_bonus(a, b)
 
@@ -167,13 +168,11 @@ def rivalry_weight(a, b):
     if b.role == "Dragonet":
         weight -= 0.30
 
-    # direct family or shared parents should strongly suppress rivalry
     if a.id in b.parents or b.id in a.parents:
         weight -= 0.60
     if set(a.parents) & set(b.parents):
         weight -= 0.45
 
-    # if already rivals, reduce repeated selection a bit
     if b.id in a.rivals or a.id in b.rivals:
         weight -= 0.15
 
@@ -191,10 +190,11 @@ def rivalry_weight(a, b):
     if a.mate_id == b.id or b.mate_id == a.id:
         weight -= 2.0
 
-    if any(flag == "lost_mate" for flag, _ in a.memory_flags):
-        weight += 0.12
-    if any(flag == "lost_mate" for flag, _ in b.memory_flags):
-        weight += 0.12
+    if getattr(a, "grief_level", 0) > 0:
+        weight += min(0.3, a.grief_level * 0.02)
+
+    if getattr(b, "grief_level", 0) > 0:
+        weight += min(0.3, b.grief_level * 0.02)
 
     weight += rivalry_title_bonus(a, b)
 

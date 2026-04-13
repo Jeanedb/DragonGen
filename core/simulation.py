@@ -144,8 +144,8 @@ def get_tribe_climate(world):
 
 def add_friend_event(world, a, b):
     direction = getattr(world, "direction", None)
-    climate = get_tribe_climate(world)
     mood = get_world_mood(world)
+    climate = get_tribe_climate(world)
 
     used_memory = False  # <-- ADD THIS LINE
 
@@ -204,7 +204,6 @@ def add_friend_event(world, a, b):
     elif direction == "watchful":
         text += " Others nearby seemed alert to everything happening."
 
-    # light personality reaction echoes
     # light personality reaction echoes (ONLY if not memory-based)
     if not used_memory:
         if direction == "pressuring":
@@ -225,13 +224,31 @@ def add_friend_event(world, a, b):
             elif a.personality == "Kind" or b.personality == "Kind":
                 text += " The constant vigilance made the moment feel more precious."
 
-    log_event(world, text, involved_ids=[a.id, b.id], event_type="friend_event")
+    cause = None
+
+    if ("saved_by", b.id) in a.memory_flags or ("saved_by", a.id) in b.memory_flags:
+        cause = "A remembered act of loyalty"
+    elif a.trust.get(b.id, 0) >= 3 or b.trust.get(a.id, 0) >= 3:
+        cause = "A strong existing bond"
+    elif mood in {"Uneasy", "Strained", "Volatile", "Crisis"}:
+        cause = "Shared strain in the tribe brought them together"
+    elif climate["bonding_bias"] > 0.2:
+        cause = "A steadier tribe climate encouraged closeness"
+
+    log_event(
+        world,
+        text,
+        involved_ids=[a.id, b.id],
+        event_type="friend_event",
+        cause=cause,
+    )
     return True
 
 
 def add_rival_event(world, a, b):
     direction = getattr(world, "direction", None)
     mood = get_world_mood(world)
+    climate = get_tribe_climate(world)
 
     used_memory = False
 
@@ -277,23 +294,98 @@ def add_rival_event(world, a, b):
     if not used_memory:
         if direction == "pressuring":
             if a.personality == "Ambitious" or b.personality == "Ambitious":
-                text += f" The tribe's demanding pace only seemed to sharpen the conflict."
+                text += " The tribe's demanding pace only seemed to sharpen the conflict."
             elif a.personality == "Kind" or b.personality == "Kind":
-                text += f" At least one of them seemed ill at ease with how harsh things have become."
+                text += " At least one of them seemed ill at ease with how harsh things have become."
 
         elif direction == "stabilizing":
             if a.personality == "Loyal" or b.personality == "Loyal":
-                text += f" Even in conflict, there was a sense that the tribe wanted to keep itself from splintering."
+                text += " Even in conflict, there was a sense that the tribe wanted to keep itself from splintering."
             elif a.personality == "Moody" or b.personality == "Moody":
-                text += f" The tribe's attempt at calm did little to soften the mood."
+                text += " The tribe's attempt at calm did little to soften the mood."
 
         elif direction == "watchful":
             if a.personality == "Suspicious" or b.personality == "Suspicious":
-                text += f" The atmosphere of caution seemed to encourage mistrust."
+                text += " The atmosphere of caution seemed to encourage mistrust."
             elif a.personality == "Clever" or b.personality == "Clever":
-                text += f" Both seemed careful not to misstep under so many watchful eyes."
+                text += " Both seemed careful not to misstep under so many watchful eyes."
 
-    log_event(world, text, involved_ids=[a.id, b.id], event_type="rival_event")
+    cause = None
+
+    if ("abandoned_by", b.id) in a.memory_flags or ("abandoned_by", a.id) in b.memory_flags:
+        cause = "An old abandonment still lingers between them"
+    elif a.resentment.get(b.id, 0) >= 3 or b.resentment.get(a.id, 0) >= 3:
+        cause = "Long-growing resentment"
+    elif mood in {"Volatile", "Crisis"}:
+        cause = "High tension in the tribe sharpened the conflict"
+    elif climate["conflict_bias"] > 0.2 or climate["suspicion_bias"] > 0.2:
+        cause = "A tense tribe climate made conflict more likely"
+
+    # rivalry arc progression: advance on every rival event
+    a.rivalry_levels[b.id] = a.rivalry_levels.get(b.id, 0) + 1
+    b.rivalry_levels[a.id] = b.rivalry_levels.get(a.id, 0) + 1
+
+    level = a.rivalry_levels[b.id]
+
+    log_event(
+        world,
+        text,
+        involved_ids=[a.id, b.id],
+        event_type="rival_event",
+        cause=cause,
+    )
+
+    if level == 3:
+        log_event(
+            world,
+            f"The conflict between {a.name} and {b.name} is becoming serious.",
+            involved_ids=[a.id, b.id],
+            event_type="rivalry_escalation",
+            importance=4,
+            cause="Repeated unresolved conflict",
+        )
+
+    elif level == 5:
+        log_event(
+            world,
+            f"{a.name} and {b.name} can no longer avoid each other. Something will have to give.",
+            involved_ids=[a.id, b.id],
+            event_type="rivalry_crisis",
+            importance=5,
+            cause="A long-standing rivalry reaching a breaking point",
+        )
+
+    elif level >= 6 and random.random() < 0.5:
+
+        outcome = random.choice(["injury", "break"])
+
+        if outcome == "injury":
+            victim = random.choice([a, b])
+            victim.health = "Injured"
+
+            log_event(
+                world,
+                f"{a.name} and {b.name}'s rivalry turned physical. {victim.name} was injured.",
+                involved_ids=[a.id, b.id, victim.id],
+                event_type="rivalry_injury",
+                importance=6,
+                cause="Escalation left unresolved for too long",
+            )
+
+        elif outcome == "break":
+            log_event(
+                world,
+                f"{a.name} and {b.name}'s rivalry has divided them completely. They will not reconcile.",
+                involved_ids=[a.id, b.id],
+                event_type="rivalry_break",
+                importance=6,
+                cause="A long-standing conflict finally fractured beyond repair",
+            )
+
+            # optional: increase permanent resentment
+            a.resentment[b.id] = a.resentment.get(b.id, 0) + 3
+            b.resentment[a.id] = b.resentment.get(a.id, 0) + 3
+
     return True
 
 def add_new_dragonet(world: World):
@@ -407,10 +499,17 @@ def handle_possible_death(world: World, dragon):
             )
 
             if surviving_mate:
-                flag = ("lost_mate", dragon.id)
-                if flag not in surviving_mate.memory_flags:
+                flag = ("lost_mate", dragon.id, world.moon)
+
+                already_recorded = any(
+                    len(memory) >= 2 and memory[0] == "lost_mate" and memory[1] == dragon.id
+                    for memory in surviving_mate.memory_flags
+                )
+
+                if not already_recorded:
                     surviving_mate.memory_flags.append(flag)
 
+                surviving_mate.grief_level = 12
                 surviving_mate.mate_id = None
 
                 if hasattr(world, "tension"):
@@ -474,6 +573,8 @@ def try_existing_relationship_event(world: World, living):
                 weight += dragon.resentment.get(rival.id, 0) * 0.20
                 weight += rival.resentment.get(dragon.id, 0) * 0.20
 
+
+
                 # Abandonment memories make rival echoes more likely
                 if ("abandoned_by", rival.id) in dragon.memory_flags:
                     weight += 1.0
@@ -491,12 +592,12 @@ def try_existing_relationship_event(world: World, living):
     # ---- Grief event weighting ----
     grief_candidates = [
         d for d in living
-        if any(flag == "lost_mate" for flag, _ in d.memory_flags)
+        if getattr(d, "grief_level", 0) > 0
     ]
 
     grief_pool = []
     for d in grief_candidates:
-        weight = 1.0
+        weight = 1.0 + (d.grief_level * 0.08)
 
         # In calmer or more merciful climates, grief can surface as visible withdrawal
         weight += max(0.0, climate["recovery_bias"] * 0.5)
@@ -518,11 +619,24 @@ def try_existing_relationship_event(world: World, living):
     event_type, a, b = random.choices(selections, weights=weights, k=1)[0]
 
     if event_type == "grief":
-        texts = [
-            f"{a.name} kept to themselves this moon, still grieving their loss.",
-            f"{a.name} seemed distant and withdrawn, the loss of their mate still weighing heavily.",
-            f"{a.name} avoided others this moon, grief still close beneath the surface."
-        ]
+        if a.grief_level >= 8:
+            texts = [
+                f"{a.name} kept to themselves this moon, their grief still raw.",
+                f"{a.name} seemed distant and shaken, the loss still weighing heavily.",
+                f"{a.name} avoided others this moon, grief still close to the surface."
+            ]
+        elif a.grief_level >= 4:
+            texts = [
+                f"{a.name} was quieter than usual this moon, still carrying their loss.",
+                f"{a.name} seemed withdrawn at times, grief not yet fully faded.",
+                f"The loss still lingered around {a.name}, even if less sharply than before."
+            ]
+        else:
+            texts = [
+                f"{a.name} seemed reflective this moon, their old grief still not fully gone.",
+                f"{a.name} carried a quiet sadness this moon, though time has softened it.",
+                f"Though the worst had passed, the loss still lingered in {a.name}."
+            ]
 
         # climate-aware grief tone
         if climate["mercy_bias"] > 0.2:
@@ -713,6 +827,8 @@ def create_rival_confrontation_choice(world):
                 weight += dragon.resentment.get(rival.id, 0) * 0.20
                 weight += rival.resentment.get(dragon.id, 0) * 0.20
 
+
+
                 # climate effect:
                 # tense, suspicious, conflict-heavy tribes surface more confrontation dilemmas
                 weight *= max(
@@ -729,6 +845,8 @@ def create_rival_confrontation_choice(world):
 
     if not rival_pairs:
         return False
+
+
 
     a, b = random.choices(rival_pairs, weights=weights, k=1)[0]
 
@@ -794,6 +912,7 @@ def try_leader_event(world):
 
     texts = []
 
+    pressure = getattr(leader, "leadership_pressure", 0)
     traits = getattr(leader, "personality_traits", []) or []
     name = leader.name
 
@@ -819,19 +938,54 @@ def try_leader_event(world):
         texts.append(f"{name} questioned the loyalty of others, casting a shadow over the tribe.")
         texts.append(f"{name} kept a close watch on others this moon, trust feeling thin.")
 
-    # fallback if no traits exist
+    if pressure >= 8:
+        texts.append(f"{name} seemed strained this moon, their decisions sharper and less patient.")
+        texts.append(f"{name} struggled to maintain control as pressure mounted.")
+    elif pressure >= 4:
+        texts.append(f"{name} seemed burdened, carrying the weight of the tribe's troubles.")
+
     if not texts:
         texts.append(f"{name} oversaw the tribe this moon.")
 
     text = random.choice(texts)
+
+    cause = None
+    if pressure >= 8:
+        cause = "Leadership pressure is starting to affect the leader"
+    elif "Kind" in traits:
+        cause = "The leader's gentle nature shaped the tribe's mood"
+    elif "Loyal" in traits:
+        cause = "The leader's loyalty strengthened the tribe"
+    elif "Clever" in traits:
+        cause = "The leader's careful judgment influenced events"
+    elif "Ambitious" in traits:
+        cause = "The leader's ambition pushed the tribe harder"
+    elif "Moody" in traits:
+        cause = "The leader's instability affected the tribe"
+    elif "Suspicious" in traits:
+        cause = "The leader's distrust cast a shadow over the tribe"
 
     log_event(
         world,
         text,
         involved_ids=[leader.id],
         event_type="leader_event",
-        importance=2
+        importance=2,
+        cause=cause,
     )
+
+    if pressure >= 10 and random.random() < 0.3:
+        log_event(
+            world,
+            f"{leader.name}'s leadership faltered under pressure, worsening tensions in the tribe.",
+            involved_ids=[leader.id],
+            event_type="leadership_failure",
+            importance=5,
+            cause="Accumulated pressure from unresolved problems",
+        )
+
+        if hasattr(world, "tension"):
+            world.tension += 0.5
 
     return True
 
@@ -969,6 +1123,12 @@ def advance_moon(world: World):
         tick_dragon_progression(world, dragon, living)
         handle_possible_death(world, dragon)
 
+        if dragon.status == "Alive" and dragon.grief_level > 0:
+            dragon.grief_level -= 1
+
+        if dragon.status == "Alive" and getattr(dragon, "leadership_pressure", 0) > 0:
+            dragon.leadership_pressure -= 1
+
         if dragon.status == "Alive" and dragon.legend_flags.get("pending_survival_check") == 1:
             dragon.hardship_survived += 1
             dragon.legend_flags["pending_survival_check"] = 0
@@ -1010,9 +1170,29 @@ def advance_moon(world: World):
 
 
     run_event_phase(world)
+
+    leader = get_leader_by_id(world)
+
+    if leader and leader.status == "Alive":
+        pressure = 0
+
+        # tension contributes
+        pressure += int(getattr(world, "tension", 0))
+
+        # injured dragons increase pressure
+        injured = sum(1 for d in world.dragons if d.health == "Injured")
+        pressure += injured * 0.5
+
+        # recent deaths increase pressure
+        recent_deaths = [
+            e for e in world.event_log[-5:]
+            if isinstance(e, dict) and e.get("type") == "death"
+        ]
+        pressure += len(recent_deaths) * 1.5
+
+        leader.leadership_pressure += int(pressure)
+
     try_leader_event(world)
-
-
 
     for dragon in world.dragons:
         for k in list(dragon.trust.keys()):

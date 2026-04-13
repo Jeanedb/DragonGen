@@ -52,7 +52,11 @@ def evaluate_dragon_titles(world, dragon):
             f"{dragon.name} has endured hardship and returned stronger, earning the name 'The Survivor'."
         )
 
-    abandoned_flags = [flag for flag, other_id in dragon.memory_flags if flag == "abandoned_by"]
+    abandoned_flags = [
+        memory[0]
+        for memory in dragon.memory_flags
+        if len(memory) >= 2 and memory[0] == "abandoned_by"
+    ]
     if abandoned_flags and dragon.hardship_survived >= 1:
         grant_dragon_title(
             world,

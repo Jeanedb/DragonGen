@@ -48,14 +48,29 @@ class DragonGenApp(ctk.CTk):
         self.grid_rowconfigure(2, weight=0)   # choice
         self.grid_rowconfigure(3, weight=0)   # controls
 
+
         self.create_header()
         self.create_roster_panel()
         self.create_detail_panel()
         self.create_event_log()
         self.create_choice_panel()
         self.create_controls()
+        self.tracked_dragons = set()
 
         self.refresh_all()
+
+    def toggle_track_dragon(self):
+        if not self.selected_dragon:
+            return
+
+        d_id = self.selected_dragon.id
+
+        if d_id in self.tracked_dragons:
+            self.tracked_dragons.remove(d_id)
+        else:
+            self.tracked_dragons.add(d_id)
+
+        self.refresh_details()
 
     def open_relations_window(self):
         if hasattr(self, "relations_window") and self.relations_window.winfo_exists():
@@ -207,6 +222,13 @@ class DragonGenApp(ctk.CTk):
         self.detail_text = ctk.CTkTextbox(self.detail_frame)
         self.detail_text.pack(fill="both", expand=True)
 
+        self.track_button = ctk.CTkButton(
+            self.detail_frame,
+            text="Track Dragon",
+            command=self.toggle_track_dragon
+        )
+        self.track_button.pack(pady=5)
+
     def create_event_log(self):
         self.event_frame = ctk.CTkFrame(self)
         self.event_frame.grid(row=1, column=2, sticky="nsew", padx=5, pady=5)
@@ -336,6 +358,19 @@ class DragonGenApp(ctk.CTk):
             if dragon.id == dragon_id:
                 return dragon
         return None
+
+    def get_tracked_events(self):
+        events = []
+
+        for event in self.world.event_log:
+            if not isinstance(event, dict):
+                continue
+
+            involved = event.get("involved_ids", [])
+            if any(d_id in involved for d_id in self.tracked_dragons):
+                events.append(event)
+
+        return events[-10:]
 
     def get_tension_status(self):
         tension = getattr(self.world, "tension", 0.0)
@@ -531,6 +566,11 @@ class DragonGenApp(ctk.CTk):
 
         d = self.selected_dragon or self.world.dragons[0]
 
+        if d.id in self.tracked_dragons:
+            self.track_button.configure(text="Untrack Dragon")
+        else:
+            self.track_button.configure(text="Track Dragon")
+
         friends = [
             self.get_dragon_by_id(fid).name
             for fid in d.friends
@@ -548,7 +588,15 @@ class DragonGenApp(ctk.CTk):
         ]
         memory_lines = []
 
-        for flag, other_id in d.memory_flags:
+        for memory in d.memory_flags:
+            if len(memory) == 2:
+                flag, other_id = memory
+                memory_moon = None
+            elif len(memory) >= 3:
+                flag, other_id, memory_moon = memory[0], memory[1], memory[2]
+            else:
+                continue
+
             other = self.get_dragon_by_id(other_id)
             if not other:
                 continue
@@ -578,19 +626,19 @@ class DragonGenApp(ctk.CTk):
                     )
 
             elif flag == "lost_mate":
-                other = self.get_dragon_by_id(other_id)
-                if other:
-                    # how long ago did they die (approximation)
-                    time_since_loss = d.age_moons - other.age_moons
+                if memory_moon is not None:
+                    time_since_loss = self.world.moon - memory_moon
+                else:
+                    time_since_loss = None
 
-                    if time_since_loss < 10:
-                        memory_lines.append(
-                            f"The loss of {other.name} is still fresh, and it shows."
-                        )
-                    else:
-                        memory_lines.append(
-                            f"Still carries the memory of losing {other.name}, though time has dulled the edge."
-                        )
+                if time_since_loss is not None and time_since_loss < 10:
+                    memory_lines.append(
+                        f"The loss of {other.name} is still fresh, and it shows."
+                    )
+                else:
+                    memory_lines.append(
+                        f"Still carries the memory of losing {other.name}, though time has dulled the edge."
+                    )
 
         memory_text = "\n".join(memory_lines) if memory_lines else "None"
 
@@ -615,7 +663,11 @@ class DragonGenApp(ctk.CTk):
         personal_events = []
         for event in self.world.event_log:
             if isinstance(event, dict) and d.id in event.get("involved_ids", []):
-                text = event.get("text", "")
+                text = event["text"]
+
+                cause = event.get("cause")
+                if cause:
+                    text += f"\n({cause})"
                 importance = event.get("importance", 1)
 
                 if importance >= 4:
@@ -642,6 +694,8 @@ class DragonGenApp(ctk.CTk):
             f"Personality: {d.personality}\n"
             f"Health: {d.health}\n"
             f"Status: {d.status}\n\n"
+            f"Grief Level: {getattr(d, 'grief_level', 0)}\n"
+            f"Leadership Pressure: {getattr(d, 'leadership_pressure', 0)}\n"
             f"Friends: {friends_text}\n"
             f"Titles: {titles_text}\n\n"
             f"Rivals: {rivals_text}\n"
@@ -655,9 +709,28 @@ class DragonGenApp(ctk.CTk):
     def refresh_events(self):
         self.event_text.delete("1.0", "end")
 
+        tracked_events = self.get_tracked_events()
+
+        if tracked_events:
+            self.event_text.insert("end", "=== Tracked Dragons ===\n")
+
+            for event in tracked_events:
+                text = event["text"]
+                cause = event.get("cause")
+                if cause:
+                    text += f"\n({cause})"
+
+                self.event_text.insert("end", f"⭐ {text}\n")
+
+            self.event_text.insert("end", "\n")
+
+        # Normal event log always shows too
         for event in self.world.event_log[-20:]:
             if isinstance(event, dict):
-                text = event.get("text", "")
+                text = event["text"]
+                cause = event.get("cause")
+                if cause:
+                    text += f"\n({cause})"
             else:
                 text = str(event)
 

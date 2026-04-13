@@ -163,9 +163,13 @@ def resolve_choice(world, option_id):
             b.legend_flags["loyal_responses"] = b.legend_flags.get("loyal_responses", 0) + 1
             a.legend_flags["hardship_marks"] = a.legend_flags.get("hardship_marks", 0) + 1
 
-            flag = ("saved_by", b.id)
-            if flag not in a.memory_flags:
-                a.memory_flags.append(flag)
+            saved_flag = ("saved_by", b.id, world.moon)
+            already_recorded = any(
+                len(memory) >= 2 and memory[0] == "saved_by" and memory[1] == b.id
+                for memory in a.memory_flags
+            )
+            if not already_recorded:
+                a.memory_flags.append(saved_flag)
 
             log_event(
                 world,
@@ -189,6 +193,14 @@ def resolve_choice(world, option_id):
 
             b.watchful_actions += 1
             a.legend_flags["hardship_marks"] = a.legend_flags.get("hardship_marks", 0) + 1
+
+            abandoned_flag = ("abandoned_by", b.id, world.moon)
+            already_recorded = any(
+                len(memory) >= 2 and memory[0] == "abandoned_by" and memory[1] == b.id
+                for memory in a.memory_flags
+            )
+            if not already_recorded:
+                a.memory_flags.append(abandoned_flag)
 
             log_event(
                 world,
@@ -217,10 +229,6 @@ def resolve_choice(world, option_id):
 
                 a.resentment[b.id] = a.resentment.get(b.id, 0) + a_gain
                 b.resentment[a.id] = b.resentment.get(a.id, 0) + 1
-
-                flag = ("abandoned_by", b.id)
-                if flag not in a.memory_flags:
-                    a.memory_flags.append(flag)
 
                 log_event(
                     world,

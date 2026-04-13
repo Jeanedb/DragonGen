@@ -28,16 +28,17 @@ def shift_personality(dragon, new_trait):
     return None, None
 
 
-def log_event(world, text, involved_ids=None, event_type="general", importance=1):
+def log_event(world, text, involved_ids=None, event_type="general", importance=1, cause=None):
     if involved_ids is None:
         involved_ids = []
 
     event = {
-        "text": text,
+        "text": text, 
         "involved_ids": involved_ids,
         "type": event_type,
         "moon": world.moon,
         "importance": importance,
+        "cause": cause,
     }
 
     world.event_log.append(event)

@@ -31,32 +31,40 @@ DragonGen/
 
 
 ----- change nomenclature to better suit WoF
-x "MOON" is not the proper term, use "NIGHT", "WEEKS" or something else. Only needs to be on UI, not system. (COMPLETED)
-    > Change "MOON" in text prompts as well
 - roles and ranks need amending, there is no leader or deputy. add "QUEEN' and "KING", Only needs to be on UI, not system
 - Make "TRIBE" cultures and attributes more accurate to book lore e.g. mythos and camo, fire scale, and water breathing etc...
 - Specific specialty tribe skills e.g. fire scales, lower attribute factor to make "RARE"
 - Add CONVERSATION option. Dragon A and B convo with choices, personality impacts
 - make dragonets not able to have rivals/mates/go on patrols
-x Add names for diverse gameplay (COMPLETED, one class remains for current dragon tribes)
 - HYBRIDS? Preference to mate with own tribe, hybrids do happen though
 - add Pyrrhian/Pantalan "TRIBES"
-X Make "DEAD" tab, cemetery: (COMPLETED-DROP DOWN TAB FOR DEAD) 
 - Make dead remember name of past MATE in attributes
-x Add "EVENT" selection e.g. "PATROL" choice A or B
-    > Make more choices, events
 - Dragons live to 150 yrs ish, not 250+
+- Add family tree. especially Mudwings
 - Add conflict kills/deaths
-- finish SCAR system
-- Add sexes. male, female, trans, fluid, etc
-- add dragons leaving/entering/returning. Good and bad events
-- Tribe to Tribe relations/events/friendship/rivals/allies/enemies. interactions with other tribes(WORKING ON IT, NEED TO EXPAND)
-x Add leader influence on tension (COMPLETED)
-x Add leader choices (COMPLETED)
-x Add mood aware event text e.g. calm vs crisis (COMPLETED)
-x Add memory affecting future choices more strongly (COMPLETED, I think)
+- Add rumor system
+- Add family tree
+- Add "VILLAGE/KINGDOM" UI. Queens palace, Healer's Den, Training Grounds, Dragon Den Residential, Hunting Ground, Patrol Boarder/Route, Knowlage Den, Council Clearing/Area
+- finish "SCAR" system
 - Add appropriate icon for pygame .exe file
 - Slow down reproduction
+- Add sexes. male, female, trans, fluid, etc.
+- add dragons leaving/entering/returning. Good and bad events
+- Tribe to Tribe relations/events/friendship/rivals/allies/enemies. interactions with other tribes		(WORKING ON IT, NEED TO EXPAND)
+
+x Add leader influence on tension 										(COMPLETED)
+x Add leader choices 												(COMPLETED)
+x "MOON" is not the proper term, use "NIGHT", "WEEKS" or something else. Only needs to be on UI, not system.	(COMPLETED)
+    > Change "MOON" in text prompts as well
+x Add mood aware event text e.g. calm vs crisis 								(COMPLETED)
+X Make "DEAD" tab, cemetery: 											(COMPLETED) 
+x Add names for diverse gameplay 										(COMPLETED)
+x Add memory affecting future choices more strongly 								(COMPLETED)
+x Add "EVENT" selection e.g. "PATROL" choice A or B 								(COMPLETED)
+    > Make more choices, events
+
+* fix "TITLES" system
+
 - Nameplates in UI reflective of dragon class with appropriate color scheme, texture and patterns as listed below: (WORKING TEMP COLOR SCHEME, NOT COMPLETED)
 
 Tribe		Colors			Patterns		UI Motif
