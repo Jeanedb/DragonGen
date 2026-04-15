@@ -131,49 +131,115 @@ def resolve_choice(world, option_id):
 
         other_tribes = [t for t in world.tribal_relations.keys() if t != tribe]
         secondary_tribe = random.choice(other_tribes) if other_tribes else None
+        trait = world.tribal_traits.get(tribe, "neutral")
 
         if option_id == "peace_gesture":
             score = world.tribal_relations.get(tribe, 0)
 
             if score <= -30:
+                reject_chance = 0.7
+                tension_chance = 0.25
 
-                if random.random() < 0.7:
+                if trait == "aggressive":
+                    reject_chance += 0.15
+                    tension_chance += 0.10
+                elif trait == "cautious":
+                    reject_chance -= 0.15
+                    tension_chance -= 0.10
+                elif trait == "opportunistic":
+                    reject_chance -= 0.05
+
+                if random.random() < reject_chance:
                     if random.random() < 0.5:
                         shift_relation(world, tribe, -1)
-                    if random.random() < 0.25:
+
+                    if random.random() < max(0.0, tension_chance):
                         world.tension += 0.05
+
+                    if trait == "aggressive":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s dismissed the peace gesture as weakness and refused it outright."
+                    elif trait == "cautious":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s refused the peace gesture, citing distrust and uncertainty."
+                    elif trait == "opportunistic":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s showed no interest in the peace gesture and turned it away."
+                    else:
+                        text = f"The {tribe}s rejected the tribe's peace gesture, seeing it as suspicious or insincere."
+
                     log_event(
                         world,
-                        f"The {tribe}s rejected the tribe's peace gesture, seeing it as suspicious or insincere.",
+                        text,
                         event_type="politics",
                         importance=3
                     )
                     world.tribal_incidents[tribe].append("Peace gesture was rejected")
                 else:
-                    shift_relation(world, tribe, 1)
+                    gain = 1
+                    if trait == "cautious":
+                        gain = 2
+
+                    shift_relation(world, tribe, gain)
+                    if trait == "aggressive":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the gesture only grudgingly, without softening her stance."
+                    elif trait == "cautious":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the peace gesture carefully, though suspicion remained."
+                    elif trait == "opportunistic":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the peace gesture for now, seeing possible value in it."
+                    else:
+                        text = f"The {tribe}s accepted the peace gesture only cautiously, with visible suspicion."
+
                     log_event(
                         world,
-                        f"The {tribe}s accepted the peace gesture only cautiously, with visible suspicion.",
+                        text,
                         event_type="politics",
                         importance=3
                     )
                     world.tribal_incidents[tribe].append("Peace gesture was cautiously accepted")
 
             elif score <= -10:
-                shift_relation(world, tribe, 2)
+                gain = 2
+                if trait == "aggressive":
+                    gain = 1
+                elif trait == "cautious":
+                    gain = 3
+
+                shift_relation(world, tribe, gain)
+                if trait == "aggressive":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the peace gesture without warmth. Relations improved only slightly."
+                elif trait == "cautious":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the peace gesture with measured restraint, allowing a small improvement."
+                elif trait == "opportunistic":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the peace gesture, seeing some advantage in keeping matters calm."
+                else:
+                    text = f"The {tribe}s accepted the peace gesture cautiously. Relations improved only slightly."
+
                 log_event(
                     world,
-                    f"The {tribe}s accepted the peace gesture cautiously. Relations improved only slightly.",
+                    text,
                     event_type="politics",
                     importance=3
                 )
                 world.tribal_incidents[tribe].append("Peace gesture cautiously accepted")
 
             else:
-                shift_relation(world, tribe, 4)
+                gain = 4
+                if trait == "aggressive":
+                    gain = 3
+                elif trait == "cautious":
+                    gain = 5
+
+                shift_relation(world, tribe, gain)
+                if trait == "aggressive":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the peace gesture, though her response remained firm and unsentimental."
+                elif trait == "cautious":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the peace gesture in a calm and measured way, improving relations."
+                elif trait == "opportunistic":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the peace gesture, evidently seeing value in better relations."
+                else:
+                    text = f"The tribe sent a peace gesture to the {tribe}s, improving relations."
+
                 log_event(
                     world,
-                    f"The tribe sent a peace gesture to the {tribe}s, improving relations.",
+                    text,
                     event_type="politics",
                     importance=3
                 )
@@ -237,43 +303,108 @@ def resolve_choice(world, option_id):
             score = world.tribal_relations.get(tribe, 0)
 
             if score <= -30:
-                if random.random() < 0.6:
+                reject_chance = 0.6
+
+                if trait == "aggressive":
+                    reject_chance += 0.15
+                elif trait == "cautious":
+                    reject_chance -= 0.10
+                elif trait == "opportunistic":
+                    reject_chance -= 0.15
+
+                if random.random() < reject_chance:
                     if random.random() < 0.5:
                         shift_relation(world, tribe, -1)
-                    if random.random() < 0.25:
+
+                    if trait == "aggressive" and random.random() < 0.25:
                         world.tension += 0.05
+
+                    if trait == "aggressive":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s treated the offered aid as an insult and refused it."
+                    elif trait == "cautious":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s refused the aid, unwilling to trust the motive behind it."
+                    elif trait == "opportunistic":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s declined the aid, apparently seeing little advantage in accepting it."
+                    else:
+                        text = f"The {tribe}s refused the offered aid, treating it as a provocation or hidden maneuver."
+
                     log_event(
                         world,
-                        f"The {tribe}s refused the offered aid, treating it as a provocation or hidden maneuver.",
+                        text,
                         event_type="politics",
                         importance=3
                     )
                     world.tribal_incidents[tribe].append("Aid was refused")
                 else:
-                    shift_relation(world, tribe, 1)
+                    gain = 1
+                    if trait == "opportunistic":
+                        gain = 2
+
+                    shift_relation(world, tribe, gain)
+                    if trait == "aggressive":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the aid grudgingly, without any sign of trust."
+                    elif trait == "cautious":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the aid carefully, though suspicion remained."
+                    elif trait == "opportunistic":
+                        text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the aid, clearly willing to take what benefit she could."
+                    else:
+                        text = f"The {tribe}s accepted the aid reluctantly, without trust."
+
                     log_event(
                         world,
-                        f"The {tribe}s accepted the aid reluctantly, without trust.",
+                        text,
                         event_type="politics",
                         importance=3
                     )
                     world.tribal_incidents[tribe].append("Aid was reluctantly accepted")
 
             elif score <= -10:
-                shift_relation(world, tribe, 2)
+                gain = 2
+                if trait == "aggressive":
+                    gain = 1
+                elif trait == "cautious":
+                    gain = 3
+                elif trait == "opportunistic":
+                    gain = 4
+
+                shift_relation(world, tribe, gain)
+                if trait == "aggressive":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the aid stiffly, allowing only a slight improvement."
+                elif trait == "cautious":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the aid with measured caution, modestly improving relations."
+                elif trait == "opportunistic":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the aid, seeing enough value in it to improve relations slightly."
+                else:
+                    text = f"The {tribe}s accepted the aid with caution. Relations improved, but only slightly."
+
                 log_event(
                     world,
-                    f"The {tribe}s accepted the aid with caution. Relations improved, but only slightly.",
+                    text,
                     event_type="politics",
                     importance=3
                 )
                 world.tribal_incidents[tribe].append("Aid cautiously accepted")
 
             else:
-                shift_relation(world, tribe, 5)
+                gain = 5
+                if trait == "aggressive":
+                    gain = 4
+                elif trait == "opportunistic":
+                    gain = 6
+
+                shift_relation(world, tribe, gain)
+                if trait == "aggressive":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the practical aid, though her tone remained hard."
+                elif trait == "cautious":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the practical aid in a careful but constructive spirit."
+                elif trait == "opportunistic":
+                    text = f"Queen {world.tribal_leaders.get(tribe, tribe).replace('Queen ', '')} of the {tribe}s accepted the practical aid readily, seeing clear value in it."
+                else:
+                    text = f"The tribe offered practical aid to the {tribe}s, improving relations noticeably."
+
                 log_event(
                     world,
-                    f"The tribe offered practical aid to the {tribe}s, improving relations noticeably.",
+                    text,
                     event_type="politics",
                     importance=3
                 )
@@ -427,6 +558,18 @@ def resolve_choice(world, option_id):
                 a.friends.append(b.id)
             if a.id not in b.friends:
                 b.friends.append(a.id)
+
+            involved_ids = choice.get("involved_ids", [])
+            if len(involved_ids) < 2:
+                world.pending_choice = None
+                return
+
+            a = next((d for d in world.dragons if d.id == involved_ids[0]), None)
+            b = next((d for d in world.dragons if d.id == involved_ids[1]), None)
+
+            if not a or not b:
+                world.pending_choice = None
+                return
 
             helper_bonus = 0
 
