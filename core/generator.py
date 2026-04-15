@@ -71,6 +71,15 @@ def generate_starting_world(selected_tribe=None) -> World:
         forced_tribe = selected_tribe
         initialize_tribal_relations(world, selected_tribe)
 
+    for tribe in world.tribal_relations.keys():
+        name = random.choice(NAMES_BY_TRIBE.get(tribe, ["Unnamed"]))
+        world.tribal_leaders[tribe] = f"Queen {name}"
+
+    TRAITS = ["cautious", "aggressive", "opportunistic"]
+
+    for tribe in world.tribal_relations.keys():
+        world.tribal_traits[tribe] = random.choice(TRAITS)
+
     for i in range(12):
         world.dragons.append(generate_dragon(i + 1, forced_tribe))
 

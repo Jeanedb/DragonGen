@@ -40,9 +40,10 @@ DragonGen/
 - add Pyrrhian/Pantalan "TRIBES"
 - Make dead remember name of past MATE in attributes
 - Dragons live to 150 yrs ish, not 250+
-- Add family tree. especially Mudwings
+- Add family tree. especially Mudwings "Sibs"
 - Add conflict kills/deaths
 - Add rumor system
+- adjust weights for "TITLES" system
 - Dragon/Dragonette limit. Under 20 or something
 - Add family tree
 - Add "VILLAGE/KINGDOM" UI. Queens palace, Healer's Den, Training Grounds, Dragon Den Residential, Hunting Ground, Patrol Boarder/Route, Knowlage Den, Council Clearing/Area, Scroll Library

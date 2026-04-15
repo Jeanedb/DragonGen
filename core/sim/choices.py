@@ -133,14 +133,51 @@ def resolve_choice(world, option_id):
         secondary_tribe = random.choice(other_tribes) if other_tribes else None
 
         if option_id == "peace_gesture":
-            shift_relation(world, tribe, 4)
-            log_event(
-                world,
-                f"The tribe sent a peace gesture to the {tribe}s, improving relations.",
-                event_type="politics",
-                importance=3
-            )
-            world.tribal_incidents[tribe].append("Peace gesture sent")
+            score = world.tribal_relations.get(tribe, 0)
+
+            if score <= -30:
+
+                if random.random() < 0.7:
+                    if random.random() < 0.5:
+                        shift_relation(world, tribe, -1)
+                    if random.random() < 0.25:
+                        world.tension += 0.05
+                    log_event(
+                        world,
+                        f"The {tribe}s rejected the tribe's peace gesture, seeing it as suspicious or insincere.",
+                        event_type="politics",
+                        importance=3
+                    )
+                    world.tribal_incidents[tribe].append("Peace gesture was rejected")
+                else:
+                    shift_relation(world, tribe, 1)
+                    log_event(
+                        world,
+                        f"The {tribe}s accepted the peace gesture only cautiously, with visible suspicion.",
+                        event_type="politics",
+                        importance=3
+                    )
+                    world.tribal_incidents[tribe].append("Peace gesture was cautiously accepted")
+
+            elif score <= -10:
+                shift_relation(world, tribe, 2)
+                log_event(
+                    world,
+                    f"The {tribe}s accepted the peace gesture cautiously. Relations improved only slightly.",
+                    event_type="politics",
+                    importance=3
+                )
+                world.tribal_incidents[tribe].append("Peace gesture cautiously accepted")
+
+            else:
+                shift_relation(world, tribe, 4)
+                log_event(
+                    world,
+                    f"The tribe sent a peace gesture to the {tribe}s, improving relations.",
+                    event_type="politics",
+                    importance=3
+                )
+                world.tribal_incidents[tribe].append("Peace gesture sent")
 
             if secondary_tribe:
                 shift_relation(world, secondary_tribe, -2)
@@ -197,14 +234,50 @@ def resolve_choice(world, option_id):
                 )
 
         elif option_id == "offer_aid":
-            shift_relation(world, tribe, 5)
-            log_event(
-                world,
-                f"The tribe offered practical aid to the {tribe}s, improving relations noticeably.",
-                event_type="politics",
-                importance=3
-            )
-            world.tribal_incidents[tribe].append("Practical aid offered")
+            score = world.tribal_relations.get(tribe, 0)
+
+            if score <= -30:
+                if random.random() < 0.6:
+                    if random.random() < 0.5:
+                        shift_relation(world, tribe, -1)
+                    if random.random() < 0.25:
+                        world.tension += 0.05
+                    log_event(
+                        world,
+                        f"The {tribe}s refused the offered aid, treating it as a provocation or hidden maneuver.",
+                        event_type="politics",
+                        importance=3
+                    )
+                    world.tribal_incidents[tribe].append("Aid was refused")
+                else:
+                    shift_relation(world, tribe, 1)
+                    log_event(
+                        world,
+                        f"The {tribe}s accepted the aid reluctantly, without trust.",
+                        event_type="politics",
+                        importance=3
+                    )
+                    world.tribal_incidents[tribe].append("Aid was reluctantly accepted")
+
+            elif score <= -10:
+                shift_relation(world, tribe, 2)
+                log_event(
+                    world,
+                    f"The {tribe}s accepted the aid with caution. Relations improved, but only slightly.",
+                    event_type="politics",
+                    importance=3
+                )
+                world.tribal_incidents[tribe].append("Aid cautiously accepted")
+
+            else:
+                shift_relation(world, tribe, 5)
+                log_event(
+                    world,
+                    f"The tribe offered practical aid to the {tribe}s, improving relations noticeably.",
+                    event_type="politics",
+                    importance=3
+                )
+                world.tribal_incidents[tribe].append("Practical aid offered")
 
             if secondary_tribe:
                 shift_relation(world, secondary_tribe, -1)
@@ -226,6 +299,117 @@ def resolve_choice(world, option_id):
 
         world.pending_choice = None
         return
+
+
+    elif choice["type"] == "incoming_diplomacy_choice":
+        tribe = choice.get("tribe")
+        scenario = choice.get("scenario")
+
+        if not tribe:
+            world.pending_choice = None
+            return
+
+        if tribe not in world.tribal_incidents:
+            world.tribal_incidents[tribe] = []
+
+        if scenario == "aid_request":
+            if option_id == "grant_aid":
+                shift_relation(world, tribe, 5)
+                log_event(
+                    world,
+                    f"The tribe sent aid to the {tribe}s after their request, improving relations.",
+                    event_type="politics",
+                    importance=3
+                )
+                world.tribal_incidents[tribe].append("Aid request was granted")
+
+            elif option_id == "refuse_aid":
+                shift_relation(world, tribe, -4)
+                log_event(
+                    world,
+                    f"The tribe refused the {tribe}s' request for aid, worsening relations.",
+                    event_type="politics",
+                    importance=3
+                )
+                world.tribal_incidents[tribe].append("Aid request was refused")
+
+            elif option_id == "limited_aid":
+                shift_relation(world, tribe, 2)
+                log_event(
+                    world,
+                    f"The tribe sent only limited aid to the {tribe}s, improving relations slightly.",
+                    event_type="politics",
+                    importance=2
+                )
+                world.tribal_incidents[tribe].append("Limited aid was sent")
+
+        elif scenario == "warning":
+            if option_id == "deescalate_warning":
+                shift_relation(world, tribe, 2)
+                log_event(
+                    world,
+                    f"The tribe answered the {tribe}s' warning with restraint, easing tensions slightly.",
+                    event_type="politics",
+                    importance=2
+                )
+                world.tribal_incidents[tribe].append("Warning was de-escalated")
+
+            elif option_id == "ignore_warning":
+                shift_relation(world, tribe, -2)
+                log_event(
+                    world,
+                    f"The tribe ignored the {tribe}s' warning, increasing distrust.",
+                    event_type="politics",
+                    importance=2
+                )
+                world.tribal_incidents[tribe].append("Warning was ignored")
+
+            elif option_id == "answer_firmly":
+                shift_relation(world, tribe, -4)
+                world.tension += 0.1
+                log_event(
+                    world,
+                    f"The tribe answered the {tribe}s' warning with a firm response of its own, worsening tensions.",
+                    event_type="politics",
+                    importance=3
+                )
+                world.tribal_incidents[tribe].append("Warning was answered firmly")
+
+        elif scenario == "truce_offer":
+            if option_id == "accept_truce":
+                shift_relation(world, tribe, 4)
+                log_event(
+                    world,
+                    f"The tribe accepted a temporary truce with the {tribe}s, improving relations.",
+                    event_type="politics",
+                    importance=3
+                )
+                world.tribal_incidents[tribe].append("Truce was accepted")
+
+            elif option_id == "reject_truce":
+                shift_relation(world, tribe, -3)
+                log_event(
+                    world,
+                    f"The tribe rejected the {tribe}s' offer of truce, worsening relations.",
+                    event_type="politics",
+                    importance=3
+                )
+                world.tribal_incidents[tribe].append("Truce was rejected")
+
+            elif option_id == "conditional_truce":
+                shift_relation(world, tribe, 2)
+                log_event(
+                    world,
+                    f"The tribe accepted a temporary truce with conditions, improving relations slightly.",
+                    event_type="politics",
+                    importance=2
+                )
+                world.tribal_incidents[tribe].append("Conditional truce accepted")
+
+        world.tribal_incidents[tribe] = world.tribal_incidents[tribe][-5:]
+        world.pending_choice = None
+        return
+
 
     involved_ids = choice.get("involved_ids", [])
     involved_dragons = [d for d in world.dragons if d.id in involved_ids]

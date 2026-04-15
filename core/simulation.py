@@ -1016,30 +1016,49 @@ def create_diplomatic_choice(world):
 
     score = world.tribal_relations.get(tribe, 0)
 
-    if score <= -40:
+    recent_incidents = world.tribal_incidents.get(tribe, [])
+    incident_text = " ".join(recent_incidents[-2:]).lower()
+
+    # ---- Influence scenario based on recent diplomacy ----
+
+    if "pressure" in incident_text or "patrol" in incident_text:
         scenario = random.choices(
-            ["border_misunderstanding", "wounded_outsider", "safe_passage"],
-            weights=[0.5, 0.3, 0.2]
+            ["border_misunderstanding", "safe_passage", "wounded_outsider"],
+            weights=[0.5, 0.2, 0.3]
         )[0]
 
-    elif score <= -10:
-        scenario = random.choices(
-            ["border_misunderstanding", "wounded_outsider", "safe_passage"],
-            weights=[0.4, 0.3, 0.3]
-        )[0]
-
-    elif score < 10:
-        scenario = random.choice([
-            "safe_passage",
-            "wounded_outsider",
-            "border_misunderstanding"
-        ])
-
-    else:
+    elif "peace" in incident_text or "aid" in incident_text:
         scenario = random.choices(
             ["safe_passage", "wounded_outsider", "border_misunderstanding"],
             weights=[0.5, 0.3, 0.2]
         )[0]
+
+    else:
+        # fallback to your original logic
+        if score <= -40:
+            scenario = random.choices(
+                ["border_misunderstanding", "wounded_outsider", "safe_passage"],
+                weights=[0.5, 0.3, 0.2]
+            )[0]
+ 
+        elif score <= -10:
+            scenario = random.choices(
+                ["border_misunderstanding", "wounded_outsider", "safe_passage"],
+                weights=[0.4, 0.3, 0.3]
+            )[0]
+
+        elif score < 10:
+            scenario = random.choice([
+                "safe_passage",
+                "wounded_outsider",
+                "border_misunderstanding"
+            ])
+
+        else:
+            scenario = random.choices(
+                ["safe_passage", "wounded_outsider", "border_misunderstanding"],
+                weights=[0.5, 0.3, 0.2]
+            )[0]
 
     if scenario == "safe_passage":
 
@@ -1151,6 +1170,115 @@ def create_tribal_policy_choice(world):
 
     return True
 
+def create_incoming_diplomacy_choice(world):
+    tribes = [
+        t for t in world.tribal_relations.keys()
+        if world.diplomacy_cooldowns.get(t, 0) <= 0
+    ]
+
+    if not tribes:
+        return False
+
+    weights = []
+
+    for t in tribes:
+        score = world.tribal_relations.get(t, 0)
+        weight = 1.0
+
+        if score >= 10:
+            weight += 1.0
+        elif score <= -30:
+            weight += 0.8
+        elif score <= -10:
+            weight += 0.4
+
+        weights.append(weight)
+
+    tribe = random.choices(tribes, weights=weights, k=1)[0]
+    score = world.tribal_relations.get(tribe, 0)
+    queen = world.tribal_leaders.get(tribe, f"Queen of the {tribe}s")
+    trait = world.tribal_traits.get(tribe, "neutral")
+
+    if score <= -30:
+        scenario = random.choices(
+            ["warning", "truce_offer", "aid_request"],
+            weights=[0.55, 0.25, 0.20]
+        )[0]
+    elif score <= -10:
+        scenario = random.choices(
+            ["warning", "truce_offer", "aid_request"],
+            weights=[0.35, 0.35, 0.30]
+        )[0]
+    elif score < 10:
+        scenario = random.choices(
+            ["aid_request", "truce_offer", "warning"],
+            weights=[0.35, 0.35, 0.30]
+        )[0]
+    else:
+        scenario = random.choices(
+            ["aid_request", "truce_offer", "warning"],
+            weights=[0.45, 0.40, 0.15]
+        )[0]
+
+    if trait == "aggressive":
+        warning_bias = 1.3
+        truce_bias = 0.8
+        aid_bias = 0.8
+    elif trait == "cautious":
+        warning_bias = 0.9
+        truce_bias = 1.2
+        aid_bias = 1.1
+    elif trait == "opportunistic":
+        warning_bias = 1.0
+        truce_bias = 1.0
+        aid_bias = 1.3
+    else:
+        warning_bias = truce_bias = aid_bias = 1.0
+
+    if scenario == "aid_request":
+        text = (
+            f"{queen} of the {tribe}s has sent word requesting practical aid after hardship near the border. "
+            f"How should the tribe respond?"
+        )
+        options = [
+            {"id": "grant_aid", "text": "Send aid"},
+            {"id": "refuse_aid", "text": "Refuse"},
+            {"id": "limited_aid", "text": "Send limited aid"},
+        ]
+
+    elif scenario == "warning":
+        text = (
+            f"{queen} of the {tribe}s has sent a stern warning about recent tensions near shared borders. "
+            f"How should the tribe respond?"
+        )
+        options = [
+            {"id": "deescalate_warning", "text": "De-escalate diplomatically"},
+            {"id": "ignore_warning", "text": "Ignore the warning"},
+            {"id": "answer_firmly", "text": "Respond with a firm warning of your own"},
+        ]
+
+    else:  # truce_offer
+        text = (
+            f"{queen} of the {tribe}s has proposed a temporary truce to ease tensions. "
+            f"How should the tribe respond?"
+        )
+        options = [
+            {"id": "accept_truce", "text": "Accept the truce"},
+            {"id": "reject_truce", "text": "Reject it"},
+            {"id": "conditional_truce", "text": "Accept with conditions"},
+        ]
+
+    world.pending_choice = {
+        "type": "incoming_diplomacy_choice",
+        "tribe": tribe,
+        "scenario": scenario,
+        "text": text,
+        "options": options,
+    }
+
+    world.diplomacy_cooldowns[tribe] = 3
+    return True
+
 
 def advance_moon(world: World):
     if world.pending_choice is not None:
@@ -1162,6 +1290,12 @@ def advance_moon(world: World):
             world.direction = None
 
     world.moon += 1
+
+    for tribe in list(world.diplomacy_cooldowns.keys()):
+        world.diplomacy_cooldowns[tribe] -= 1
+        if world.diplomacy_cooldowns[tribe] <= 0:
+            del world.diplomacy_cooldowns[tribe]
+
     living = get_living_dragons(world)
 
     for dragon in living:
@@ -1219,6 +1353,12 @@ def advance_moon(world: World):
                 world.event_log = world.event_log[-100:]
                 return True
 
+        elif choice_roll < 0.36:
+            created = create_incoming_diplomacy_choice(world)
+            if created:
+                world.event_log = world.event_log[-100:]
+                return True
+
 
     run_event_phase(world)
 
@@ -1262,6 +1402,7 @@ def advance_moon(world: World):
     clamp_relations(world)
 
     world.tension = max(0.0, min(5.0, world.tension))
+    world.previous_tribal_relations = world.tribal_relations.copy()
 
     evaluate_world_titles(world)
 

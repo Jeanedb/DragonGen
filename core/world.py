@@ -19,7 +19,10 @@ class World:
     direction_timer: int = 0
 
     tribal_relations: dict[str, int] = field(default_factory=dict)
-    tribal_incidents: dict[str, list] = field(default_factory=dict)    
+    tribal_incidents: dict[str, list] = field(default_factory=dict)   
+    tribal_leaders: dict[str, str] = field(default_factory=dict) 
+    diplomacy_cooldowns: dict[str, int] = field(default_factory=dict)
+    tribal_traits: dict[str, str] = field(default_factory=dict)
 
     tribe_titles: list[str] = field(default_factory=list)
     world_flags: dict[str, int] = field(default_factory=dict)
