@@ -29,3 +29,4 @@ class World:
 
     territory_control: dict[str, str] = field(default_factory=dict)
     region_landmarks: dict[str, list] = field(default_factory=dict)
+    region_activity: dict[str, int] = field(default_factory=dict)

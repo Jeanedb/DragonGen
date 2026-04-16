@@ -69,7 +69,7 @@ def initialize_regions(world):
 
             world.territory_control[region_name] = tribe
             world.region_landmarks[region_name] = region["landmarks"]
-
+            world.region_activity[region_name] = 0
 
 
 def generate_starting_world(selected_tribe=None) -> World:

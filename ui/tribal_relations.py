@@ -140,6 +140,13 @@ class TribalRelationsWindow(ctk.CTkToplevel):
             return "Relations are very strong. Mutual trust and support would be expected."
         return "No description available."
 
+    def get_regions_for_tribe(self, tribe):
+        return [
+            region_name
+            for region_name, owner in self.world.territory_control.items()
+            if owner == tribe
+        ]
+
     def refresh_all(self):
         self.refresh_roster()
         self.refresh_details()
@@ -180,6 +187,31 @@ class TribalRelationsWindow(ctk.CTkToplevel):
         profile = TRIBE_PROFILES.get(self.selected_tribe, {})
         blurb = profile.get("blurb", "No historical data available.")
 
+        controlled_regions = self.get_regions_for_tribe(self.selected_tribe)
+
+        hotspot_regions = sorted(
+            [
+                (region, self.world.region_activity.get(region, 0))
+                for region in controlled_regions
+            ],
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        if controlled_regions:
+            controlled_regions_text = "\n".join(f"- {region}" for region in controlled_regions)
+        else:
+            controlled_regions_text = "None"
+
+        active_hotspots = [item for item in hotspot_regions if item[1] > 0]
+
+        if active_hotspots:
+            hotspot_text = "\n".join(
+                f"- {region} ({count})" for region, count in active_hotspots[:3]
+            )
+        else:
+            hotspot_text = "None yet."
+
         tendencies = profile.get("tendencies", [])
         relations = profile.get("relations", {})
 
@@ -209,6 +241,8 @@ class TribalRelationsWindow(ctk.CTkToplevel):
             f"Queen Traits: {trait}\n"
             f"Score: {score}\n\n"
             f"Description:\n{description}\n\n"
+            f"Controlled Regions:\n{controlled_regions_text}\n\n"
+            f"Regional Hotspots:\n{hotspot_text}\n\n"
             f"{profile_text}\n"
             f"Recent Incidents:\n{incident_text}\n"
         )
