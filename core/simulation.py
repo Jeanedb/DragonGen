@@ -1420,7 +1420,17 @@ def get_regions_for_tribe(world, tribe):
 def get_random_region(world, tribe):
     tribe = normalize_region_tribe_name(tribe)
     regions = get_regions_for_tribe(world, tribe)
-    return random.choice(regions) if regions else "unknown region"
+
+    if not regions:
+        return "unknown region"
+
+    weights = []
+    for region in regions:
+        activity = world.region_activity.get(region, 0)
+        weight = 1.0 + (activity * 0.25)
+        weights.append(weight)
+
+    return random.choices(regions, weights=weights, k=1)[0]
 
 def get_random_landmark(world, region):
     landmarks = world.region_landmarks.get(region, [])
