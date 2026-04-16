@@ -26,3 +26,6 @@ class World:
 
     tribe_titles: list[str] = field(default_factory=list)
     world_flags: dict[str, int] = field(default_factory=dict)
+
+    territory_control: dict[str, str] = field(default_factory=dict)
+    region_landmarks: dict[str, list] = field(default_factory=dict)

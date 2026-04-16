@@ -672,6 +672,9 @@ def create_injured_patrol_choice(world):
     climate = get_tribe_climate(world)
     hostile_tribe, hostile_score = get_most_hostile_relation(world)
 
+    region = get_random_region(world, hostile_tribe) if hostile_tribe else None
+    landmark = get_random_landmark(world, region) if region else None
+
     candidates = [
         d for d in world.dragons
         if d.status == "Alive" and d.role != "Dragonet"
@@ -731,7 +734,7 @@ def create_injured_patrol_choice(world):
 
         if hostile_tribe and hostile_score <= -20:
             injury_text = (
-                f"{a.name} was injured while out on patrol with {b.name}, "
+                f"{a.name} was injured while out on patrol with {b.name} near {landmark} in {region}. "
                 f"not far from territory where tension with the {hostile_tribe}s has been rising."
             )
         else:
@@ -1060,6 +1063,9 @@ def create_diplomatic_choice(world):
                 weights=[0.5, 0.3, 0.2]
             )[0]
 
+    region = get_random_region(world, tribe)
+    landmark = get_random_landmark(world, region)
+
     if scenario == "safe_passage":
 
         if score <= -40:
@@ -1092,7 +1098,7 @@ def create_diplomatic_choice(world):
     elif scenario == "wounded_outsider":
 
         prompt_text = (
-            f"A wounded {tribe} is found near the edge of your territory, separated from their own kind. "
+            f"A wounded {tribe} is found near the edge of your territory at {landmark} in {region}, separated from their own kind. "
             f"How should the tribe respond?"
         )
 
@@ -1114,6 +1120,8 @@ def create_diplomatic_choice(world):
             {"id": "issue_warning", "text": "Warn them harshly and send them away"},
             {"id": "escalate_border", "text": "Escalate and challenge their presence"},
         ]
+
+    
 
     world.pending_choice = {
         "type": "diplomatic_choice",
@@ -1198,6 +1206,8 @@ def create_incoming_diplomacy_choice(world):
     score = world.tribal_relations.get(tribe, 0)
     queen = world.tribal_leaders.get(tribe, f"Queen of the {tribe}s")
     trait = world.tribal_traits.get(tribe, "neutral")
+    region = get_random_region(world, tribe)
+    landmark = get_random_landmark(world, region)
 
     if score <= -30:
         scenario = random.choices(
@@ -1237,7 +1247,7 @@ def create_incoming_diplomacy_choice(world):
 
     if scenario == "aid_request":
         text = (
-            f"{queen} of the {tribe}s has sent word requesting practical aid after hardship near the border. "
+            f"{queen} of the {tribe}s has sent word requesting practical aid after hardship near {landmark} in {region}. "
             f"How should the tribe respond?"
         )
         options = [
@@ -1248,7 +1258,7 @@ def create_incoming_diplomacy_choice(world):
 
     elif scenario == "warning":
         text = (
-            f"{queen} of the {tribe}s has sent a stern warning about recent tensions near shared borders. "
+            f"{queen} of the {tribe}s has sent a stern warning about recent tensions near {landmark} in {region}. "
             f"How should the tribe respond?"
         )
         options = [
@@ -1278,6 +1288,41 @@ def create_incoming_diplomacy_choice(world):
 
     world.diplomacy_cooldowns[tribe] = 3
     return True
+
+def normalize_region_tribe_name(tribe):
+    if not tribe:
+        return tribe
+
+    mapping = {
+        "MudWing": "MudWings",
+        "SandWing": "SandWings",
+        "SkyWing": "SkyWings",
+        "SeaWing": "SeaWings",
+        "RainWing": "RainWings",
+        "IceWing": "IceWings",
+        "NightWing": "NightWings",
+    }
+
+    return mapping.get(tribe, tribe)
+
+
+def get_regions_for_tribe(world, tribe):
+    tribe = normalize_region_tribe_name(tribe)
+    return [
+        r for r, owner in world.territory_control.items()
+        if owner == tribe
+    ]
+
+
+def get_random_region(world, tribe):
+    tribe = normalize_region_tribe_name(tribe)
+    regions = get_regions_for_tribe(world, tribe)
+    return random.choice(regions) if regions else "unknown region"
+
+def get_random_landmark(world, region):
+    landmarks = world.region_landmarks.get(region, [])
+    return random.choice(landmarks) if landmarks else "unknown landmark"
+
 
 
 def advance_moon(world: World):

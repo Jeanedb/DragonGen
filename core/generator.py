@@ -6,6 +6,7 @@ from data.personalities import PERSONALITIES
 from data.tribes import TRIBES, TRIBE_PERSONALITY_BIAS
 from core.sim.politics import initialize_tribal_relations
 from core.sim.logging import log_event
+from data.regions import REGION_DATA
 
 
 
@@ -61,6 +62,16 @@ def generate_dragonet(dragon_id: int, tribe: str, parents=None) -> Dragon:
     )
 
 
+def initialize_regions(world):
+    for tribe, regions in REGION_DATA.items():
+        for region in regions:
+            region_name = region["name"]
+
+            world.territory_control[region_name] = tribe
+            world.region_landmarks[region_name] = region["landmarks"]
+
+
+
 def generate_starting_world(selected_tribe=None) -> World:
     if selected_tribe is None or selected_tribe == "Mixed":
         world = World(tribe_name="Sunset Tribe")
@@ -70,6 +81,9 @@ def generate_starting_world(selected_tribe=None) -> World:
         world = World(tribe_name=f"{selected_tribe} Tribe")
         forced_tribe = selected_tribe
         initialize_tribal_relations(world, selected_tribe)
+
+    initialize_regions(world)
+
 
     for tribe in world.tribal_relations.keys():
         name = random.choice(NAMES_BY_TRIBE.get(tribe, ["Unnamed"]))
@@ -101,5 +115,6 @@ def generate_starting_world(selected_tribe=None) -> World:
         event_type="founding",
         importance=5,
     )
+
 
     return world
