@@ -2,15 +2,79 @@ import math
 import random
 import tkinter as tk
 import customtkinter as ctk
+from pathlib import Path
+from PIL import Image, ImageTk
 
 
 class DragonPortraitPanel(ctk.CTkFrame):
-    def __init__(self, parent, width=320, height=240):
+    def __init__(self, parent, width=480, height=320):
         super().__init__(parent)
 
         self.width = width
         self.height = height
         self.dragon = None
+        self.sprite_scale = 0.5
+
+        self.use_sprite_tail = True   # set False to instantly go back
+        self.tail_img = None
+        self.tail_pivot = (12, 60)
+
+        self.body_tail_socket = (275, 120)   # move red dot
+        self.tail_root = (20, 130)           # move swing pivot within sprite
+
+        self.tail_rotation_correction = (100, -62) # first number bigger equals right, second number bigger negative means up, move piece relative to red dot
+
+        self.body_img = None
+        self.body_pil = None
+
+
+
+        try:
+            base_dir = Path(__file__).resolve().parent
+            tail_path = base_dir.parent / "assets" / "tail.png"
+            print("TAIL PATH:", tail_path)
+
+            tail_pil = Image.open(tail_path).convert("RGBA")
+            tail_pil = tail_pil.resize(
+                (
+                    int(tail_pil.width * self.sprite_scale),
+                    int(tail_pil.height * self.sprite_scale)
+                ),
+                Image.NEAREST
+            )
+
+            self.tail_pil = tail_pil
+            self.tail_img = ImageTk.PhotoImage(self.tail_pil)
+            self._tail_ref = self.tail_img
+
+            print("TAIL SIZE:", self.tail_img.width(), self.tail_img.height())
+        except Exception as e:
+            print(f"Could not load tail sprite: {e}")
+            self.tail_img = None
+            self.use_sprite_tail = False
+
+
+
+        
+        try:
+            body_path = base_dir.parent / "assets" / "body.png"
+
+            body_pil = Image.open(body_path).convert("RGBA")
+            body_pil = body_pil.resize(
+                (
+                    int(body_pil.width * self.sprite_scale),
+                    int(body_pil.height * self.sprite_scale)
+                ),
+                Image.NEAREST
+            )
+
+            self.body_pil = body_pil
+            self.body_img = ImageTk.PhotoImage(self.body_pil)
+            self._body_ref = self.body_img
+
+        except Exception as e:
+            print(f"Could not load body sprite: {e}")
+            self.body_img = None
 
         self.tick = 0
         self.blink_timer = random.randint(60, 180)
@@ -312,34 +376,57 @@ class DragonPortraitPanel(ctk.CTkFrame):
                 outline=""
             )
 
-    def draw_tail(self, center_x, bottom, breath_offset):
-        tail_type = getattr(self.dragon, "tail_type", "standard") or "standard"
-        body_color = self.get_body_color(self.dragon.tribe)
- 
-        # small animation phase/behavior based
+    def draw_tail(self, left, top, breath_offset):
         behavior = getattr(self.dragon, "behavior_type", "calm")
 
-        sway_strength = 5
         sway_speed = 10
+        max_angle = 8
 
         if "aggressive" in behavior:
-            sway_strength = 7
             sway_speed = 6
-
+            max_angle = 12
         elif "calm" in behavior:
-            sway_strength = 4
             sway_speed = 12
-
+            max_angle = 8
         elif "timid" in behavior:
-            sway_strength = 3
             sway_speed = 14
+            max_angle = 5
 
-        sway = int(math.sin(self.tick / sway_speed) * sway_strength)
+        angle = math.sin(self.tick / sway_speed) * max_angle
 
+        body_socket_x = left + self.body_tail_socket[0]
+        body_socket_y = top + self.body_tail_socket[1]
 
-        tail_base_x = center_x + 30
-        tail_base_y = bottom - 10
+        if self.use_sprite_tail and self.tail_img is not None:
+            self.canvas.create_oval(
+                body_socket_x - 3, body_socket_y - 3,
+                body_socket_x + 3, body_socket_y + 3,
+                fill="red",
+                outline=""
+            )
 
+            rotated_tail = self.tail_pil.rotate(
+                angle,
+                resample=Image.NEAREST,
+                center=self.tail_root,
+                expand=True
+            )
+
+            rotated_tail_tk = ImageTk.PhotoImage(rotated_tail)
+            self._tail_ref = rotated_tail_tk
+
+            draw_x = body_socket_x + self.tail_rotation_correction[0]
+            draw_y = body_socket_y + self.tail_rotation_correction[1]
+
+            self.canvas.create_image(
+                draw_x,
+                draw_y,
+                image=rotated_tail_tk,
+                anchor="center"
+            )
+            return
+
+        # --- ORIGINAL GEOMETRIC FALLBACK ---
         if tail_type == "standard":
             self.canvas.create_line(
                 tail_base_x, tail_base_y,
@@ -895,32 +982,40 @@ class DragonPortraitPanel(ctk.CTkFrame):
             left -= 5
             right -= 5
 
-        # tail
-        self.draw_tail(center_x, bottom, breath_offset)
 
-        # wings
+
+        # wings 2nd in order
         self.draw_wings(center_x, wing_mid_y, left, right, top, bottom)
 
-        # body
-        self.draw_body(left, right, top, bottom, body_color)
+        # body 3rd in oder
+        if self.body_img:
+            self.canvas.create_image(
+                left,
+                top,
+                image=self.body_img,
+                anchor="nw"
+            )
 
-        # legs
+        # legs 4th in order
         self.draw_legs(center_x, leg_base_y)
 
-        # markings
+        # markings 5th in order
         self.draw_markings(left, right, top, bottom)
 
-        # special traits
+        # special traits 6th in order
         self.draw_special_traits(left, right, top, bottom)
 
-        # head
+        # head 7th in order
         self.draw_head(center_x, head_y, body_color)
 
-        # horns
+        # horns 8th in order
         self.draw_horns(center_x, head_y, breath_offset)
 
-        # eyes
+        # eyes 9th in order
         self.draw_eyes(center_x, head_y, eye_fill)
+
+        # tail 1st in order
+        self.draw_tail(left, top, breath_offset)
 
         # simple scar indicator if dragon has scars
         scars = getattr(self.dragon, "scars", [])

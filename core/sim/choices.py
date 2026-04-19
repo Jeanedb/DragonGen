@@ -4,6 +4,21 @@ from core.sim.relationships import add_friendship, add_rivalry
 from core.sim.politics import shift_relation
 from core.sim.leadership import get_leader_by_id
 
+def get_region_intensity(world, region):
+    if not region:
+        return 0.0
+
+    activity = world.region_activity.get(region, 0)
+
+    if activity >= 6:
+        return 0.25
+    elif activity >= 3:
+        return 0.15
+    elif activity >= 1:
+        return 0.05
+    else:
+        return 0.0
+
 
 def resolve_choice(world, option_id):
     choice = world.pending_choice
@@ -18,6 +33,8 @@ def resolve_choice(world, option_id):
     elif choice["type"] == "diplomatic_choice":
         tribe = choice.get("tribe")
         scenario = choice.get("scenario")
+        region = choice.get("region")
+        intensity = get_region_intensity(world, region)
 
         if tribe not in world.tribal_incidents:
             world.tribal_incidents[tribe] = []
@@ -34,7 +51,8 @@ def resolve_choice(world, option_id):
                 world.tribal_incidents[tribe].append("Safe passage granted")
 
             elif option_id == "refuse_passage":
-                shift_relation(world, tribe, -5)
+                penalty = max(1, int(round(5 * (1 + intensity))))
+                shift_relation(world, tribe, -penalty)
                 log_event(
                     world,
                     f"The tribe turned away a group of {tribe}s at the border, worsening relations.",
@@ -75,7 +93,8 @@ def resolve_choice(world, option_id):
                 world.tribal_incidents[tribe].append("Wounded outsider was ignored")
 
             elif option_id == "detain_wounded":
-                shift_relation(world, tribe, -6)
+                penalty = max(1, int(round(6 * (1 + intensity))))
+                shift_relation(world, tribe, -penalty)
                 log_event(
                     world,
                     f"The tribe detained a wounded {tribe} for questioning, sharply worsening relations.",
@@ -96,7 +115,8 @@ def resolve_choice(world, option_id):
                 world.tribal_incidents[tribe].append("Border misunderstanding was defused")
 
             elif option_id == "issue_warning":
-                shift_relation(world, tribe, -2)
+                penalty = max(1, int(round(2 * (1 + intensity))))
+                shift_relation(world, tribe, -penalty)
                 log_event(
                     world,
                     f"The tribe issued a harsh warning to a {tribe} patrol and sent them away.",
@@ -106,7 +126,8 @@ def resolve_choice(world, option_id):
                 world.tribal_incidents[tribe].append("Border warning issued")
 
             elif option_id == "escalate_border":
-                shift_relation(world, tribe, -6)
+                penalty = max(1, int(round(6 * (1 + intensity))))
+                shift_relation(world, tribe, -penalty)
                 log_event(
                     world,
                     f"A border misunderstanding with the {tribe}s escalated into a serious diplomatic incident.",
@@ -435,6 +456,8 @@ def resolve_choice(world, option_id):
     elif choice["type"] == "incoming_diplomacy_choice":
         tribe = choice.get("tribe")
         scenario = choice.get("scenario")
+        region = choice.get("region")
+        intensity = get_region_intensity(world, region)
 
         if not tribe:
             world.pending_choice = None
@@ -455,7 +478,8 @@ def resolve_choice(world, option_id):
                 world.tribal_incidents[tribe].append("Aid request was granted")
 
             elif option_id == "refuse_aid":
-                shift_relation(world, tribe, -4)
+                penalty = max(1, int(round(4 * (1 + intensity))))
+                shift_relation(world, tribe, -penalty)
                 log_event(
                     world,
                     f"The tribe refused the {tribe}s' request for aid, worsening relations.",
@@ -486,7 +510,8 @@ def resolve_choice(world, option_id):
                 world.tribal_incidents[tribe].append("Warning was de-escalated")
 
             elif option_id == "ignore_warning":
-                shift_relation(world, tribe, -2)
+                penalty = max(1, int(round(2 * (1 + intensity))))
+                shift_relation(world, tribe, -penalty)
                 log_event(
                     world,
                     f"The tribe ignored the {tribe}s' warning, increasing distrust.",
@@ -496,8 +521,9 @@ def resolve_choice(world, option_id):
                 world.tribal_incidents[tribe].append("Warning was ignored")
 
             elif option_id == "answer_firmly":
-                shift_relation(world, tribe, -4)
-                world.tension += 0.1
+                penalty = max(1, int(round(4 * (1 + intensity))))
+                shift_relation(world, tribe, -penalty)
+                world.tension += 0.1 * (1 + intensity)
                 log_event(
                     world,
                     f"The tribe answered the {tribe}s' warning with a firm response of its own, worsening tensions.",
@@ -518,7 +544,8 @@ def resolve_choice(world, option_id):
                 world.tribal_incidents[tribe].append("Truce was accepted")
 
             elif option_id == "reject_truce":
-                shift_relation(world, tribe, -3)
+                penalty = max(1, int(round(3 * (1 + intensity))))
+                shift_relation(world, tribe, -penalty)
                 log_event(
                     world,
                     f"The tribe rejected the {tribe}s' offer of truce, worsening relations.",
@@ -536,6 +563,145 @@ def resolve_choice(world, option_id):
                     importance=2
                 )
                 world.tribal_incidents[tribe].append("Conditional truce accepted")
+
+
+
+
+        world.tribal_incidents[tribe] = world.tribal_incidents[tribe][-5:]
+        world.pending_choice = None
+        return
+
+    elif choice["type"] == "border_sighting":
+        tribe = choice.get("tribe")
+
+        if not tribe:
+            world.pending_choice = None
+            return
+
+        if tribe not in world.tribal_incidents:
+            world.tribal_incidents[tribe] = []
+
+        if option_id == "observe":
+            shift_relation(world, tribe, 1)
+            log_event(
+                world,
+                f"The tribe kept watch on the {tribe}s from a distance without escalating the encounter.",
+                event_type="politics",
+                importance=2
+            )
+            world.tribal_incidents[tribe].append("Border patrol was observed")
+
+        elif option_id == "approach":
+            shift_relation(world, tribe, -1)
+            log_event(
+                world,
+                f"The tribe approached the {tribe} patrol and questioned their presence.",
+                event_type="politics",
+                importance=2
+            )
+            world.tribal_incidents[tribe].append("Border patrol was questioned")
+
+        elif option_id == "drive_off":
+            shift_relation(world, tribe, -3)
+            world.tension += 0.2
+            log_event(
+                world,
+                f"The tribe drove off the {tribe} patrol forcefully, worsening tensions.",
+                event_type="politics",
+                importance=3
+            )
+            world.tribal_incidents[tribe].append("Border patrol was driven off")
+
+        world.tribal_incidents[tribe] = world.tribal_incidents[tribe][-5:]
+        world.pending_choice = None
+        return
+
+
+    elif choice["type"] == "border_violation":
+        tribe = choice.get("tribe")
+
+        if not tribe:
+            world.pending_choice = None
+            return
+
+        if tribe not in world.tribal_incidents:
+            world.tribal_incidents[tribe] = []
+
+        if option_id == "ignore_tracks":
+            log_event(
+                world,
+                f"The tribe chose not to respond immediately to signs of {tribe} movement near the border.",
+                event_type="politics",
+                importance=2
+            )
+            world.tribal_incidents[tribe].append("Border tracks were ignored")
+
+        elif option_id == "investigate_tracks":
+            shift_relation(world, tribe, -1)
+            log_event(
+                world,
+                f"The tribe investigated suspicious tracks near the border, deepening mistrust slightly.",
+                event_type="politics",
+                importance=2
+            )
+            world.tribal_incidents[tribe].append("Border tracks were investigated")
+
+        elif option_id == "respond_forcefully":
+            shift_relation(world, tribe, -4)
+            world.tension += 0.3
+            log_event(
+                world,
+                f"The tribe prepared a forceful response to the suspected {tribe} incursion.",
+                event_type="politics",
+                importance=3
+            )
+            world.tribal_incidents[tribe].append("Border violation drew a forceful response")
+
+        world.tribal_incidents[tribe] = world.tribal_incidents[tribe][-5:]
+        world.pending_choice = None
+        return
+
+
+    elif choice["type"] == "aid_delivery":
+        tribe = choice.get("tribe")
+
+        if not tribe:
+            world.pending_choice = None
+            return
+
+        if tribe not in world.tribal_incidents:
+            world.tribal_incidents[tribe] = []
+
+        if option_id == "allow_aid":
+            shift_relation(world, tribe, 3)
+            log_event(
+                world,
+                f"The tribe allowed the {tribe}s to pass with their supplies, improving relations.",
+                event_type="politics",
+                importance=3
+            )
+            world.tribal_incidents[tribe].append("Aid delivery was allowed")
+
+        elif option_id == "inspect_aid":
+            shift_relation(world, tribe, 1)
+            log_event(
+                world,
+                f"The tribe inspected the {tribe}s' supplies before allowing passage.",
+                event_type="politics",
+                importance=2
+            )
+            world.tribal_incidents[tribe].append("Aid delivery was inspected")
+
+        elif option_id == "deny_aid":
+            shift_relation(world, tribe, -4)
+            world.tension += 0.2
+            log_event(
+                world,
+                f"The tribe denied passage to the {tribe}s' aid convoy, worsening tensions.",
+                event_type="politics",
+                importance=3
+            )
+            world.tribal_incidents[tribe].append("Aid delivery was denied")
 
         world.tribal_incidents[tribe] = world.tribal_incidents[tribe][-5:]
         world.pending_choice = None

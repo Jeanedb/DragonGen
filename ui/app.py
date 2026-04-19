@@ -8,6 +8,7 @@ from core.sim.flavor import generate_dragon_bio
 from ui.encyclopedia import EncyclopediaWindow
 from core.sim.politics import get_relation_status
 from ui.tribal_relations import TribalRelationsWindow
+from ui.conversation_panel import ConversationPanel
 from core.simulation import (
     advance_moon,
     resolve_choice,
@@ -298,6 +299,15 @@ class DragonGenApp(ctk.CTk):
         )
         self.relations_button.pack(side="left", padx=10, pady=10)
 
+        self.conversation_button = ctk.CTkButton(
+            self.control_frame,
+            text="Conversation",
+            command=self.open_conversation_panel
+        )
+        self.conversation_button.pack(side="left", padx=10, pady=10)
+
+    def open_conversation_panel(self):
+        ConversationPanel(self, self.world)
 
     def on_tribe_selected(self, choice):
         self.selected_tribe = choice

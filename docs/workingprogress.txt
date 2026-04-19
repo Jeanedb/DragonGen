@@ -1,27 +1,46 @@
 DragonGen/
 │
-├── main.py
-├── requirements.txt
-├── README.md
+├── main.py							Runs system	
+├── requirements.txt				Shows what you need	
+├── README.md						Explains what's build
 │
 ├── data/
-│   ├── names.py
-│   ├── tribes.py
-│   ├── personalities.py
-│   └── events.py
+│   ├── names.py					Tribe specific name pool
+│   ├── tribes.py					Different tribes/tribe personality bias/roles
+│   ├── personalities.py  			Personality types
+│   ├── tribe_profiles.py  		Tribes blurb/tendencies/relations
+│   ├── regions.py  				Regions tied to tribes
+│   └── events.py					Empty 
 │
 ├── core/
-│   ├── dragon.py
-│   ├── world.py
-│   ├── generator.py
-│   ├── simulation.py
-│   └── save_manager.py
+│   ├── dragon.py					Items that make up a dragon
+│   ├── world.py					Items that make up the world
+│   ├── generator.py				Create dragon/dragonet/world
+│   ├── simulation.py				Create world events
+│   ├── save_manager.py			Save manager
+│   └── sim/
+│       ├── choices.py				Create player choices
+│       ├── engine.py				Empty
+│       ├── events.py				Event chance roll weights
+│       ├── family.py				Family events and weights
+│       ├── flavor.py				Physical dragon parts description/bio/legacy text/life stage
+│       ├── injury.py				Injury mechanic
+│       ├── leadership.py			assisgn leadership/create world leader events
+│       ├──
 │
 ├── ui/
-│   ├── app.py
-│   ├── dragon_panel.py
-│   ├── event_log.py
-│   └── roster_panel.py
+│   ├── app.py						Main UI
+│   ├── dragon_panel.py			Dragon avatar UI
+│   ├── event_log.py				Empty
+│   ├── roster_panel.py			Populate tribe pop UI
+│   ├── encyclopedia.py			dragon blurb/bio UI
+│   └── tribal_relations.py		Political relations UI
+│
+├── docs/
+│
+├── test/
+│
+├── assets/
 │
 ├── saves/
 │   └── .gitkeep
@@ -34,21 +53,22 @@ DragonGen/
 - roles and ranks need amending, there is no leader or deputy. add "QUEEN' and "KING", Only needs to be on UI, not system
 - Make "TRIBE" cultures and attributes more accurate to book lore e.g. mythos and camo, fire scale, and water breathing etc...
 - Specific specialty tribe skills e.g. fire scales, Animus magic. lower attribute factor to make "RARE"
-- Add CONVERSATION option. Dragon A and B convo with choices, personality impacts
 - make dragonets not able to have rivals/mates/go on patrols
 - HYBRIDS? Preference to mate with own tribe, hybrids do happen though
 - add Pyrrhian/Pantalan "TRIBES"
+- hierarchy effects roster placement , e.g. queen at top
+- toggle organize by rank/alphabetical
 - Make dead remember name of past MATE in attributes
 - Dragons live to 150 yrs ish, not 250+
 - Add family tree. especially Mudwings "Sibs"
 - Add conflict kills/deaths
+- Add war state. tie in leader choice "calm, push, vigilant" to affect rival/war time events
 - Add rumor system
 - adjust weights for "TITLES" system
 - Dragon/Dragonette limit. Under 20 or something
 - Add family tree
-- Add "VILLAGE/KINGDOM" UI. Queens palace, Healer's Den, Training Grounds, Dragon Den Residential, Hunting Ground, Patrol Boarder/Route, Knowlage Den, Council Clearing/Area, Scroll Library
+- Add "VILLAGE/KINGDOM" UI. Queens palace, Healer's Den, Training Grounds, Dragon Den Residential, Hunting Ground, Patrol Boarder/Route, Knowledge Den, Council Clearing/Area, Scroll   Library, Hatchery UI
 - finish "SCAR" system
-- Hatchery UI
 - Add appropriate icon for pygame .exe file
 - Slow down reproduction
 - Add sexes. male, female, trans, fluid, etc.
@@ -56,7 +76,9 @@ DragonGen/
 - Tribe to Tribe relations/events/friendship/rivals/allies/enemies. interactions with other tribes		(WORKING ON IT, NEED TO EXPAND)
 
 x Add leader influence on tension 										(COMPLETED)
-x Add leader choices 												(COMPLETED)
+x Add leader choices 		                                                                                (COMPLETED)
+x Add CONVERSATION option. Dragon A and B convo with choices, personality impacts                               (COMPLETED)
+    > add more content. thicker conversation texts										
 x "MOON" is not the proper term, use "NIGHT", "WEEKS" or something else. Only needs to be on UI, not system.	(COMPLETED)
     > Change "MOON" in text prompts as well
 x Add mood aware event text e.g. calm vs crisis 								(COMPLETED)

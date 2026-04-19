@@ -694,7 +694,6 @@ def create_border_sighting_event(world):
         "text": prompt_text,
         "options": options,
     }
-
     return True
 
 def create_border_violation_event(world):
@@ -1229,6 +1228,8 @@ def create_diplomatic_choice(world):
         "type": "diplomatic_choice",
         "scenario": scenario,
         "tribe": tribe,
+        "region": region,
+        "landmark": landmark,
         "text": prompt_text,
         "options": options,
     }
@@ -1385,6 +1386,8 @@ def create_incoming_diplomacy_choice(world):
         "type": "incoming_diplomacy_choice",
         "tribe": tribe,
         "scenario": scenario,
+        "region": region,
+        "landmark": landmark,
         "text": text,
         "options": options,
     }
@@ -1444,6 +1447,23 @@ def record_region_activity(world, region, amount=1):
         world.region_activity[region] = 0
 
     world.region_activity[region] += amount
+
+
+def get_region_intensity(world, region):
+    if not region:
+        return 0.0
+
+    activity = world.region_activity.get(region, 0)
+
+    # soft scaling
+    if activity >= 6:
+        return 0.25   # high tension area
+    elif activity >= 3:
+        return 0.15   # medium activity
+    elif activity >= 1:
+        return 0.05   # low activity
+    else:
+        return 0.0
 
 
 def get_top_active_regions(world, limit=3):
