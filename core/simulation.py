@@ -30,6 +30,12 @@ def are_family(a, b):
 def get_living_dragons(world: World):
     return [d for d in world.dragons if d.status == "Alive"]
 
+def get_eligible_non_dragonets(world: World):
+    return [
+        d for d in world.dragons
+        if d.status == "Alive" and d.role != "Dragonet"
+    ]
+
 def get_world_mood(world):
     tension = getattr(world, "tension", 0.0)
 
@@ -559,6 +565,11 @@ def try_existing_relationship_event(world: World, living):
                 if ("saved_by", dragon.id) in friend.memory_flags:
                     weight += 1.0
 
+                if ("trusted_decision", friend.id) in dragon.memory_flags:
+                    weight += 0.8
+                if ("trusted_decision", dragon.id) in friend.memory_flags:
+                    weight += 0.8
+
                 # Climate support for bonding / recovery
                 weight *= max(0.2, 1.0 + climate["bonding_bias"] + (climate["recovery_bias"] * 0.5))
 
@@ -573,13 +584,16 @@ def try_existing_relationship_event(world: World, living):
                 weight += dragon.resentment.get(rival.id, 0) * 0.20
                 weight += rival.resentment.get(dragon.id, 0) * 0.20
 
-
-
                 # Abandonment memories make rival echoes more likely
                 if ("abandoned_by", rival.id) in dragon.memory_flags:
                     weight += 1.0
                 if ("abandoned_by", dragon.id) in rival.memory_flags:
                     weight += 1.0
+
+                if ("seen_as_unreliable", rival.id) in dragon.memory_flags:
+                    weight += 0.8
+                if ("seen_as_unreliable", dragon.id) in rival.memory_flags:
+                    weight += 0.8
 
                 # Climate support for conflict / suspicion
                 weight *= max(0.2, 1.0 + climate["conflict_bias"] + (climate["suspicion_bias"] * 0.5))
@@ -774,10 +788,7 @@ def create_injured_patrol_choice(world):
         landmark = get_random_landmark(world, region)
         record_region_activity(world, region)
 
-    candidates = [
-        d for d in world.dragons
-        if d.status == "Alive" and d.role != "Dragonet"
-    ]
+    candidates = get_eligible_non_dragonets(world)
 
     if len(candidates) < 2:
         return False
@@ -909,14 +920,14 @@ def create_injured_patrol_choice(world):
 def create_rival_confrontation_choice(world):
     climate = get_tribe_climate(world)
     mood = get_world_mood(world)
-    living = get_living_dragons(world)
+    eligible = get_eligible_non_dragonets(world)
 
     rival_pairs = []
     weights = []
 
-    for dragon in living:
+    for dragon in eligible:
         for rival_id in dragon.rivals:
-            rival = next((d for d in living if d.id == rival_id), None)
+            rival = next((d for d in eligible if d.id == rival_id), None)
             if rival and dragon.id < rival.id:
                 weight = 1.0
 
@@ -1477,6 +1488,10 @@ def get_top_active_regions(world, limit=3):
 
 
 def advance_moon(world: World):
+
+    living = get_living_dragons(world)
+    eligible = get_eligible_non_dragonets(world)
+
     if world.pending_choice is not None:
         return False
 
@@ -1491,8 +1506,6 @@ def advance_moon(world: World):
         world.diplomacy_cooldowns[tribe] -= 1
         if world.diplomacy_cooldowns[tribe] <= 0:
             del world.diplomacy_cooldowns[tribe]
-
-    living = get_living_dragons(world)
 
     for dragon in living:
         tick_dragon_progression(world, dragon, living)

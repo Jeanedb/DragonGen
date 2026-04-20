@@ -3,12 +3,14 @@ import random
 import tkinter as tk
 import customtkinter as ctk
 from pathlib import Path
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw
 
 
 class DragonPortraitPanel(ctk.CTkFrame):
-    def __init__(self, parent, width=480, height=320):
+    def __init__(self, parent, width=320, height=440):
         super().__init__(parent)
+
+        base_dir = Path(__file__).resolve().parent
 
         self.width = width
         self.height = height
@@ -17,16 +19,74 @@ class DragonPortraitPanel(ctk.CTkFrame):
 
         self.use_sprite_tail = True   # set False to instantly go back
         self.tail_img = None
-        self.tail_pivot = (12, 60)
+        self.tail_pivot = (0, 0)
 
-        self.body_tail_socket = (275, 120)   # move red dot
-        self.tail_root = (20, 130)           # move swing pivot within sprite
+        self.body_tail_socket = (276, 109)   # move red dot
+        self.tail_root = (26, 152)        # move swing pivot within sprite
 
-        self.tail_rotation_correction = (100, -62) # first number bigger equals right, second number bigger negative means up, move piece relative to red dot
+        self.tail_rotation_correction = (0, 0) # first number bigger equals right, second number bigger negative means up, move piece relative to red dot
 
         self.body_img = None
         self.body_pil = None
 
+        self.use_sprite_neck = True
+        self.neck_img = None
+        self.neck_pil = None
+
+        self.use_sprite_head = True
+        self.head_img = None
+        self.head_pil = None
+
+        self.body_neck_socket = (100, 65)   # on body image
+        self.neck_root = (22, 6)           # on neck image, where it meets body
+        self.neck_head_socket = (28, 68)    # on neck image, where head attaches
+        self.head_root = (42, 78)           # on head image, where it meets neck
+
+        self.head_rotation_correction = (0, 0)
+
+
+        try:
+            head_path = base_dir.parent / "assets" / "head.png"
+
+            head_pil = Image.open(head_path).convert("RGBA")
+            head_pil = head_pil.resize(
+                (
+                    int(head_pil.width * self.sprite_scale),
+                    int(head_pil.height * self.sprite_scale)
+                ),
+                Image.NEAREST
+            )
+
+            self.head_pil = head_pil
+            self.head_img = ImageTk.PhotoImage(self.head_pil)
+            self._head_ref = self.head_img
+
+        except Exception as e:
+            print(f"Could not load head sprite: {e}")
+            self.head_img = None
+            self.use_sprite_head = False
+
+
+        try:
+            neck_path = base_dir.parent / "assets" / "neck.png"
+
+            neck_pil = Image.open(neck_path).convert("RGBA")
+            neck_pil = neck_pil.resize(
+                (
+                    int(neck_pil.width * self.sprite_scale),
+                    int(neck_pil.height * self.sprite_scale)
+                ),
+                Image.NEAREST
+            )
+
+            self.neck_pil = neck_pil
+            self.neck_img = ImageTk.PhotoImage(self.neck_pil)
+            self._neck_ref = self.neck_img
+
+        except Exception as e:
+            print(f"Could not load neck sprite: {e}")
+            self.neck_img = None
+            self.use_sprite_neck = False
 
 
         try:
@@ -52,8 +112,6 @@ class DragonPortraitPanel(ctk.CTkFrame):
             print(f"Could not load tail sprite: {e}")
             self.tail_img = None
             self.use_sprite_tail = False
-
-
 
         
         try:
@@ -109,6 +167,35 @@ class DragonPortraitPanel(ctk.CTkFrame):
             "behavior": getattr(d, "behavior_type", "calm"),
             "personality": getattr(d, "personality", ""),
         }
+
+    def make_pivot_canvas(self, image, pivot_xy, debug_color=None):
+        """
+        Create a larger transparent square canvas and paste the sprite into it
+        so that pivot_xy inside the sprite lands exactly at the center.
+        """
+        w, h = image.size
+        px, py = pivot_xy
+
+        # Make a big enough square so rotation won't clip
+        side = int(math.ceil(max(w, h) * 2.5))
+        canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+
+        cx = side // 2
+        cy = side // 2
+
+        # Paste sprite so chosen pivot lands in the center
+        paste_x = int(cx - px)
+        paste_y = int(cy - py)
+
+        canvas.paste(image, (paste_x, paste_y), image)
+
+        # Optional debug dot at the true pivot
+        if debug_color:
+            draw = ImageDraw.Draw(canvas)
+            r = 4
+            draw.ellipse((cx-r, cy-r, cx+r, cy+r), fill=debug_color)
+
+        return canvas
 
 
 
@@ -187,6 +274,141 @@ class DragonPortraitPanel(ctk.CTkFrame):
             "gray": "#B0B0B0",
         }
         return colors.get(eye_color.lower(), "gold") if eye_color else "gold"
+
+
+    def rotate_image_about_pivot(self, image, angle_deg, pivot_xy):
+        """
+        Rotate a PIL image around pivot_xy and return:
+        - rotated PIL image
+        - new pivot position inside rotated image
+        """
+        px, py = pivot_xy
+        w, h = image.size
+
+        angle_rad = math.radians(angle_deg)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+
+        # Original image corners relative to pivot
+        corners = [
+            (-px,     -py),
+            (w - px,  -py),
+            (w - px,  h - py),
+            (-px,     h - py),
+        ]
+
+        # Rotate corners
+        rotated = []
+        for x, y in corners:
+            rx = x * cos_a - y * sin_a
+            ry = x * sin_a + y * cos_a
+            rotated.append((rx, ry))
+
+        min_x = min(x for x, y in rotated)
+        min_y = min(y for x, y in rotated)
+        max_x = max(x for x, y in rotated)
+        max_y = max(y for x, y in rotated)
+
+        new_w = int(math.ceil(max_x - min_x))
+        new_h = int(math.ceil(max_y - min_y))
+
+        # Where pivot ends up inside the expanded rotated image
+        new_pivot_x = -min_x
+        new_pivot_y = -min_y
+
+        rotated_img = image.rotate(
+            angle_deg,
+            resample=Image.NEAREST,
+            center=pivot_xy,
+            expand=True
+        )
+
+        return rotated_img, (new_pivot_x, new_pivot_y)
+
+
+    def draw_head_sprite(self, neck_draw_x, neck_draw_y):
+        if not self.use_sprite_head or self.head_img is None:
+            return
+
+        behavior = getattr(self.dragon, "behavior_type", "calm")
+
+        sway_speed = 14
+        max_angle = 4
+
+        if "aggressive" in behavior:
+            sway_speed = 10
+            max_angle = 6
+        elif "timid" in behavior:
+            sway_speed = 18
+            max_angle = 3
+
+        angle = math.sin(self.tick / sway_speed) * max_angle
+
+        neck_socket_x = neck_draw_x + self.neck_head_socket[0]
+        neck_socket_y = neck_draw_y + self.neck_head_socket[1]
+
+        self.canvas.create_oval(
+            neck_socket_x - 3, neck_socket_y - 3,
+            neck_socket_x + 3, neck_socket_y + 3,
+            fill="yellow",
+            outline=""
+        )
+
+        debug_head = self.head_pil.copy()
+        draw = ImageDraw.Draw(debug_head)
+
+        r = 4
+        x, y = self.head_root
+        draw.ellipse((x-r, y-r, x+r, y+r), fill="orange")
+
+        rotated_head = debug_head.rotate(
+            angle,
+            resample=Image.NEAREST,
+            center=self.head_root,
+            expand=True
+        )
+
+        rotated_head_tk = ImageTk.PhotoImage(rotated_head)
+        self._head_ref = rotated_head_tk
+
+        draw_x = neck_socket_x + self.head_rotation_correction[0]
+        draw_y = neck_socket_y + self.head_rotation_correction[1]
+
+        self.canvas.create_image(
+            draw_x,
+            draw_y,
+            image=rotated_head_tk,
+            anchor="center"
+        )
+
+
+
+    def draw_neck(self, left, top):
+        if not self.use_sprite_neck or self.neck_img is None:
+            return None
+
+        body_socket_x = left + self.body_neck_socket[0]
+        body_socket_y = top + self.body_neck_socket[1]
+
+        neck_draw_x = body_socket_x - self.neck_root[0]
+        neck_draw_y = body_socket_y - self.neck_root[1]
+
+        self.canvas.create_oval(
+            body_socket_x - 3, body_socket_y - 3,
+            body_socket_x + 3, body_socket_y + 3,
+            fill="cyan",
+            outline=""
+        )
+
+        self.canvas.create_image(
+            neck_draw_x,
+            neck_draw_y,
+            image=self.neck_img,
+            anchor="nw"
+        )
+
+        return neck_draw_x, neck_draw_y
+
 
     def draw_eyes(self, center_x, head_y, eye_fill):
         eye_style = getattr(self.dragon, "eye_style", "soft") or "soft"
@@ -398,6 +620,7 @@ class DragonPortraitPanel(ctk.CTkFrame):
         body_socket_y = top + self.body_tail_socket[1]
 
         if self.use_sprite_tail and self.tail_img is not None:
+            # red socket on body
             self.canvas.create_oval(
                 body_socket_x - 3, body_socket_y - 3,
                 body_socket_x + 3, body_socket_y + 3,
@@ -405,18 +628,26 @@ class DragonPortraitPanel(ctk.CTkFrame):
                 outline=""
             )
 
-            rotated_tail = self.tail_pil.rotate(
+            # Build pivot canvas so the chosen tail_root becomes the center
+            pivot_canvas = self.make_pivot_canvas(
+                self.tail_pil,
+                self.tail_root,
+                debug_color="lime"
+            )
+
+            # Rotate around center of pivot canvas
+            rotated_tail = pivot_canvas.rotate(
                 angle,
                 resample=Image.NEAREST,
-                center=self.tail_root,
-                expand=True
+                expand=False
             )
 
             rotated_tail_tk = ImageTk.PhotoImage(rotated_tail)
             self._tail_ref = rotated_tail_tk
 
-            draw_x = body_socket_x + self.tail_rotation_correction[0]
-            draw_y = body_socket_y + self.tail_rotation_correction[1]
+            # Draw the pivot canvas centered exactly on the body socket
+            draw_x = body_socket_x
+            draw_y = body_socket_y
 
             self.canvas.create_image(
                 draw_x,
@@ -961,12 +1192,16 @@ class DragonPortraitPanel(ctk.CTkFrame):
         dragon_height = getattr(self.dragon, "height", 5.5)
         size_scale = max(0.85, min(1.2, dragon_height / 5.5))
 
-        body_width = int(140 * size_scale)
-        body_height = int(100 * size_scale)
+        if self.body_img:
+            body_width = self.body_img.width()
+            body_height = self.body_img.height()
+        else:
+            body_width = int(140 * size_scale)
+            body_height = int(100 * size_scale)
 
-        left = (self.width // 2) - (body_width // 2)
-        right = (self.width // 2) + (body_width // 2)
-        top = 80 + breath_offset
+        left = (self.width // 2) - (body_width // 2) + 230
+        top = 220 + breath_offset
+        right = left + body_width
         bottom = top + body_height
 
         center_x = (left + right) // 2
@@ -1005,8 +1240,14 @@ class DragonPortraitPanel(ctk.CTkFrame):
         # special traits 6th in order
         self.draw_special_traits(left, right, top, bottom)
 
-        # head 7th in order
-        self.draw_head(center_x, head_y, body_color)
+        # neck/head 7th in order
+        neck_pos = self.draw_neck(left, top)
+
+        if neck_pos is not None:
+            neck_draw_x, neck_draw_y = neck_pos
+            self.draw_head_sprite(neck_draw_x, neck_draw_y)
+        else:
+            self.draw_head(center_x, head_y, body_color)
 
         # horns 8th in order
         self.draw_horns(center_x, head_y, breath_offset)

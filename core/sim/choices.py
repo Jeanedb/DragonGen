@@ -772,6 +772,14 @@ def resolve_choice(world, option_id):
             if not already_recorded:
                 a.memory_flags.append(saved_flag)
 
+            trusted_flag = ("trusted_decision", b.id, world.moon)
+            already_trusted = any(
+                len(memory) >= 2 and memory[0] == "trusted_decision" and memory[1] == b.id
+                for memory in a.memory_flags
+            )
+            if not already_trusted:
+                a.memory_flags.append(trusted_flag)
+
             log_event(
                 world,
                 f"{b.name} stayed with {a.name} and tried to help despite the danger.",
@@ -802,6 +810,14 @@ def resolve_choice(world, option_id):
             )
             if not already_recorded:
                 a.memory_flags.append(abandoned_flag)
+
+            unreliable_flag = ("seen_as_unreliable", b.id, world.moon)
+            already_unreliable = any(
+                len(memory) >= 2 and memory[0] == "seen_as_unreliable" and memory[1] == b.id
+                for memory in a.memory_flags
+            )
+            if not already_unreliable:
+                a.memory_flags.append(unreliable_flag)
 
             log_event(
                 world,

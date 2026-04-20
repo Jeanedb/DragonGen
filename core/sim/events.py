@@ -14,6 +14,7 @@ from core.sim.selection import (
 def run_event_phase(world):
     from core.simulation import (
         get_living_dragons,
+        get_eligible_non_dragonets,
         try_existing_relationship_event,
     )
 
@@ -21,7 +22,9 @@ def run_event_phase(world):
 
     for _ in range(event_count):
         living = get_living_dragons(world)
-        if len(living) < 2:
+        eligible = get_eligible_non_dragonets(world)
+
+        if len(living) < 1:
             break
 
         roll = random.random()
@@ -36,21 +39,21 @@ def run_event_phase(world):
             elif roll < 0.30:
                 success = try_family_event(world, living)
             elif roll < 0.55:
-                success = try_existing_relationship_event(world, living)
+                success = try_existing_relationship_event(world, eligible)
             elif roll < 0.72:
-                a, b = choose_friendship_pair(living)
+                a, b = choose_friendship_pair(eligible)
                 if a and b:
                     success = add_friendship(world, a, b)
             elif roll < 0.78:
-                success = try_mate_bond_event(world, living)
+                success = try_mate_bond_event(world, eligible)
             elif roll < 0.84:
-                success = try_mate_event(world, living)
+                success = try_mate_event(world, eligible)
             elif roll < 0.94:
-                a, b = choose_rivalry_pair(living)
+                a, b = choose_rivalry_pair(eligible)
                 if a and b:
                     success = add_rivalry(world, a, b)
             else:
-                dragon = choose_injury_dragon(living)
+                dragon = choose_injury_dragon(eligible)
                 if dragon:
                     success = add_injury(world, dragon)
 

@@ -72,6 +72,7 @@ DragonGen/
 - Add appropriate icon for pygame .exe file
 - Slow down reproduction
 - Add sexes. male, female, trans, fluid, etc.
+- leadership preasure broken/working/function? i dont remember.
 - add dragons leaving/entering/returning. Good and bad events
 - Tribe to Tribe relations/events/friendship/rivals/allies/enemies. interactions with other tribes		(WORKING ON IT, NEED TO EXPAND)
 

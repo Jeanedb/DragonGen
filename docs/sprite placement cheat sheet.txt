@@ -1,0 +1,35 @@
+sprite placement cheat sheet
+
+Tail
+self.body_tail_socket
+
+Moves the red dot on the body.
+
+self.tail_root
+
+Moves which point inside the tail sprite tries to sit on that red dot.
+
+self.tail_rotation_correction
+
+Last-resort cleanup after rotation. Keep this near zero if possible.
+
+Neck and head
+self.body_neck_socket
+
+Moves the cyan dot on the body.
+
+self.neck_root
+
+Moves which point in the neck sprite attaches to the cyan dot.
+
+self.neck_head_socket
+
+Moves the yellow dot on the neck.
+
+self.head_root
+
+Moves which point in the head sprite attaches to the yellow dot.
+
+self.head_rotation_correction
+
+Cleanup after head rotation.

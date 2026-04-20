@@ -903,6 +903,8 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
     a_mod = get_personality_conversation_modifiers(a)
     b_mod = get_personality_conversation_modifiers(b)
 
+    both_adult_eligible = (a.role != "Dragonet" and b.role != "Dragonet")
+
     if convo_type == "friendly":
         if option_id == "open_up":
             a_gain = 2 + a_mod["open_up_bonus"] + a_mod["trust_bonus"]
@@ -910,10 +912,11 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             a.trust[b.id] = a.trust.get(b.id, 0) + a_gain
             b.trust[a.id] = b.trust.get(a.id, 0) + b_gain
-            if b.id not in a.friends:
-                a.friends.append(b.id)
-            if a.id not in b.friends:
-                b.friends.append(a.id)
+            if both_adult_eligible:
+                if b.id not in a.friends:
+                    a.friends.append(b.id)
+                if a.id not in b.friends:
+                    b.friends.append(a.id)
 
             reply_line = get_personality_reply_line(b, convo_type, option_id)
             
@@ -974,10 +977,11 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             a.resentment[b.id] = a.resentment.get(b.id, 0) + a_loss
             b.resentment[a.id] = b.resentment.get(a.id, 0) + b_loss
-            if b.id not in a.rivals:
-                a.rivals.append(b.id)
-            if a.id not in b.rivals:
-                b.rivals.append(a.id)
+            if both_adult_eligible:
+                if b.id not in a.rivals:
+                    a.rivals.append(b.id)
+                if a.id not in b.rivals:
+                    b.rivals.append(a.id)
 
             reply_line = get_personality_reply_line(b, convo_type, option_id)
             

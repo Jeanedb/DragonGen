@@ -131,7 +131,7 @@ class EncyclopediaWindow(ctk.CTkToplevel):
         )
         self.title_label.pack(anchor="w", padx=12, pady=(12, 6))
 
-        self.portrait_panel = DragonPortraitPanel(self.detail_frame, width=320, height=240)
+        self.portrait_panel = DragonPortraitPanel(self.detail_frame, width=320, height=440)
         self.portrait_panel.pack(fill="x", padx=12, pady=(0, 12))
 
         self.detail_text = ctk.CTkTextbox(self.detail_frame)
