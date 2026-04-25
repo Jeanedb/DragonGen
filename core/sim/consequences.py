@@ -52,6 +52,7 @@ def resolve_scheduled_event(world, data):
             event_type="delayed_consequence",
             importance=4
         )
+
     elif data["type"] == "possible_defection":
         dragon = next((d for d in world.dragons if d.id == data["dragon_id"]), None)
         caused_by = next((d for d in world.dragons if d.id == data["caused_by"]), None)
@@ -69,6 +70,27 @@ def resolve_scheduled_event(world, data):
 
         if resentment < 3:
             return
+
+        # 🔥 WARNING STAGE (now correctly placed)
+        if random.random() < 0.5:
+            log_event(
+                world,
+                f"{dragon.name} has been distant lately. Something seems off.",
+                involved_ids=[dragon.id],
+                event_type="warning",
+                importance=2,
+                cause="Lingering resentment"
+            )
+
+        if resentment >= 5 and random.random() < 0.6:
+            log_event(
+                world,
+                f"{dragon.name} has been seen speaking with outsiders. Their loyalty may be wavering.",
+                involved_ids=[dragon.id],
+                event_type="serious_warning",
+                importance=3,
+                cause="Growing resentment and instability"
+            )
 
         # Rare, but serious
         chance = 0.30
