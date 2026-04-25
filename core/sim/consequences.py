@@ -1,4 +1,7 @@
 from core.sim.logging import log_event
+import random
+from core.sim.logging import log_event
+from core.sim.politics import get_random_foreign_tribe
 
 
 def schedule_consequence(world, delay, data):
@@ -49,4 +52,89 @@ def resolve_scheduled_event(world, data):
             involved_ids=[abandoned.id, abandoner.id],
             event_type="delayed_consequence",
             importance=4
+        )
+    elif data["type"] == "possible_defection":
+        dragon = next((d for d in world.dragons if d.id == data["dragon_id"]), None)
+        caused_by = next((d for d in world.dragons if d.id == data["caused_by"]), None)
+
+        if not dragon or not caused_by:
+            return
+
+        if dragon.status != "Alive":
+            return
+
+        if dragon.rank in {"Leader", "Deputy"}:
+            return
+
+        resentment = dragon.resentment.get(caused_by.id, 0)
+
+        if resentment < 3:
+            return
+
+        # Rare, but serious
+        chance = 0.30
+
+        if resentment >= 5:
+            chance += 0.15
+
+        if dragon.health == "Injured":
+            chance += 0.10
+
+        if random.random() > chance:
+            return
+
+        old_tribe = dragon.tribe
+        new_tribe = get_random_foreign_tribe(world)
+
+        if not new_tribe:
+            return
+
+        dragon.tribe = new_tribe
+        dragon.role = "Defector"
+        dragon.rank = "Outsider"
+
+        dragon.resentment[caused_by.id] = dragon.resentment.get(caused_by.id, 0) + 3
+
+        log_event(
+            world,
+            f"{dragon.name} left the {old_tribe}s behind and defected to the {new_tribe}s, still carrying resentment toward {caused_by.name}.",
+            involved_ids=[dragon.id, caused_by.id],
+            event_type="defection",
+            importance=6,
+            cause="A past abandonment finally pushed them away"
+        )
+
+        schedule_consequence(world, delay=5, data={
+            "type": "defector_returns",
+            "dragon_id": dragon.id,
+            "target_id": caused_by.id
+        })
+    
+    elif data["type"] == "defector_returns":
+        dragon = next((d for d in world.dragons if d.id == data["dragon_id"]), None)
+        target = next((d for d in world.dragons if d.id == data["target_id"]), None)
+
+        if not dragon or not target:
+            return
+
+        if dragon.status != "Alive" or target.status != "Alive":
+            return
+
+        if dragon.role != "Defector":
+            return
+
+        if target.id not in dragon.rivals:
+            dragon.rivals.append(target.id)
+        if dragon.id not in target.rivals:
+            target.rivals.append(dragon.id)
+
+        dragon.resentment[target.id] = dragon.resentment.get(target.id, 0) + 2
+
+        log_event(
+            world,
+            f"{dragon.name}, now of the {dragon.tribe}s, was sighted again near the territory. Their hostility toward {target.name} has only grown.",
+            involved_ids=[dragon.id, target.id],
+            event_type="defector_return",
+            importance=5,
+            cause="A past defection has come back to haunt the tribe"
         )

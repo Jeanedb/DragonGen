@@ -145,6 +145,12 @@ def handle_personal_choice(world, option_id):
                     "abandoner": b.id
                 })
 
+                schedule_consequence(world, delay=6, data={
+                    "type": "possible_defection",
+                    "dragon_id": a.id,
+                    "caused_by": b.id
+                })
+
     elif choice["type"] == "rival_confrontation_choice":
         if option_id == "back_down":
 
