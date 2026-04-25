@@ -1,5 +1,6 @@
 import random
 from core.sim.logging import log_event
+from core.sim.consequences import schedule_consequence
 
 
 def handle_personal_choice(world, option_id):
@@ -82,7 +83,7 @@ def handle_personal_choice(world, option_id):
                     event_type="injury",
                     importance=3
                 )
-
+        elif option_id == "run_for_help":
             b.watchful_actions += 1
             a.legend_flags["hardship_marks"] = a.legend_flags.get("hardship_marks", 0) + 1
 
@@ -137,6 +138,12 @@ def handle_personal_choice(world, option_id):
                     event_type="choice_abandonment",
                     importance=3
                 )
+
+                schedule_consequence(world, delay=4, data={
+                    "type": "abandoned_return",
+                    "abandoned": a.id,
+                    "abandoner": b.id
+                })
 
     elif choice["type"] == "rival_confrontation_choice":
         if option_id == "back_down":

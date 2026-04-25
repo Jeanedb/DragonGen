@@ -4,6 +4,7 @@ from core.sim.leadership import try_leadership_event
 from core.sim.family import try_family_event
 from core.sim.injury import add_injury
 from core.sim.mates import try_mate_event, try_mate_bond_event
+from core.sim.world_state import get_eligible_non_dragonets
 from core.sim.selection import (
     choose_friendship_pair,
     choose_rivalry_pair,
@@ -14,7 +15,6 @@ from core.sim.selection import (
 def run_event_phase(world):
     from core.simulation import (
         get_living_dragons,
-        get_eligible_non_dragonets,
         try_existing_relationship_event,
     )
 

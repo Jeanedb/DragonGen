@@ -9,12 +9,9 @@ from ui.encyclopedia import EncyclopediaWindow
 from core.sim.politics import get_relation_status
 from ui.tribal_relations import TribalRelationsWindow
 from ui.conversation_panel import ConversationPanel
-from core.simulation import (
-    advance_moon,
-    resolve_choice,
-    get_world_mood,
-    get_tribe_climate,
-)
+from core.simulation import advance_moon
+from core.sim.choices import resolve_choice
+from core.sim.world_state import get_world_mood, get_tribe_climate
 from core.save_manager import save_world, load_world
 from core.sim.leadership import maintain_hierarchy, get_leader_by_id
 
