@@ -5,6 +5,7 @@ import customtkinter as ctk
 from pathlib import Path
 from PIL import Image, ImageTk, ImageDraw
 
+#ROTATION_ENABLED = FALSE (off) TRUE (on)
 
 class DragonPortraitPanel(ctk.CTkFrame):
     def __init__(self, parent, width=320, height=440):
@@ -17,54 +18,109 @@ class DragonPortraitPanel(ctk.CTkFrame):
         self.dragon = None
         self.sprite_scale = 0.5
 
+#TAIL
         self.use_sprite_tail = True   # set False to instantly go back
         self.tail_img = None
-        self.tail_pivot = (0, 0)
 
-        self.body_tail_socket = (276, 109)   # move red dot
-        self.tail_root = (26, 152)        # move swing pivot within sprite
+        self.body_tail_socket = (268, 110)   # move red dot
+        self.tail_root = (26, 154)        # move swing pivot within sprite
 
         self.tail_rotation_correction = (0, 0) # first number bigger equals right, second number bigger negative means up, move piece relative to red dot
 
+#BODY
         self.body_img = None
         self.body_pil = None
 
+#NECK
         self.use_sprite_neck = True
         self.neck_img = None
         self.neck_pil = None
 
+#HEAD
         self.use_sprite_head = True
         self.head_img = None
         self.head_pil = None
 
-        self.body_neck_socket = (100, 65)   # on body image
-        self.neck_root = (22, 6)           # on neck image, where it meets body
-        self.neck_head_socket = (28, 68)    # on neck image, where head attaches
-        self.head_root = (42, 78)           # on head image, where it meets neck
+        self.head_open_pil = None
+        self.head_half_pil = None
+        self.head_closed_pil = None
+
+        self.blink_state = "open"
+        self.blink_phase = "idle"
+        self.blink_timer = random.randint(80, 220)
+
+        self.body_neck_socket = (39, 12)   # on body image
+        self.neck_root = (24, 110)           # on neck image, where it meets body
+        self.neck_head_socket = (27, 30)    # on neck image, where head attaches
+        self.head_root = (42, 51)           # on head image, where it meets neck
 
         self.head_rotation_correction = (0, 0)
 
+#LEFT WING (BACK)
+        self.use_sprite_wing_left = True
+        self.wing_left_img = None
+        self.wing_left_pil = None
+
+        self.body_left_wing_socket = (70, 50)   # starting guess on body
+        self.wing_left_root = (15, 166)         # starting guess inside wing sprite
+
+#RIGHT WING (FRONT)
+        self.use_sprite_wing_right = True
+        self.wing_right_img = None
+        self.wing_right_pil = None
+
+        self.body_right_wing_socket = (80, 60)   # starting guess on body
+        self.wing_right_root = (15, 166)         # starting guess inside wing sprite
+
+
+# FEET
+        self.use_sprite_feet = True
+        self.feet_img = None
+        self.feet_pil = None
+
+        self.body_feet_socket = (98, 103)   # starting guess
+        self.feet_root = (60, 20)            # starting guess inside feet sprite
+
+        self.feet_rotation_enabled = False
+        self.feet_rotation_correction = (0, 0)
+
+
 
         try:
-            head_path = base_dir.parent / "assets" / "head.png"
+            head_open_path = base_dir.parent / "assets" / "head_open.png"
+            head_half_path = base_dir.parent / "assets" / "head_half.png"
+            head_closed_path = base_dir.parent / "assets" / "head_closed.png"
 
-            head_pil = Image.open(head_path).convert("RGBA")
-            head_pil = head_pil.resize(
+            self.head_open_pil = Image.open(head_open_path).convert("RGBA")
+            self.head_half_pil = Image.open(head_half_path).convert("RGBA")
+            self.head_closed_pil = Image.open(head_closed_path).convert("RGBA")
+
+            self.head_open_pil = self.head_open_pil.resize(
                 (
-                    int(head_pil.width * self.sprite_scale),
-                    int(head_pil.height * self.sprite_scale)
+                    int(self.head_open_pil.width * self.sprite_scale),
+                    int(self.head_open_pil.height * self.sprite_scale)
                 ),
                 Image.NEAREST
             )
 
-            self.head_pil = head_pil
-            self.head_img = ImageTk.PhotoImage(self.head_pil)
-            self._head_ref = self.head_img
+            self.head_half_pil = self.head_half_pil.resize(
+                (
+                    int(self.head_half_pil.width * self.sprite_scale),
+                    int(self.head_half_pil.height * self.sprite_scale)
+                ),
+                Image.NEAREST
+            )
+
+            self.head_closed_pil = self.head_closed_pil.resize(
+                (
+                    int(self.head_closed_pil.width * self.sprite_scale),
+                    int(self.head_closed_pil.height * self.sprite_scale)
+                ),
+                Image.NEAREST
+            )
 
         except Exception as e:
-            print(f"Could not load head sprite: {e}")
-            self.head_img = None
-            self.use_sprite_head = False
+            print(f"Could not load head blink frames: {e}")
 
 
         try:
@@ -148,6 +204,277 @@ class DragonPortraitPanel(ctk.CTkFrame):
         self.canvas.pack(fill="both", expand=True)
 
         self.after(50, self.animate)
+
+
+        try:
+            wing_left_path = base_dir.parent / "assets" / "wing_left.png"
+
+            wing_left_pil = Image.open(wing_left_path).convert("RGBA")
+            wing_left_pil = wing_left_pil.resize(
+                (
+                    int(wing_left_pil.width * self.sprite_scale),
+                    int(wing_left_pil.height * self.sprite_scale)
+                ),
+                Image.NEAREST
+            )
+
+            self.wing_left_pil = wing_left_pil
+            self.wing_left_img = ImageTk.PhotoImage(self.wing_left_pil)
+            self._wing_left_ref = self.wing_left_img
+
+        except Exception as e:
+            print(f"Could not load left wing sprite: {e}")
+            self.wing_left_img = None
+            self.use_sprite_wing_left = False
+
+
+        try:
+            wing_right_path = base_dir.parent / "assets" / "wing_right.png"
+
+            wing_right_pil = Image.open(wing_right_path).convert("RGBA")
+            wing_right_pil = wing_right_pil.resize(
+                (
+                    int(wing_right_pil.width * self.sprite_scale),
+                    int(wing_right_pil.height * self.sprite_scale)
+                ),
+                Image.NEAREST
+            )
+
+            self.wing_right_pil = wing_right_pil
+            self.wing_right_img = ImageTk.PhotoImage(self.wing_right_pil)
+            self._wing_right_ref = self.wing_right_img
+
+        except Exception as e:
+            print(f"Could not load right wing sprite: {e}")
+            self.wing_right_img = None
+            self.use_sprite_wing_right = False
+
+
+        try:
+            feet_path = base_dir.parent / "assets" / "feet.png"
+
+            feet_pil = Image.open(feet_path).convert("RGBA")
+            feet_pil = feet_pil.resize(
+                (
+                    int(feet_pil.width * self.sprite_scale),
+                    int(feet_pil.height * self.sprite_scale)
+                ),
+                Image.NEAREST
+            )
+
+            self.feet_pil = feet_pil
+            self.feet_img = ImageTk.PhotoImage(self.feet_pil)
+            self._feet_ref = self.feet_img
+
+        except Exception as e:
+            print(f"Could not load feet sprite: {e}")
+            self.feet_img = None
+            self.use_sprite_feet = False
+
+
+    def clamp_rgb(self, value):
+        return max(0, min(255, int(value)))
+
+    def vary_color(self, rgb, shift_r=0, shift_g=0, shift_b=0, brightness=1.0):
+        r, g, b = rgb
+        r = self.clamp_rgb((r + shift_r) * brightness)
+        g = self.clamp_rgb((g + shift_g) * brightness)
+        b = self.clamp_rgb((b + shift_b) * brightness)
+        return (r, g, b)
+
+    def recolor_grayscale_image(self, image, dark_rgb, mid_rgb, light_rgb):
+        img = image.convert("RGBA")
+        pixels = img.load()
+        w, h = img.size
+    
+        for y in range(h):
+            for x in range(w):
+                r, g, b, a = pixels[x, y]
+    
+                if a == 0:
+                    continue
+
+                brightness = (r + g + b) / 3 / 255.0
+
+                # optional: preserve very bright belly/white highlights more
+                if brightness > 0.92:
+                    continue
+
+                if brightness < 0.5:
+                    t = brightness / 0.5
+                    nr = int(dark_rgb[0] * (1 - t) + mid_rgb[0] * t)
+                    ng = int(dark_rgb[1] * (1 - t) + mid_rgb[1] * t)
+                    nb = int(dark_rgb[2] * (1 - t) + mid_rgb[2] * t)
+                else:
+                    t = (brightness - 0.5) / 0.5
+                    nr = int(mid_rgb[0] * (1 - t) + light_rgb[0] * t)
+                    ng = int(mid_rgb[1] * (1 - t) + light_rgb[1] * t)
+                    nb = int(mid_rgb[2] * (1 - t) + light_rgb[2] * t)
+    
+                pixels[x, y] = (nr, ng, nb, a)
+    
+        return img
+
+    def get_individualized_ramp(self, tribe):
+        dark_rgb, mid_rgb, light_rgb = self.get_tribe_color_ramp(tribe)
+
+        dragon_id = getattr(self.dragon, "id", 0)
+
+        hue_shift = (dragon_id % 5) - 2
+        green_shift = ((dragon_id // 3) % 5) - 2
+        bright_shift = ((dragon_id // 7) % 5) - 2
+
+        shift_r = hue_shift * 6
+        shift_g = green_shift * 6
+        shift_b = -hue_shift * 4
+        brightness = 1.0 + (bright_shift * 0.04)
+
+        varied_dark = self.vary_color(dark_rgb, shift_r, shift_g, shift_b, brightness)
+        varied_mid = self.vary_color(mid_rgb, shift_r, shift_g, shift_b, brightness)
+        varied_light = self.vary_color(light_rgb, shift_r, shift_g, shift_b, brightness)
+
+        return varied_dark, varied_mid, varied_light
+
+    def get_recolored_part(self, pil_image):
+        if pil_image is None or self.dragon is None:
+            return pil_image
+
+        dark_rgb, mid_rgb, light_rgb = self.get_individualized_ramp(self.dragon.tribe)
+        return self.recolor_grayscale_image(pil_image, dark_rgb, mid_rgb, light_rgb)
+
+
+    def recolor_grayscale_image(self, image, dark_rgb, mid_rgb, light_rgb):
+        """
+        Recolor a grayscale RGBA sprite using a 3-color ramp while preserving alpha.
+        Assumes the image is grayscale or close to grayscale.
+        """
+        img = image.convert("RGBA")
+        pixels = img.load()
+        w, h = img.size
+
+        for y in range(h):
+            for x in range(w):
+                r, g, b, a = pixels[x, y]
+        
+                if a == 0:
+                    continue
+
+                # brightness from 0 to 1
+                brightness = (r + g + b) / 3 / 255.0
+
+                if brightness < 0.5:
+                    # blend dark -> mid
+                    t = brightness / 0.5
+                    nr = int(dark_rgb[0] * (1 - t) + mid_rgb[0] * t)
+                    ng = int(dark_rgb[1] * (1 - t) + mid_rgb[1] * t)
+                    nb = int(dark_rgb[2] * (1 - t) + mid_rgb[2] * t)
+                else:
+                    # blend mid -> light
+                    t = (brightness - 0.5) / 0.5
+                    nr = int(mid_rgb[0] * (1 - t) + light_rgb[0] * t)
+                    ng = int(mid_rgb[1] * (1 - t) + light_rgb[1] * t)
+                    nb = int(mid_rgb[2] * (1 - t) + light_rgb[2] * t)
+
+                pixels[x, y] = (nr, ng, nb, a)
+        
+        return img
+
+    def clamp_rgb(self, value):
+        return max(0, min(255, int(value)))
+
+
+    def vary_color(self, rgb, shift_r=0, shift_g=0, shift_b=0, brightness=1.0):
+        r, g, b = rgb
+        r = self.clamp_rgb((r + shift_r) * brightness)
+        g = self.clamp_rgb((g + shift_g) * brightness)
+        b = self.clamp_rgb((b + shift_b) * brightness)
+        return (r, g, b)
+
+
+    def get_individualized_ramp(self, tribe):
+        dark_rgb, mid_rgb, light_rgb = self.get_tribe_color_ramp(tribe)
+
+        dragon_id = getattr(self.dragon, "id", 0)
+
+        # stable per-dragon offsets
+        hue_shift = (dragon_id % 5) - 2          # -2 to +2
+        green_shift = ((dragon_id // 3) % 5) - 2 # -2 to +2
+        bright_shift = ((dragon_id // 7) % 5) - 2
+
+        # subtle values only
+        shift_r = hue_shift * 6
+        shift_g = green_shift * 6
+        shift_b = -hue_shift * 4
+
+        brightness = 1.0 + (bright_shift * 0.04)
+
+        varied_dark = self.vary_color(dark_rgb, shift_r, shift_g, shift_b, brightness)
+        varied_mid = self.vary_color(mid_rgb, shift_r, shift_g, shift_b, brightness)
+        varied_light = self.vary_color(light_rgb, shift_r, shift_g, shift_b, brightness)
+
+        return varied_dark, varied_mid, varied_light
+
+
+    def get_tribe_color_ramp(self, tribe):
+        ramps = {
+            "MudWing": ((60, 40, 28), (110, 79, 58), (160, 125, 95)),
+            "NightWing": ((20, 18, 28), (45, 40, 65), (90, 85, 120)),
+            "SkyWing": ((90, 25, 18), (150, 55, 35), (220, 120, 70)),
+            "IceWing": ((120, 160, 180), (170, 210, 230), (230, 245, 255)),
+            "SandWing": ((120, 90, 40), (180, 145, 80), (235, 210, 150)),
+            "SeaWing": ((10, 40, 55), (40, 130, 170), (140, 220, 240)), 
+            "RainWing": ((30, 90, 45), (60, 160, 80), (140, 230, 120)),
+            "HiveWing": ((90, 70, 25), (150, 120, 40), (220, 180, 80)),
+            "SilkWing": ((80, 60, 110), (140, 110, 180), (220, 190, 240)),
+            "LeafWing": ((30, 80, 35), (60, 130, 60), (130, 200, 110)),
+        }
+        return ramps.get(tribe, ((50, 50, 50), (130, 130, 130), (220, 220, 220)))
+
+
+    def draw_feet_sprite(self, left, top):
+        if not self.use_sprite_feet or self.feet_img is None:
+            return
+
+        feet_socket_x = left + self.body_feet_socket[0]
+        feet_socket_y = top + self.body_feet_socket[1]
+
+        self.canvas.create_oval(
+            feet_socket_x - 3, feet_socket_y - 3,
+            feet_socket_x + 3, feet_socket_y + 3,
+            fill="dodgerblue",
+            outline=""
+        )
+
+        angle = 0
+        if self.feet_rotation_enabled:
+            angle = math.sin(self.tick / 12) * 4
+
+        recolored_feet = self.get_recolored_part(self.feet_pil)
+
+        pivot_canvas = self.make_pivot_canvas(
+            recolored_feet,
+            self.feet_root,
+            debug_color="orange"
+        )
+
+        rotated_feet = pivot_canvas.rotate(
+            angle,
+            resample=Image.NEAREST,
+            expand=False
+        )
+    
+        rotated_feet_tk = ImageTk.PhotoImage(rotated_feet)
+        self._feet_ref = rotated_feet_tk
+
+        draw_x = feet_socket_x + self.feet_rotation_correction[0]
+        draw_y = feet_socket_y + self.feet_rotation_correction[1]
+
+        self.canvas.create_image(
+            draw_x,
+            draw_y,
+            image=rotated_feet_tk,
+            anchor="center"
+        )
 
 
     def get_visual_state(self):
@@ -276,6 +603,78 @@ class DragonPortraitPanel(ctk.CTkFrame):
         return colors.get(eye_color.lower(), "gold") if eye_color else "gold"
 
 
+    def draw_sprite_part(
+        self,
+        pil_image,
+        socket_x,
+        socket_y,
+        root,
+        angle=0,
+        debug_color=None,
+        recolor_mode="body",
+        dim_factor=None,
+        ref_attr="_part_ref"
+    ):
+        """
+        Generic sprite-part renderer.
+
+        pil_image: PIL image for the part
+        socket_x/socket_y: where the part attaches on canvas
+        root: pivot/root point inside the sprite
+        angle: rotation angle in degrees
+        debug_color: optional pivot debug dot color
+        recolor_mode: "body", "wing", or None
+        dim_factor: optional brightness multiplier after rotation
+        ref_attr: attribute name to store PhotoImage reference
+        """
+        if pil_image is None:
+            return
+
+        # recolor
+        if recolor_mode == "body":
+            part_img = self.get_recolored_part(pil_image)
+        elif recolor_mode == "wing":
+            part_img = self.get_recolored_wing_part(pil_image)
+        else:
+            part_img = pil_image
+
+        pivot_canvas = self.make_pivot_canvas(
+            part_img,
+            root,
+            debug_color=debug_color
+        )
+
+        rotated = pivot_canvas.rotate(
+            angle,
+            resample=Image.NEAREST,
+            expand=False
+        )
+
+        if dim_factor is not None:
+            rotated = rotated.copy().point(lambda p: int(p * dim_factor))
+
+        tk_img = ImageTk.PhotoImage(rotated)
+        setattr(self, ref_attr, tk_img)
+
+        self.canvas.create_image(
+            socket_x,
+            socket_y,
+            image=tk_img,
+            anchor="center"
+        )
+
+
+    def rotate_point(self, x, y, angle_deg):
+        angle_rad = math.radians(angle_deg)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+    
+        rx = x * cos_a - y * sin_a
+        ry = x * sin_a + y * cos_a
+        return rx, ry
+
+
+
     def rotate_image_about_pivot(self, image, angle_deg, pivot_xy):
         """
         Rotate a PIL image around pivot_xy and return:
@@ -326,72 +725,200 @@ class DragonPortraitPanel(ctk.CTkFrame):
         return rotated_img, (new_pivot_x, new_pivot_y)
 
 
-    def draw_head_sprite(self, neck_draw_x, neck_draw_y):
-        if not self.use_sprite_head or self.head_img is None:
+    def draw_left_wing(self, left, top):
+        if not self.use_sprite_wing_left or self.wing_left_img is None:
             return
 
         behavior = getattr(self.dragon, "behavior_type", "calm")
 
+        flap_speed = 12
+        max_angle = 10
+
+        if "aggressive" in behavior:
+            flap_speed = 8
+            max_angle = 16
+        elif "timid" in behavior:
+            flap_speed = 16
+            max_angle = 6
+
+        angle = math.sin((self.tick - 3)/ flap_speed) * max_angle
+
+        wing_socket_x = left + self.body_left_wing_socket[0]
+        wing_socket_y = top + self.body_left_wing_socket[1]
+
+        self.canvas.create_oval(
+            wing_socket_x - 3, wing_socket_y - 3,
+            wing_socket_x + 3, wing_socket_y + 3,
+            fill="magenta",
+            outline=""
+        )
+
+        recolored_left_wing = self.get_recolored_wing_part(self.wing_left_pil)
+        
+        pivot_canvas = self.make_pivot_canvas(
+            recolored_left_wing,
+            self.wing_left_root,
+            debug_color="white"
+        )
+
+        rotated_wing = pivot_canvas.rotate(
+            angle,
+            resample=Image.NEAREST,
+            expand=False
+        )
+
+        rotated_wing = rotated_wing.copy()
+        rotated_wing = rotated_wing.point(lambda p: int(p * 0.85))  # slight dim
+
+        rotated_wing_tk = ImageTk.PhotoImage(rotated_wing)
+        self._wing_left_ref = rotated_wing_tk
+
+        self.canvas.create_image(
+            wing_socket_x,
+            wing_socket_y,
+            image=rotated_wing_tk,
+            anchor="center"
+        )
+
+
+    def draw_right_wing(self, left, top):
+        if not self.use_sprite_wing_right or self.wing_right_img is None:
+            return
+
+        behavior = getattr(self.dragon, "behavior_type", "calm")
+
+        flap_speed = 12
+        max_angle = 10
+
+        if "aggressive" in behavior:
+            flap_speed = 8
+            max_angle = 16
+        elif "timid" in behavior:
+            flap_speed = 16
+            max_angle = 6
+
+        angle = math.sin(self.tick / flap_speed) * max_angle
+
+        wing_socket_x = left + self.body_right_wing_socket[0]
+        wing_socket_y = top + self.body_right_wing_socket[1]
+
+        self.canvas.create_oval(
+            wing_socket_x - 3, wing_socket_y - 3,
+            wing_socket_x + 3, wing_socket_y + 3,
+            fill="magenta",
+            outline=""
+        )
+
+        recolored_right_wing = self.get_recolored_wing_part(self.wing_right_pil)
+
+        pivot_canvas = self.make_pivot_canvas(
+            recolored_right_wing,
+            self.wing_right_root,
+            debug_color="white"
+        )
+
+        rotated_wing = pivot_canvas.rotate(
+            angle,
+            resample=Image.NEAREST,
+            expand=False
+        )
+
+        rotated_wing_tk = ImageTk.PhotoImage(rotated_wing)
+        self._wing_right_ref = rotated_wing_tk
+
+        self.canvas.create_image(
+            wing_socket_x,
+            wing_socket_y,
+            image=rotated_wing_tk,
+            anchor="center"
+        )
+
+    
+    def draw_head_sprite(self, neck_socket_x, neck_socket_y, neck_angle):
+        if not self.use_sprite_head or self.head_open_pil is None:
+            return
+    
+        if self.blink_state == "open":
+            current_head = self.head_open_pil
+        elif self.blink_state == "half":
+            current_head = self.head_half_pil
+        else:
+            current_head = self.head_closed_pil
+    
+        behavior = getattr(self.dragon, "behavior_type", "calm")
+    
         sway_speed = 14
         max_angle = 4
-
+    
         if "aggressive" in behavior:
             sway_speed = 10
             max_angle = 6
         elif "timid" in behavior:
             sway_speed = 18
             max_angle = 3
+    
+        head_local_angle = math.sin(self.tick / sway_speed) * max_angle
+    
+        # vector from neck root to head socket, in neck-image space
+        offset_x = self.neck_head_socket[0] - self.neck_root[0]
+        offset_y = self.neck_head_socket[1] - self.neck_root[1]
+    
+        rotated_offset_x, rotated_offset_y = self.rotate_point(offset_x, offset_y, neck_angle)
 
-        angle = math.sin(self.tick / sway_speed) * max_angle
-
-        neck_socket_x = neck_draw_x + self.neck_head_socket[0]
-        neck_socket_y = neck_draw_y + self.neck_head_socket[1]
-
+        final_head_socket_x = neck_socket_x + rotated_offset_x
+        final_head_socket_y = neck_socket_y + rotated_offset_y
+    
+        final_head_angle = neck_angle + head_local_angle
+    
         self.canvas.create_oval(
-            neck_socket_x - 3, neck_socket_y - 3,
-            neck_socket_x + 3, neck_socket_y + 3,
-            fill="yellow",
+            final_head_socket_x - 3, final_head_socket_y - 3,
+            final_head_socket_x + 3, final_head_socket_y + 3,
+            fill="orange",
             outline=""
         )
-
-        debug_head = self.head_pil.copy()
-        draw = ImageDraw.Draw(debug_head)
-
-        r = 4
-        x, y = self.head_root
-        draw.ellipse((x-r, y-r, x+r, y+r), fill="orange")
-
-        rotated_head = debug_head.rotate(
-            angle,
-            resample=Image.NEAREST,
-            center=self.head_root,
-            expand=True
+    
+        self.draw_sprite_part(
+            pil_image=current_head,
+            socket_x=final_head_socket_x,
+            socket_y=final_head_socket_y,
+            root=self.head_root,
+            angle=final_head_angle,
+            debug_color="orange",
+            recolor_mode="body",
+            ref_attr="_head_ref"
         )
+        
 
-        rotated_head_tk = ImageTk.PhotoImage(rotated_head)
-        self._head_ref = rotated_head_tk
-
-        draw_x = neck_socket_x + self.head_rotation_correction[0]
-        draw_y = neck_socket_y + self.head_rotation_correction[1]
-
-        self.canvas.create_image(
-            draw_x,
-            draw_y,
-            image=rotated_head_tk,
-            anchor="center"
-        )
-
+    def rotate_point(self, x, y, angle_deg):
+        angle_rad = math.radians(angle_deg)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+    
+        rx = x * cos_a - y * sin_a
+        ry = x * sin_a + y * cos_a
+        return rx, ry
 
 
     def draw_neck(self, left, top):
-        if not self.use_sprite_neck or self.neck_img is None:
+        if not self.use_sprite_neck or self.neck_pil is None:
             return None
-
+    
         body_socket_x = left + self.body_neck_socket[0]
         body_socket_y = top + self.body_neck_socket[1]
+    
+        behavior = getattr(self.dragon, "behavior_type", "calm")
+    
+        sway_speed = 16
+        max_angle = 3
+    
+        if "aggressive" in behavior:
+            sway_speed = 12
+            max_angle = 5
+        elif "timid" in behavior:
+            sway_speed = 20
+            max_angle = 2
 
-        neck_draw_x = body_socket_x - self.neck_root[0]
-        neck_draw_y = body_socket_y - self.neck_root[1]
+        neck_angle = math.sin(self.tick / sway_speed) * max_angle
 
         self.canvas.create_oval(
             body_socket_x - 3, body_socket_y - 3,
@@ -400,14 +927,32 @@ class DragonPortraitPanel(ctk.CTkFrame):
             outline=""
         )
 
-        self.canvas.create_image(
-            neck_draw_x,
-            neck_draw_y,
-            image=self.neck_img,
-            anchor="nw"
+        self.draw_sprite_part(
+            pil_image=self.neck_pil,
+            socket_x=body_socket_x,
+            socket_y=body_socket_y,
+            root=self.neck_root,
+            angle=neck_angle,
+            debug_color="cyan",
+            recolor_mode="body",
+            ref_attr="_neck_ref"
         )
 
-        return neck_draw_x, neck_draw_y
+        return body_socket_x, body_socket_y, neck_angle
+
+
+    def get_recolored_wing_part(self, pil_image):
+        if pil_image is None or self.dragon is None:
+            return pil_image
+    
+        dark_rgb, mid_rgb, light_rgb = self.get_individualized_ramp(self.dragon.tribe)
+    
+        # wings usually look better a little lighter/airier than body scales
+        wing_dark = self.vary_color(dark_rgb, 0, 0, 0, 1.03)
+        wing_mid = self.vary_color(mid_rgb, 0, 0, 0, 1.06)
+        wing_light = self.vary_color(light_rgb, 0, 0, 0, 1.08)
+    
+        return self.recolor_grayscale_image(pil_image, wing_dark, wing_mid, wing_light)
 
 
     def draw_eyes(self, center_x, head_y, eye_fill):
@@ -598,9 +1143,10 @@ class DragonPortraitPanel(ctk.CTkFrame):
                 outline=""
             )
 
+
     def draw_tail(self, left, top, breath_offset):
         behavior = getattr(self.dragon, "behavior_type", "calm")
-
+    
         sway_speed = 10
         max_angle = 8
 
@@ -613,95 +1159,32 @@ class DragonPortraitPanel(ctk.CTkFrame):
         elif "timid" in behavior:
             sway_speed = 14
             max_angle = 5
-
+    
         angle = math.sin(self.tick / sway_speed) * max_angle
-
+        
         body_socket_x = left + self.body_tail_socket[0]
         body_socket_y = top + self.body_tail_socket[1]
-
+    
         if self.use_sprite_tail and self.tail_img is not None:
-            # red socket on body
             self.canvas.create_oval(
                 body_socket_x - 3, body_socket_y - 3,
                 body_socket_x + 3, body_socket_y + 3,
                 fill="red",
                 outline=""
             )
-
-            # Build pivot canvas so the chosen tail_root becomes the center
-            pivot_canvas = self.make_pivot_canvas(
-                self.tail_pil,
-                self.tail_root,
-                debug_color="lime"
-            )
-
-            # Rotate around center of pivot canvas
-            rotated_tail = pivot_canvas.rotate(
-                angle,
-                resample=Image.NEAREST,
-                expand=False
-            )
-
-            rotated_tail_tk = ImageTk.PhotoImage(rotated_tail)
-            self._tail_ref = rotated_tail_tk
-
-            # Draw the pivot canvas centered exactly on the body socket
-            draw_x = body_socket_x
-            draw_y = body_socket_y
-
-            self.canvas.create_image(
-                draw_x,
-                draw_y,
-                image=rotated_tail_tk,
-                anchor="center"
+    
+            self.draw_sprite_part(
+                pil_image=self.tail_pil,
+                socket_x=body_socket_x,
+                socket_y=body_socket_y,
+                root=self.tail_root,
+                angle=angle,
+                debug_color="lime",
+                recolor_mode="body",
+                ref_attr="_tail_ref"
             )
             return
 
-        # --- ORIGINAL GEOMETRIC FALLBACK ---
-        if tail_type == "standard":
-            self.canvas.create_line(
-                tail_base_x, tail_base_y,
-                tail_base_x + 40, tail_base_y + 10 + sway,
-                tail_base_x + 70, tail_base_y - 5,
-                fill=body_color,
-                width=8,
-                smooth=True
-            )
-
-        elif tail_type == "long":
-            self.canvas.create_line(
-                tail_base_x, tail_base_y,
-                tail_base_x + 60, tail_base_y + 20 + sway,
-                tail_base_x + 100, tail_base_y - 10,
-                fill=body_color,
-                width=8,
-                smooth=True
-            )
-
-        elif tail_type == "spiked":
-            self.canvas.create_line(
-                tail_base_x, tail_base_y,
-                tail_base_x + 50, tail_base_y + 10 + sway,
-                fill=body_color,
-                width=8,
-                smooth=True
-            )
-            self.canvas.create_polygon(
-                tail_base_x + 50, tail_base_y + 10 + sway,
-                tail_base_x + 65, tail_base_y - 5 + sway,
-                tail_base_x + 70, tail_base_y + 15 + sway,
-                fill="#CCCCCC",
-                outline=""
-            )
-
-        elif tail_type == "thin":
-            self.canvas.create_line(
-                tail_base_x, tail_base_y,
-                tail_base_x + 60, tail_base_y + sway,
-                fill=body_color,
-                width=4,
-                smooth=True
-            )
 
     def draw_horns(self, center_x, head_y, breath_offset):
         horn_type = getattr(self.dragon, "horn_type", "straight") or "straight"
@@ -1139,12 +1622,27 @@ class DragonPortraitPanel(ctk.CTkFrame):
         self.blink_timer -= 1
 
         if self.blink_timer <= 0:
-            if self.blink_state == "open":
-                self.blink_state = "closed"
-                self.blink_timer = 6
-            else:
-                self.blink_state = "open"
-                self.blink_timer = random.randint(80, 220)
+
+            if self.blink_phase == "idle":
+                # start blink
+                self.blink_state = "half"
+                self.blink_phase = "closing"
+                self.blink_timer = 3
+
+            elif self.blink_phase == "closing":
+                if self.blink_state == "half":
+                    self.blink_state = "closed"
+                    self.blink_timer = 3
+                elif self.blink_state == "closed":
+                    self.blink_state = "half"
+                    self.blink_phase = "opening"
+                    self.blink_timer = 3
+
+            elif self.blink_phase == "opening":
+                if self.blink_state == "half":
+                    self.blink_state = "open"
+                    self.blink_phase = "idle"
+                    self.blink_timer = random.randint(80, 220)
 
         self.redraw()
         self.after(50, self.animate)
@@ -1204,6 +1702,10 @@ class DragonPortraitPanel(ctk.CTkFrame):
         right = left + body_width
         bottom = top + body_height
 
+        wing_influence = math.sin(self.tick / 10) * 2
+        top += wing_influence
+        bottom += wing_influence
+
         center_x = (left + right) // 2
 
         body_mid_y = (top + bottom) // 2
@@ -1217,46 +1719,54 @@ class DragonPortraitPanel(ctk.CTkFrame):
             left -= 5
             right -= 5
 
-
-
         # wings 2nd in order
-        self.draw_wings(center_x, wing_mid_y, left, right, top, bottom)
+        #self.draw_wings(center_x, wing_mid_y, left, right, top, bottom)
+        self.draw_left_wing(left, top)
+
+        # tail 1st in order
+        self.draw_tail(left, top, breath_offset)
 
         # body 3rd in oder
-        if self.body_img:
+        if self.body_pil:
+            recolored_body = self.get_recolored_part(self.body_pil)
+            recolored_body_tk = ImageTk.PhotoImage(recolored_body)
+            self._body_ref = recolored_body_tk
+
             self.canvas.create_image(
                 left,
                 top,
-                image=self.body_img,
+                image=recolored_body_tk,
                 anchor="nw"
             )
 
         # legs 4th in order
-        self.draw_legs(center_x, leg_base_y)
+        #self.draw_legs(center_x, leg_base_y)
+        self.draw_feet_sprite(left, top)
 
         # markings 5th in order
-        self.draw_markings(left, right, top, bottom)
+        #off for now, self.draw_markings(left, right, top, bottom)
 
         # special traits 6th in order
-        self.draw_special_traits(left, right, top, bottom)
+        #off for nowself.draw_special_traits(left, right, top, bottom)
 
         # neck/head 7th in order
-        neck_pos = self.draw_neck(left, top)
+        neck_data = self.draw_neck(left, top)
 
-        if neck_pos is not None:
-            neck_draw_x, neck_draw_y = neck_pos
-            self.draw_head_sprite(neck_draw_x, neck_draw_y)
+        if neck_data is not None:
+            neck_socket_x, neck_socket_y, neck_angle = neck_data
+            self.draw_head_sprite(neck_socket_x, neck_socket_y, neck_angle)
         else:
-            self.draw_head(center_x, head_y, body_color)
+             self.draw_head(center_x, head_y, body_color)
+
+        # wings 2nd in order
+        #self.draw_wings(center_x, wing_mid_y, left, right, top, bottom)
+        self.draw_right_wing(left, top)
 
         # horns 8th in order
-        self.draw_horns(center_x, head_y, breath_offset)
+        # off for now, self.draw_horns(center_x, head_y, breath_offset)
 
         # eyes 9th in order
-        self.draw_eyes(center_x, head_y, eye_fill)
-
-        # tail 1st in order
-        self.draw_tail(left, top, breath_offset)
+        # off for now, self.draw_eyes(center_x, head_y, eye_fill)
 
         # simple scar indicator if dragon has scars
         scars = getattr(self.dragon, "scars", [])
