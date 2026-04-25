@@ -1485,15 +1485,38 @@ def get_top_active_regions(world, limit=3):
     )
     return items[:limit]
 
+def apply_world_drift(world: World):
+    for tribe in list(world.diplomacy_cooldowns.keys()):
+        world.diplomacy_cooldowns[tribe] -= 1
+        if world.diplomacy_cooldowns[tribe] <= 0:
+            del world.diplomacy_cooldowns[tribe]
+
+    for dragon in world.dragons:
+        if dragon.status == "Alive" and dragon.grief_level > 0:
+            dragon.grief_level -= 1
+
+        if dragon.status == "Alive" and getattr(dragon, "leadership_pressure", 0) > 0:
+            dragon.leadership_pressure -= 1
+
+        for k in list(dragon.trust.keys()):
+            dragon.trust[k] *= 0.95
+            if dragon.trust[k] < 0.1:
+                del dragon.trust[k]
+
+        for k in list(dragon.resentment.keys()):
+            dragon.resentment[k] *= 0.95
+            if dragon.resentment[k] < 0.1:
+                del dragon.resentment[k]
 
 
 def advance_moon(world: World):
 
     living = get_living_dragons(world)
-    eligible = get_eligible_non_dragonets(world)
 
     if world.pending_choice is not None:
         return False
+    
+    apply_world_drift(world)
 
     if getattr(world, "direction_timer", 0) > 0:
         world.direction_timer -= 1
@@ -1502,20 +1525,13 @@ def advance_moon(world: World):
 
     world.moon += 1
 
-    for tribe in list(world.diplomacy_cooldowns.keys()):
-        world.diplomacy_cooldowns[tribe] -= 1
-        if world.diplomacy_cooldowns[tribe] <= 0:
-            del world.diplomacy_cooldowns[tribe]
+
 
     for dragon in living:
         tick_dragon_progression(world, dragon, living)
         handle_possible_death(world, dragon)
 
-        if dragon.status == "Alive" and dragon.grief_level > 0:
-            dragon.grief_level -= 1
 
-        if dragon.status == "Alive" and getattr(dragon, "leadership_pressure", 0) > 0:
-            dragon.leadership_pressure -= 1
 
         if dragon.status == "Alive" and dragon.legend_flags.get("pending_survival_check") == 1:
             dragon.hardship_survived += 1
@@ -1612,16 +1628,6 @@ def advance_moon(world: World):
 
     try_leader_event(world)
 
-    for dragon in world.dragons:
-        for k in list(dragon.trust.keys()):
-            dragon.trust[k] *= 0.95
-            if dragon.trust[k] < 0.1:
-                del dragon.trust[k]
-
-        for k in list(dragon.resentment.keys()):
-            dragon.resentment[k] *= 0.95
-            if dragon.resentment[k] < 0.1:
-                del dragon.resentment[k]
 
 
     run_politics_phase(world)

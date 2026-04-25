@@ -33,3 +33,6 @@ Moves which point in the head sprite attaches to the yellow dot.
 self.head_rotation_correction
 
 Cleanup after head rotation.
+
++x → right
+-y → up
