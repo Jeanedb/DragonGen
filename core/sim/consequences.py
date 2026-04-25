@@ -1,4 +1,3 @@
-from core.sim.logging import log_event
 import random
 from core.sim.logging import log_event
 from core.sim.politics import get_random_foreign_tribe
@@ -109,7 +108,7 @@ def resolve_scheduled_event(world, data):
             "dragon_id": dragon.id,
             "target_id": caused_by.id
         })
-    
+        
     elif data["type"] == "defector_returns":
         dragon = next((d for d in world.dragons if d.id == data["dragon_id"]), None)
         target = next((d for d in world.dragons if d.id == data["target_id"]), None)
@@ -138,3 +137,30 @@ def resolve_scheduled_event(world, data):
             importance=5,
             cause="A past defection has come back to haunt the tribe"
         )
+
+        # 🔥 confrontation escalation
+        if random.random() < 0.4:
+            log_event(
+                world,
+                f"{dragon.name} actively confronted {target.name} during the sighting.",
+                involved_ids=[dragon.id, target.id],
+                event_type="defector_confrontation",
+                importance=5
+            )
+
+            dragon.resentment[target.id] = dragon.resentment.get(target.id, 0) + 2
+            target.resentment[dragon.id] = target.resentment.get(dragon.id, 0) + 2
+
+        # 🔥 injury escalation
+        if random.random() < 0.15:
+            victim = random.choice([dragon, target])
+
+            victim.health = "Injured"
+
+            log_event(
+                world,
+                f"{victim.name} was injured during the encounter with {dragon.name}.",
+                involved_ids=[dragon.id, target.id, victim.id],
+                event_type="defector_injury",
+                importance=6
+            )
