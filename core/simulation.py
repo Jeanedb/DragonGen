@@ -625,7 +625,20 @@ def advance_moon(world: World):
 
     world.moon += 1
 
+    for observer in world.dragons:
+        for target in world.dragons:
+            if observer.id == target.id:
+                continue
 
+            rep_score = (
+                target.reputation.get("kind", 0)
+                - target.reputation.get("harsh", 0)
+            )
+
+            current = observer.perceived_reputation.get(target.id, 0)
+
+            # slow drift toward reputation
+            observer.perceived_reputation[target.id] = current + (rep_score * 0.05)
 
     for dragon in living:
         tick_dragon_progression(world, dragon, living)

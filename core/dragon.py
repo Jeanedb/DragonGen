@@ -33,6 +33,7 @@ class Dragon:
 
     trust: dict[int, float] = field(default_factory=dict)
     resentment: dict[int, float] = field(default_factory=dict)
+    perceived_reputation: dict[int, float] = field(default_factory=dict)
 
     reputation: dict[str, float] = field(default_factory=lambda: {
         "kind": 0,

@@ -1080,6 +1080,15 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             a.trust[b.id] = a.trust.get(b.id, 0) + a_gain
             b.trust[a.id] = b.trust.get(a.id, 0) + b_gain
+
+            # reputation influence
+            a.trust[b.id] += a.reputation.get("kind", 0) * 0.1
+            a.trust[b.id] -= a.reputation.get("harsh", 0) * 0.1
+
+            # perceived reputation influence (NEW)
+            perception = b.perceived_reputation.get(a.id, 0)
+            a.trust[b.id] += perception * 0.1
+
             if both_adult_eligible:
                 if b.id not in a.friends:
                     a.friends.append(b.id)
@@ -1096,6 +1105,7 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             a.trust[b.id] = a.trust.get(b.id, 0) + a_gain
             b.trust[a.id] = b.trust.get(a.id, 0) + b_gain
+
 
             reply_line = get_personality_reply_line(b, convo_type, option_id)
             
@@ -1119,6 +1129,15 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             a.trust[b.id] = a.trust.get(b.id, 0) + a_gain
             b.trust[a.id] = b.trust.get(a.id, 0) + b_gain
+
+            # reputation influence
+            a.trust[b.id] += a.reputation.get("kind", 0) * 0.1
+            a.trust[b.id] -= a.reputation.get("harsh", 0) * 0.1
+
+            # perceived reputation influence (NEW)
+            perception = b.perceived_reputation.get(a.id, 0)
+            a.trust[b.id] += perception * 0.1
+
             a.resentment[b.id] = max(0, a.resentment.get(b.id, 0) - 1)
             b.resentment[a.id] = max(0, b.resentment.get(a.id, 0) - 1)
 
@@ -1162,6 +1181,14 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             a.trust[b.id] = a.trust.get(b.id, 0) + a_gain
             b.trust[a.id] = b.trust.get(a.id, 0) + b_gain
+
+            # reputation influence
+            a.trust[b.id] += a.reputation.get("kind", 0) * 0.1
+            a.trust[b.id] -= a.reputation.get("harsh", 0) * 0.1
+
+            # perceived reputation influence (NEW)
+            perception = b.perceived_reputation.get(a.id, 0)
+            a.trust[b.id] += perception * 0.1
 
             reply_line = get_personality_reply_line(b, convo_type, option_id)
             
