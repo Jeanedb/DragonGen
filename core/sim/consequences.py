@@ -77,7 +77,16 @@ def resolve_scheduled_event(world, data):
 
         resentment = dragon.resentment.get(caused_by.id, 0)
 
-        if resentment < 3:
+        rep_score = (
+            caused_by.reputation.get("kind", 0)
+            + caused_by.reputation.get("reliable", 0)
+            - caused_by.reputation.get("harsh", 0)
+            - caused_by.reputation.get("unpredictable", 0)
+        )
+
+        adjusted_resentment = resentment - (rep_score * 0.5)
+
+        if adjusted_resentment < 3:
             return
 
         # 🔥 WARNING STAGE (now correctly placed)
@@ -91,7 +100,7 @@ def resolve_scheduled_event(world, data):
                 cause="Lingering resentment"
             )
 
-        if resentment >= 5 and random.random() < 0.6:
+        if adjusted_resentment >= 5 and random.random() < 0.6:
             log_event(
                 world,
                 f"{dragon.name} has been seen speaking with outsiders. Their loyalty may be wavering.",
@@ -104,7 +113,7 @@ def resolve_scheduled_event(world, data):
         # Rare, but serious
         chance = 0.30
 
-        if resentment >= 5:
+        if adjusted_resentment >= 5:
             chance += 0.15
 
         if dragon.health == "Injured":
