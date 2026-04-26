@@ -1,4 +1,5 @@
 import random
+from core.sim.consequences import cancel_scheduled_event
 from core.sim.logging import log_event
 
 
@@ -940,6 +941,9 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
             if b.id in a.resentment:
                 a.resentment[b.id] = max(0, a.resentment[b.id] - 1)
 
+            a.reputation["kind"] = a.reputation.get("kind", 0) + 1
+            a.reputation["reliable"] = a.reputation.get("reliable", 0) + 1
+
             result_text = f"{a.name}'s apology softened some of the resentment between them."
 
         elif option_id == "explain":
@@ -948,11 +952,16 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
             if a.id in b.resentment:
                 b.resentment[a.id] = max(0, b.resentment[a.id] - 1)
 
+            a.reputation["reliable"] = a.reputation.get("reliable", 0) + 1
+
             result_text = f"The explanation did not fix everything, but it made the wound less raw."
 
         elif option_id == "accuse":
             a.resentment[b.id] = a.resentment.get(b.id, 0) + 1
             b.resentment[a.id] = b.resentment.get(a.id, 0) + 2
+
+            a.reputation["harsh"] = a.reputation.get("harsh", 0) + 1
+            a.reputation["unpredictable"] = a.reputation.get("unpredictable", 0) + 1
 
             result_text = f"The accusation made things worse. Whatever trust remained between them was damaged."
 
@@ -1015,10 +1024,46 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
                 f"{b.name} listened, though not easily.",
             ]
 
-        from core.sim.consequences import cancel_scheduled_event
+        success_chance = 0.0
 
-        if option_id in {"apologize", "explain"}:
+        if option_id == "apologize":
+            success_chance = 0.75
+        elif option_id == "explain":
+            success_chance = 0.5
+
+        # modify by current resentment
+        resentment = a.resentment.get(b.id, 0)
+
+        if resentment >= 6:
+            success_chance -= 0.2
+        elif resentment <= 2:
+            success_chance += 0.1
+
+        success_chance += a.reputation.get("kind", 0) * 0.02
+        success_chance += a.reputation.get("reliable", 0) * 0.01
+        success_chance -= a.reputation.get("harsh", 0) * 0.02
+        success_chance -= a.reputation.get("unpredictable", 0) * 0.01
+
+        success_chance = max(0.05, min(0.95, success_chance))
+
+        if random.random() < success_chance:
             cancel_scheduled_event(world, "possible_defection", a.id)
+
+            log_event(
+                world,
+                f"The conversation seems to have prevented {a.name} from leaving the tribe.",
+                involved_ids=[a.id, b.id],
+                event_type="repair_success",
+                importance=5
+            )
+        else:
+            log_event(
+                world,
+                f"The conversation helped, but something still feels unresolved with {a.name}.",
+                involved_ids=[a.id, b.id],
+                event_type="repair_partial",
+                importance=3
+            )
 
         return (
             random.choice(openers),
