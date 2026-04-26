@@ -12,6 +12,15 @@ def schedule_consequence(world, delay, data):
         "data": data
     })
 
+def cancel_scheduled_event(world, event_type, dragon_id):
+    world.scheduled_events = [
+        e for e in world.scheduled_events
+        if not (
+            e["data"].get("type") == event_type
+            and e["data"].get("dragon_id") == dragon_id
+        )
+    ]
+
 
 def process_scheduled_events(world):
     if not hasattr(world, "scheduled_events"):
@@ -114,15 +123,32 @@ def resolve_scheduled_event(world, data):
         dragon.role = "Defector"
         dragon.rank = "Outsider"
 
+        old = old_tribe
+        new = new_tribe
+
+        # initialize if needed
+        if new not in world.tribal_relations:
+            world.tribal_relations[new] = 0
+
+        if old not in world.tribal_relations:
+            world.tribal_relations[old] = 0
+
+        # defection creates distrust
+        world.tribal_relations[new] -= 0.5
+        world.tribal_relations[old] -= 0.2
+
+        # increase global tension
+        world.tension += 0.3
+
         dragon.resentment[caused_by.id] = dragon.resentment.get(caused_by.id, 0) + 3
 
         log_event(
             world,
-            f"{dragon.name} left the {old_tribe}s behind and defected to the {new_tribe}s, still carrying resentment toward {caused_by.name}.",
+            f"{dragon.name} left the {old_tribe}s and defected to the {new_tribe}s. The act has strained relations between the tribes.",
             involved_ids=[dragon.id, caused_by.id],
             event_type="defection",
             importance=6,
-            cause="A past abandonment finally pushed them away"
+            cause="A personal betrayal escalated into political tension"
         )
 
         schedule_consequence(world, delay=5, data={

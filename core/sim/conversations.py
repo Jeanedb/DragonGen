@@ -8,6 +8,9 @@ def get_conversation_type(a, b):
     resentment_ab = a.resentment.get(b.id, 0)
     resentment_ba = b.resentment.get(a.id, 0)
 
+    if resentment_ab >= 4 or resentment_ba >= 4:
+        return "repair"
+
     if b.id in a.rivals or a.id in b.rivals or resentment_ab >= 2 or resentment_ba >= 2:
         return "tense"
 
@@ -59,12 +62,10 @@ def get_personality_line(dragon, mood):
             ],
             "neutral": [
                 f'"If we understand each other better, that could be useful," {dragon.name} said.',
-                f'"There’s value in knowing where we stand," {dragon.name} said.'
+                f'"There’s value in knowing where we stand," {dragon.name} said.',
                 f'"Understanding where we stand has value… even if we don’t like the answer," {dragon.name} said.',
                 f'"I prefer clarity over guessing… and right now, things feel unclear," {dragon.name} said.',
                 f'"There’s always an angle to a conversation like this… I’m just trying to see it," {dragon.name} said thoughtfully.',
-                f'"There’s value in knowing where we stand," {dragon.name} said.',
-                f'"Understanding where we stand has value… even if we don’t like the answer," {dragon.name} said.',
             ],
             "tense": [
                 f'"I keep telling myself this isn’t worth holding onto… but it keeps coming back anyway," {dragon.name} said quietly.',
@@ -157,11 +158,15 @@ def get_personality_line(dragon, mood):
                     f'"We both know this didn’t start today… so let’s not pretend it ends here," {dragon.name} said.',
                     f'"Ignoring the problem would be convenient… but also incredibly stupid," {dragon.name} said bluntly.',
              ]
+
+
 }
     }
 
     if personality in lines and mood in lines[personality]:
         return random.choice(lines[personality][mood])
+
+
 
     fallback = {
         "friendly": [
@@ -183,6 +188,25 @@ def get_personality_line(dragon, mood):
 
 def build_conversation(world, a, b):
     convo_type = get_conversation_type(a, b)
+
+    if convo_type == "repair":
+        options = [
+            {"id": "apologize", "text": f"{a.name} apologizes and tries to repair the damage"},
+            {"id": "explain", "text": f"{a.name} explains what happened and asks to be heard"},
+            {"id": "accuse", "text": f"{a.name} confronts {b.name} and demands honesty"},
+        ]
+
+        text = (
+            f'"This has been sitting between us for too long," {a.name} said.\n\n'
+            f'"Then say what you came here to say," {b.name} replied.\n\n'
+            "The conversation felt fragile, like one wrong word could make things worse."
+        )
+
+        return {
+            "type": convo_type,
+            "text": text,
+            "options": options,
+        }
 
     memory_override = None
 
@@ -303,6 +327,7 @@ def build_conversation(world, a, b):
 
     else:
         line1 = get_personality_line(a, convo_type)
+
 
         if convo_type == "friendly":
             line2_options = [
@@ -904,6 +929,104 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
     b_mod = get_personality_conversation_modifiers(b)
 
     both_adult_eligible = (a.role != "Dragonet" and b.role != "Dragonet")
+
+    if convo_type == "repair":
+        if option_id == "apologize":
+            a.trust[b.id] = a.trust.get(b.id, 0) + 1
+            b.trust[a.id] = b.trust.get(a.id, 0) + 1
+
+            if a.id in b.resentment:
+                b.resentment[a.id] = max(0, b.resentment[a.id] - 2)
+            if b.id in a.resentment:
+                a.resentment[b.id] = max(0, a.resentment[b.id] - 1)
+
+            result_text = f"{a.name}'s apology softened some of the resentment between them."
+
+        elif option_id == "explain":
+            if b.id in a.resentment:
+                a.resentment[b.id] = max(0, a.resentment[b.id] - 1)
+            if a.id in b.resentment:
+                b.resentment[a.id] = max(0, b.resentment[a.id] - 1)
+
+            result_text = f"The explanation did not fix everything, but it made the wound less raw."
+
+        elif option_id == "accuse":
+            a.resentment[b.id] = a.resentment.get(b.id, 0) + 1
+            b.resentment[a.id] = b.resentment.get(a.id, 0) + 2
+
+            result_text = f"The accusation made things worse. Whatever trust remained between them was damaged."
+
+        else:
+            result_text = "The conversation ended without changing much."
+
+        log_event(
+            world,
+            result_text,
+            involved_ids=[a.id, b.id],
+            event_type="repair_conversation",
+            importance=4
+        )
+
+        if option_id == "apologize":
+            openers = [
+                f"{a.name} lowered their voice and tried to make things right.",
+                f"{a.name} approached carefully, clearly trying to repair the damage.",
+                f"{a.name} chose humility over pride in that moment.",
+            ]
+
+            replies = [
+                f"{b.name} listened, some of the tension easing.",
+                f"{b.name} hesitated, but did not shut them out.",
+                f"{b.name} remained guarded, but less hostile than before.",
+            ]
+
+        elif option_id == "explain":
+            openers = [
+                f"{a.name} tried to explain their side of things.",
+                f"{a.name} spoke carefully, choosing words with intent.",
+                f"{a.name} laid out what had happened, hoping to be understood.",
+            ]
+
+            replies = [
+                f"{b.name} listened, though uncertainty remained.",
+                f"{b.name} considered the explanation, but did not fully relax.",
+                f"{b.name} heard them out, even if doubts lingered.",
+            ]
+
+        elif option_id == "accuse":
+            openers = [
+                f"{a.name} stepped forward sharply, unwilling to hold back.",
+                f"{a.name} let the frustration show without restraint.",
+                f"{a.name} pushed the issue directly, refusing to soften it.",
+            ]
+
+            replies = [
+                f"{b.name}'s expression hardened immediately.",
+                f"{b.name} did not take it well.",
+                f"{b.name} tensed, clearly reacting to the accusation.",
+            ]
+
+        else:
+            openers = [
+                f"{a.name} chose to address the tension directly.",
+            ]
+
+            replies = [
+                f"{b.name} listened, though not easily.",
+            ]
+
+        from core.sim.consequences import cancel_scheduled_event
+
+        if option_id in {"apologize", "explain"}:
+            cancel_scheduled_event(world, "possible_defection", a.id)
+
+        return (
+            random.choice(openers),
+            random.choice(replies),
+            result_text
+        )
+
+        
 
     if convo_type == "friendly":
         if option_id == "open_up":
