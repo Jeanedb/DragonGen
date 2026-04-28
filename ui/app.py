@@ -235,19 +235,44 @@ class DragonGenApp(ctk.CTk):
         self.event_text.pack(fill="both", expand=True)
 
     def create_choice_panel(self):
-        self.choice_frame = ctk.CTkFrame(self)
-        self.choice_frame.grid(row=2, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+        self.choice_frame = ctk.CTkFrame(
+            self,
+            border_width=2,
+            corner_radius=10
+        )
+        self.choice_frame.grid(row=2, column=0, columnspan=3, sticky="ew", padx=8, pady=8)
+
+        self.choice_title = ctk.CTkLabel(
+            self.choice_frame,
+            text="",
+            font=("Arial", 15, "bold"),
+            text_color="#F2C94C"
+        )
+        self.choice_title.pack(anchor="w", padx=14, pady=(10, 0))
 
         self.choice_label = ctk.CTkLabel(
             self.choice_frame,
             text="No current decision.",
             wraplength=1000,
             justify="left",
-            font=("Arial", 12)
+            font=("Arial", 14, "bold")
         )
-        self.choice_label.pack(padx=10, pady=(6, 6), anchor="w")
+        self.choice_label.pack(padx=14, pady=(6, 8), anchor="w")
 
-        self.choice_buttons_frame = ctk.CTkFrame(self.choice_frame)
+        self.choice_hint_label = ctk.CTkLabel(
+            self.choice_frame,
+            text="",
+            wraplength=1000,
+            justify="left",
+            font=("Arial", 12),
+            text_color="#BDBDBD"
+        )
+        self.choice_hint_label.pack(padx=14, pady=(0, 8), anchor="w")
+
+        self.choice_buttons_frame = ctk.CTkFrame(
+            self.choice_frame,
+            fg_color="transparent"
+        )
         self.choice_buttons = []
 
     def create_controls(self):
@@ -751,23 +776,37 @@ class DragonGenApp(ctk.CTk):
         choice = self.world.pending_choice
 
         if not choice:
-            self.choice_label.configure(text="No current decision.", font=("Arial", 12))
+            self.choice_title.configure(text="")
+            self.choice_label.configure(
+                text="No current decision.",
+                font=("Arial", 13)
+            )
+            self.choice_hint_label.configure(text="")
             self.choice_buttons_frame.pack_forget()
             return
 
+        self.choice_title.configure(text="⚠ DECISION")
+
         self.choice_label.configure(
             text=choice.get("text", ""),
-            font=("Arial", 14, "bold")
+            font=("Arial", 17, "bold")
+        )
+
+        self.choice_hint_label.configure(
+            text="Choose carefully. This may affect relationships, tension, or future events."
         )
 
         if not self.choice_buttons_frame.winfo_ismapped():
-            self.choice_buttons_frame.pack(fill="x", padx=10, pady=(0, 10))
+            self.choice_buttons_frame.pack(fill="x", padx=14, pady=(0, 12))
 
         for option in choice.get("options", []):
             btn = ctk.CTkButton(
                 self.choice_buttons_frame,
                 text=option["text"],
+                height=38,
+                anchor="w",
+                font=("Arial", 13, "bold"),
                 command=lambda option_id=option["id"]: self.on_choice_selected(option_id)
             )
-            btn.pack(side="left", padx=10, pady=5)
+            btn.pack(fill="x", padx=6, pady=5)
             self.choice_buttons.append(btn)
