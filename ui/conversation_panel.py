@@ -21,6 +21,7 @@ class ConversationPanel(ctk.CTkToplevel):
 
         self.dragons = [d for d in world.dragons if d.status == "Alive"]
 
+        # === Character Selection ===
         self.top_frame = ctk.CTkFrame(self)
         self.top_frame.pack(fill="x", padx=10, pady=10)
 
@@ -39,12 +40,29 @@ class ConversationPanel(ctk.CTkToplevel):
         )
         self.start_btn.pack(side="left", padx=5)
 
+        # === Title ===
+        self.title_label = ctk.CTkLabel(
+            self,
+            text="",
+            font=("Arial", 16, "bold"),
+            text_color="#F2C94C"
+        )
+        self.title_label.pack(anchor="w", padx=12, pady=(5, 0))
+
+        # === Conversation Text ===
         self.text_box = ctk.CTkTextbox(self, wrap="word")
         self.text_box.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.button_frame = ctk.CTkFrame(self)
-        self.button_frame.pack(fill="x", padx=10, pady=(0, 10))
+        # === Choice Section ===
+        self.choice_label = ctk.CTkLabel(
+            self,
+            text="",
+            font=("Arial", 14, "bold")
+        )
+        self.choice_label.pack(anchor="w", padx=12, pady=(0, 4))
 
+        self.button_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.button_frame.pack(fill="x", padx=10, pady=(0, 10))
     def get_dragon_from_menu(self, menu_value):
         dragon_id = int(menu_value.split("(")[-1].replace(")", ""))
         return next((d for d in self.dragons if d.id == dragon_id), None)
@@ -74,15 +92,26 @@ class ConversationPanel(ctk.CTkToplevel):
         self.selected_b = b
         self.current_convo = convo
 
-        self.text_box.insert("end", convo["text"])
+        # 🔥 TITLE (this is new and important)
+        self.title_label.configure(
+            text=f"{a.name} speaks with {b.name}"
+        )
+
+        # Conversation setup text
+        self.text_box.insert("end", f"\n{convo['text']}\n")
+
+        self.choice_label.configure(text="How do you respond?")
 
         for option in convo["options"]:
             btn = ctk.CTkButton(
                 self.button_frame,
                 text=option["text"],
+                height=38,
+                anchor="w",
+                font=("Arial", 13, "bold"),
                 command=lambda oid=option["id"]: self.resolve_conversation(oid)
             )
-            btn.pack(side="left", padx=5, pady=5)
+            btn.pack(fill="x", padx=6, pady=5)
 
     def resolve_conversation(self, option_id):
         self.clear_option_buttons()
@@ -98,6 +127,9 @@ class ConversationPanel(ctk.CTkToplevel):
             option_id
         )
 
-        self.text_box.insert("end", f"\n\n{player_line}")
-        self.text_box.insert("end", f"\n\n{reply_line}")
+        # Format like dialogue instead of raw text
+        self.text_box.insert("end", f"\n\nYou: {player_line}")
+        self.text_box.insert("end", f"\n\n{self.selected_b.name}: {reply_line}")
         self.text_box.insert("end", f"\n\n{result_text}")
+
+        self.choice_label.configure(text="Conversation complete.")

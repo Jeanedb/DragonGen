@@ -1091,7 +1091,13 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             # perceived reputation influence (NEW)
             perception = b.perceived_reputation.get(a.id, 0)
-            a.trust[b.id] += perception * 0.1
+
+            if perception > 1:
+                a.trust[b.id] += perception * 0.15
+            elif perception < -1:
+                a.trust[b.id] += perception * 0.15
+            else:
+                a.trust[b.id] += perception * 0.1
 
             if both_adult_eligible:
                 if b.id not in a.friends:
@@ -1149,7 +1155,13 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             # perceived reputation influence (NEW)
             perception = b.perceived_reputation.get(a.id, 0)
-            a.trust[b.id] += perception * 0.1
+
+            if perception > 1:
+                a.trust[b.id] += perception * 0.15
+            elif perception < -1:
+                a.trust[b.id] += perception * 0.15
+            else:
+                a.trust[b.id] += perception * 0.1
 
             a.resentment[b.id] = max(0, a.resentment.get(b.id, 0) - 1)
             b.resentment[a.id] = max(0, b.resentment.get(a.id, 0) - 1)
@@ -1211,7 +1223,13 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             # perceived reputation influence (NEW)
             perception = b.perceived_reputation.get(a.id, 0)
-            a.trust[b.id] += perception * 0.1
+
+            if perception > 1:
+                a.trust[b.id] += perception * 0.15
+            elif perception < -1:
+                a.trust[b.id] += perception * 0.15
+            else:
+                a.trust[b.id] += perception * 0.1
 
             reply_line = get_personality_reply_line(b, convo_type, option_id)
             

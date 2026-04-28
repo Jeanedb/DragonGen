@@ -180,7 +180,9 @@ def create_rival_confrontation_choice(world):
                 weight += dragon.resentment.get(rival.id, 0) * 0.20
                 weight += rival.resentment.get(dragon.id, 0) * 0.20
 
-
+                # perceived reputation can make certain rivalries surface more often
+                weight -= dragon.perceived_reputation.get(rival.id, 0) * 0.10
+                weight -= rival.perceived_reputation.get(dragon.id, 0) * 0.10
 
                 # climate effect:
                 # tense, suspicious, conflict-heavy tribes surface more confrontation dilemmas
