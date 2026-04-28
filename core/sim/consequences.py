@@ -116,8 +116,16 @@ def resolve_scheduled_event(world, data):
         if adjusted_resentment >= 5:
             chance += 0.15
 
+        # world tension amplifies existing resentment
+        world_tension = getattr(world, "tension", 0)
+
+        if adjusted_resentment >= 3:
+            chance += world_tension * 0.05
+
         if dragon.health == "Injured":
             chance += 0.10
+
+        chance = max(0.05, min(0.85, chance))
 
         if random.random() > chance:
             return
@@ -159,8 +167,12 @@ def resolve_scheduled_event(world, data):
             importance=6,
             cause="A personal betrayal escalated into political tension"
         )
+        
+        from core.sim.rumors import spread_rumor
 
-        schedule_consequence(world, delay=5, data={
+        spread_rumor(world, dragon.id, caused_by.id, effect=-0.5)
+
+        schedule_consequence(world, delay=6, data={
             "type": "defector_returns",
             "dragon_id": dragon.id,
             "target_id": caused_by.id

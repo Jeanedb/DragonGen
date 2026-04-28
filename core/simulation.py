@@ -606,6 +606,11 @@ def apply_world_drift(world: World):
             if dragon.resentment[k] < 0.1:
                 del dragon.resentment[k]
 
+        for k in list(dragon.perceived_reputation.keys()):
+            dragon.perceived_reputation[k] *= 0.98
+            if abs(dragon.perceived_reputation[k]) < 0.05:
+                del dragon.perceived_reputation[k]
+
 
 def advance_moon(world: World):
 

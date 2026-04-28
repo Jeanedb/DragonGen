@@ -1056,6 +1056,10 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
                 event_type="repair_success",
                 importance=5
             )
+
+            from core.sim.rumors import spread_rumor
+
+            spread_rumor(world, a.id, a.id, effect=0.3)
         else:
             log_event(
                 world,
@@ -1118,6 +1122,15 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
             a.resentment[b.id] = a.resentment.get(b.id, 0) + a_loss
             b.resentment[a.id] = b.resentment.get(a.id, 0) + b_loss
 
+            from core.sim.consequences import schedule_consequence
+
+            if a.resentment.get(b.id, 0) >= 4:
+                schedule_consequence(world, delay=3, data={
+                    "type": "possible_defection",
+                    "dragon_id": a.id,
+                    "caused_by": b.id
+                })
+
             reply_line = get_personality_reply_line(b, convo_type, option_id)
             
             result_text = f"{a.name} pushed the conversation too hard, souring what had begun as a peaceful exchange."
@@ -1164,6 +1177,16 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             a.resentment[b.id] = a.resentment.get(b.id, 0) + a_loss
             b.resentment[a.id] = b.resentment.get(a.id, 0) + b_loss
+
+            from core.sim.consequences import schedule_consequence
+
+            if a.resentment.get(b.id, 0) >= 4:
+                schedule_consequence(world, delay=3, data={
+                    "type": "possible_defection",
+                    "dragon_id": a.id,
+                    "caused_by": b.id
+                })
+
             if both_adult_eligible:
                 if b.id not in a.rivals:
                     a.rivals.append(b.id)
@@ -1213,6 +1236,15 @@ def apply_conversation_choice(world, a, b, convo_type, option_id):
 
             a.resentment[b.id] = a.resentment.get(b.id, 0) + a_loss
             b.resentment[a.id] = b.resentment.get(a.id, 0) + b_loss
+
+            from core.sim.consequences import schedule_consequence
+
+            if a.resentment.get(b.id, 0) >= 4:
+                schedule_consequence(world, delay=3, data={
+                    "type": "possible_defection",
+                    "dragon_id": a.id,
+                    "caused_by": b.id
+                })
 
             reply_line = get_personality_reply_line(b, convo_type, option_id)
             
