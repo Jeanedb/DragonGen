@@ -1,0 +1,161 @@
+DragonGen/
+│
+├── main.py							Main runs system	
+├── requirements.txt				Shows what you need to run	
+├── README.md						Explains what build is
+│
+├── data/
+│   ├── names.py					Tribe specific name pool
+│   ├── tribes.py					Different tribes/tribe personality bias/roles
+│   ├── personalities.py  			Personality types
+│   ├── tribe_profiles.py  		Tribes blurb/tendencies/relations
+│   ├── regions.py  				Regions tied to tribes
+│   └── events.py					Empty 
+│
+├── core/
+│   ├── dragon.py					Items that make up a dragon
+│   ├── world.py					Items that make up the world
+│   ├── generator.py				Create dragon/dragonet/world
+│   ├── simulation.py				Create world events
+│   ├── save_manager.py			Save manager
+│   └── sim/
+│       ├── choices.py				Create player choices
+│       ├── engine.py				Empty
+│       ├── events.py				Event chance roll weights
+│       ├── family.py				Family events and weights
+│       ├── flavor.py				Physical dragon parts description/bio/legacy text/life stage
+│       ├── injury.py				Injury mechanic
+│       ├── leadership.py			assign leadership/create world leader events
+│       ├──
+│
+├── ui/
+│   ├── app.py						Main UI
+│   ├── dragon_panel.py			Dragon avatar UI
+│   ├── event_log.py				Empty
+│   ├── roster_panel.py			Populate tribe pop UI
+│   ├── encyclopedia.py			dragon blurb/bio UI
+│   └── tribal_relations.py		Political relations UI
+│
+├── docs/
+│
+├── test/
+│
+├── assets/
+│
+├── saves/
+│   └── .gitkeep
+│
+└── assets/
+    └── .gitkeep
+
+##VISION##
+At its heart, this is a social insight game. A simulator as much as it is a story teller. It is about bringing believable relationships to life in a complex and real environment. Complete dragons with flaws, preferences, social status, histories, etc living withing a tribe withing a geopolitical landscape. This game should have the essence and feel of one of the Wings of Fire novels, with protagonist and antagonists and evolving character arcs. A clearly narrative based game with memorable quotes from all dragons involved, each character bringing a new and unique perspective. Memorable characters will developed and Players will create fondness and dislike for these characters which will , in turn, immerse them into the game of DranGen.
+
+#UI
+- hierarchy effects roster placement , e.g. queen at top
+- toggle organize roster by rank/alphabetical
+- Add "VILLAGE/KINGDOM" UI. 
+	>Queens palace (Currently Relations Tab)
+	>Healer's Den (Unpopulated as of yet)
+	>Training Grounds (Unpopulated as of yet)
+	>Village Center (Currently Conversation tab)
+	>Hunting Ground (Unpopulated as of yet)
+	>The Boarder Route (Unpopulated as of yet)
+	>Knowledge Den
+	>Council Clearing/Area
+	>Scroll Library (Currently Encyclopedia Tab)
+	>Hatchery UI
+- Adjust information to be more visible while playing
+- Top bar, add injured e.g. LIVING, INJURED, DEAD
+- Main Menu with new game, load game, options, etc
+- Make Dragon_panel and encyclopedia more user friendly. Maybe descriptors next to avatar and bio on bottom, not everything below avatar
+- Make diversified sprites for different dragon body/tribe types
+- Add appropriate icon for pygame.exe file
+- Have result of world choices resolve in same choice box, not only a world log entry. e.g. open box>patrol choice>result - dragon a now resents dragon b>close choice box
+- Grief scale should only be visible on affected dragons
+- Leadership pressure scale should only be visible on affected dragons
+- Ability to search events by locations
+
+#SYSTEM
+- Event Surfacing Model. Surface events globally, resolve them locally. Goal Player is aware of events, but chooses how to engage with them.
+	>Main UI → shows what is happening
+	>Panels → handle where you engage
+	>Conversations → social events
+	>Relations → diplomacy/conflict
+	>Village → role/location events
+- change nomenclature to better suit WoF
+- Player ability to evict Dragon
+- context/location conversations e.g. two dragons in training area talk about sparing
+- roles and ranks need amending, there is no leader or deputy. add "QUEEN' and "KING", Only needs to be on UI, not system
+- Make roles meaningful e.g. healers heal, scouts go on patrol, warriors train and fight, etc
+- Re-evaluate world choice system thresholds, triggers, placements within UIs
+- discissions should affect possibilities of injury/death e.g. more border patrols
+- Make "TRIBE" cultures and attributes more accurate to book lore e.g. mythos and camo, fire scale, and water breathing etc...
+- Specific specialty tribe skills and customs e.g. fire scales, Animus magic, icewings more prone to hierarchy. lower attribute factor to make "RARE"
+- HYBRIDS? Preference to mate with own tribe, hybrids do happen though
+- mate bonding is to frequent as is dragonets. should be more selective and 
+- mates should be friends before mates, courting each other. do not apply to all tribes e.g. mudwings
+- Mates should only usually mate with one dragon, tribe dependant
+- add Pyrrhian/Pantalan "TRIBES"
+- Make dead remember name of past MATE in attributes
+- Conversation feature: talk about another dragon, politics, relationships etc
+- Dragons live to 150 yrs ish, not 250+
+- Add family tree. especially Mudwings "Sibs"
+- Add conflict kills/deaths
+- Add war state. tie in leader choice "calm, push, vigilant" to affect rival/war time events
+- Add rumor system. not certain what that would entail
+- adjust weights for "TITLES" system
+- Dragon/Dragonette limit. Under 20 or something
+- Add family tree
+- finish "SCAR" system
+- Slow down reproduction
+- Add sexes. male, female, trans, fluid, etc.
+- leadership pressure system broken/working/function? I dont remember. Should only be visible on affected dragons
+- add dragons leaving/entering/returning. Good and bad events. perhaps hidden story lines
+- Tribe to Tribe relations/events/friendship/rivals/allies/enemies. interactions with other tribes		(WORKING ON IT, NEED TO EXPAND)
+
+#COMPLETED
+x SpritePart system in dragon_panel										(COMPLETED)
+x Add leader influence on tension 										(COMPLETED)
+X make dragonets not able to have rivals/mates/go on patrols 							(COMPLETED)
+x Add leader choices 		                                                                                (COMPLETED)
+x Add CONVERSATION option. Dragon A and B convo with choices, personality impacts                               (COMPLETED)
+    > add more content. thicker conversation texts										
+x "MOON" is not the proper term, use "NIGHT", "WEEKS" or something else. Only needs to be on UI, not system.	(COMPLETED)
+    > Change "MOON" in text prompts as well
+x Add mood aware event text e.g. calm vs crisis 								(COMPLETED)
+X Make "DEAD" tab, cemetery: 											(COMPLETED) 
+x Add names for diverse gameplay 										(COMPLETED)
+x Add memory affecting future choices more strongly 								(COMPLETED)
+x Add "EVENT" selection e.g. "PATROL" choice A or B 								(COMPLETED)
+    > Make more choices, events
+
+- Nameplates in UI reflective of dragon class with appropriate color scheme, texture and patterns as listed below: (WORKING TEMP COLOR SCHEME, NOT COMPLETED)
+
+Tribe		Colors			Patterns		UI Motif
+
+SkyWings	Red, orange, gold	Smooth			Flames, metal
+SeaWings	Blue, teal		Glow stripes		Waves, glow lines
+RainWings	All colors		Iridescent		Rainbow, leaves
+SandWings	Tan, gold		Minimal			Desert, sun
+IceWings	White, pale blue	Crystalline		Frost, sharp lines
+NightWings	Black, purple		Star speckles		Stars, shadows
+MudWings	Brown, amber		Thick scales		Earth, stone
+HiveWings	Black + neon		Stripes			Hexagons, bold contrast
+SilkWings	Pastels			Butterfly wings		Soft gradients
+LeafWings	Greens			Leaf veins		Vines, foliage
+
+
+
+PROS:
+tension and effects
+consistent story and memory
+
+CONS:
+Hard to understand because of names and not lore accurate stuff, 
+boring, 
+no feeling of consequences/involvement
+
+ADD:
+conversation. select two dragons and have them have a conversation. text choices during. Personality impacts convo
+
