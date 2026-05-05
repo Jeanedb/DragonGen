@@ -10,6 +10,7 @@ def get_eligible_non_dragonets(world: World):
     return [
         d for d in world.dragons
         if d.status == "Alive" and d.role != "Dragonet"
+        and d.health == "Healthy"
     ]
 
 

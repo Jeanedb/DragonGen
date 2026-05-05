@@ -54,9 +54,10 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 #UI
 - hierarchy effects roster placement , e.g. queen at top
 - toggle organize roster by rank/alphabetical
+- Ability to change dragons/Tribes names
 - Add "VILLAGE/KINGDOM" UI. 
 	>Queens palace (Currently Relations Tab)
-	>Healer's Den (Unpopulated as of yet)
+	>Healer's Den (Under development)
 	>Training Grounds (Unpopulated as of yet)
 	>Village Center (Currently Conversation tab)
 	>Hunting Ground (Unpopulated as of yet)
@@ -66,7 +67,6 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 	>Scroll Library (Currently Encyclopedia Tab)
 	>Hatchery UI
 - Adjust information to be more visible while playing
-- Top bar, add injured e.g. LIVING, INJURED, DEAD
 - Main Menu with new game, load game, options, etc
 - Make Dragon_panel and encyclopedia more user friendly. Maybe descriptors next to avatar and bio on bottom, not everything below avatar
 - Make diversified sprites for different dragon body/tribe types
@@ -75,6 +75,7 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 - Grief scale should only be visible on affected dragons
 - Leadership pressure scale should only be visible on affected dragons
 - Ability to search events by locations
+- Have certain events surface anywhere e.g. death of a dragon, declaration of war, etc
 
 #SYSTEM
 - Event Surfacing Model. Surface events globally, resolve them locally. Goal Player is aware of events, but chooses how to engage with them.
@@ -84,13 +85,10 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 	>Relations → diplomacy/conflict
 	>Village → role/location events
 - change nomenclature to better suit WoF
-- Player ability to evict Dragon
-- Different injury types/severities/durations. No injury less then 3 moons
 - context/location conversations e.g. two dragons in training area talk about sparing
 - roles and ranks need amending, there is no leader or deputy. add "QUEEN' and "KING", Only needs to be on UI, not system
 - Make roles meaningful e.g. healers heal, scouts go on patrol, warriors train and fight, etc
 - Re-evaluate world choice system thresholds, triggers, placements within UIs
-- discissions should affect possibilities of injury/death e.g. more border patrols
 - Make "TRIBE" cultures and attributes more accurate to book lore e.g. mythos and camo, fire scale, and water breathing etc...
 - Specific specialty tribe skills and customs e.g. fire scales, Animus magic, icewings more prone to hierarchy. lower attribute factor to make "RARE"
 - HYBRIDS? Preference to mate with own tribe, hybrids do happen though
@@ -101,19 +99,47 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 - Make dead remember name of past MATE in attributes
 - Conversation feature: talk about another dragon, politics, relationships etc
 - Dragons live to 150 yrs ish, not 250+
-- Add family tree. especially Mudwings "Sibs"
+- Find correct time span to jump by months/weeks/days/years?
 - Add conflict kills/deaths
-- Add war state. tie in leader choice "calm, push, vigilant" to affect rival/war time events
 - Add rumor system. not certain what that would entail
 - adjust weights for "TITLES" system
-- Dragon/Dragonette limit. Under 20 or something
-- Add family tree
+- Dragon/Dragonette tribe limit. Under 20 or something
 - finish "SCAR" system
 - Slow down reproduction
 - Add sexes. male, female, trans, fluid, etc.
-- leadership pressure system broken/working/function? I dont remember. Should only be visible on affected dragons
 - add dragons leaving/entering/returning. Good and bad events. perhaps hidden story lines
+
+#SCROLL LIBRARY/ENCYCLOPEDIA
+- Add family tree. e.g. dragon a was granddaughter of dragon b, a past great leader of the tribe.....
+- Add family tree. especially Mudwings "Sibs"
+
+
+#POLITICS/LEADERSHIP/QUEEN PALACE
 - Tribe to Tribe relations/events/friendship/rivals/allies/enemies. interactions with other tribes		(WORKING ON IT, NEED TO EXPAND)
+- leadership pressure system broken/working/function? I dont remember. Should only be visible on affected dragons
+- Add war state. tie in leader choice "calm, push, vigilant" to affect rival/war time event
+- Player ability to evict Dragon
+
+
+#TRANING GROUNDS/WARRIORS
+- Add war state. tie in leader choice "calm, push, vigilant" to affect rival/war time events
+- Warrior gets tiny bit better with sparring
+
+
+#INJURY/HEALER DEN
+- Fix patrol choice problem. dragon a injured on patrol with dragon b. dragon a decided to stay. dragon a also injured
+- Top bar, add injured e.g. LIVING, INJURED, DEAD
+- Different injury types/severities/durations. No injury less then 3 moons
+- discissions should affect possibilities of injury/death e.g. more border patrols
+- Injury affect involvement in events e.g. injured dragons cant patrol
+- Healer get ever slightly better with every successful heal
+- Healer may need supplies for some extensive heal 
+	>create patrol choice to gather supplies
+
+
+
+
+
 
 #COMPLETED
 x SpritePart system in dragon_panel										(COMPLETED)
@@ -121,15 +147,15 @@ x Add leader influence on tension 										(COMPLETED)
 X make dragonets not able to have rivals/mates/go on patrols 							(COMPLETED)
 x Add leader choices 		                                                                                (COMPLETED)
 x Add CONVERSATION option. Dragon A and B convo with choices, personality impacts                               (COMPLETED)
-    > add more content. thicker conversation texts										
+	> add more content. thicker conversation texts										
 x "MOON" is not the proper term, use "NIGHT", "WEEKS" or something else. Only needs to be on UI, not system.	(COMPLETED)
-    > Change "MOON" in text prompts as well
+    	> Change "MOON" in text prompts as well
 x Add mood aware event text e.g. calm vs crisis 								(COMPLETED)
 X Make "DEAD" tab, cemetery: 											(COMPLETED) 
 x Add names for diverse gameplay 										(COMPLETED)
 x Add memory affecting future choices more strongly 								(COMPLETED)
 x Add "EVENT" selection e.g. "PATROL" choice A or B 								(COMPLETED)
-    > Make more choices, events
+    	> Make more choices, events
 
 - Nameplates in UI reflective of dragon class with appropriate color scheme, texture and patterns as listed below: (WORKING TEMP COLOR SCHEME, NOT COMPLETED)
 

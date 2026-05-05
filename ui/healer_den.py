@@ -153,12 +153,22 @@ class HealerDenWindow(ctk.CTkToplevel):
         )
         details.pack(anchor="w", padx=10, pady=(0, 8))
 
-        assign_btn = ctk.CTkButton(
-            card,
-            text="Assign Healer",
-            height=32,
-            command=lambda d=dragon: self.open_assign_healer_window(d)
-        )
+
+        has_healer = getattr(dragon, "assigned_healer_id", None) is not None
+
+        if has_healer:
+            assign_btn = ctk.CTkButton(
+                parent,
+                text="Healer Assigned",
+                state="disabled"
+            )
+        else:
+            assign_btn = ctk.CTkButton(
+                card,
+                text="Assign Healer",
+                height=32,
+                command=lambda d=dragon: self.open_assign_healer_window(d)
+            )
         assign_btn.pack(fill="x", padx=10, pady=(0, 10))
 
     def open_assign_healer_window(self, injured_dragon):
@@ -238,6 +248,11 @@ class HealerDenWindow(ctk.CTkToplevel):
         )
         name.pack(anchor="w", padx=10, pady=(8, 2))
 
+        patient_count = sum(
+            1 for d in self.world.dragons
+            if getattr(d, "assigned_healer_id", None) == healer.id
+        )
+
         details = ctk.CTkLabel(
             card,
             text=(
@@ -245,6 +260,7 @@ class HealerDenWindow(ctk.CTkToplevel):
                 f"Health: {getattr(healer, 'health', 'Unknown')}\n"
                 f"Healer Skill: {getattr(healer, 'healer_skill', 1.0)}\n"
                 f"Location: {getattr(healer, 'location', 'Unknown')}"
+                f"Patients: {patient_count}/2\n"
             ),
             font=("Arial", 12),
             text_color="#BDBDBD",

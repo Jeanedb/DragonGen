@@ -680,14 +680,29 @@ def advance_moon(world: World):
 
         dragon.injury_duration = getattr(dragon, "injury_duration", 0) + 1
 
-        # MINIMUM INJURY TIME (NEW)
-        if dragon.injury_duration < 3:
-            continue
-
-        # must have a healer assigned
+        # If no healer is assigned, injury cannot resolve before 3 moons.
         if dragon.assigned_healer_id is None:
-            if dragon.injury_duration >= 3:
-                world.tension += 0.05
+            if dragon.injury_duration < 3:
+                continue
+
+            # untreated injuries may naturally recover after 3+ moons
+            natural_recovery_chance = 0.20
+
+            if random.random() < natural_recovery_chance:
+                dragon.health = "Healthy"
+                dragon.assigned_healer_id = None
+                dragon.injury_duration = 0
+
+                log_event(
+                    world,
+                    f"{dragon.name}'s injuries finally healed on their own.",
+                    involved_ids=[dragon.id],
+                    event_type="natural_healing",
+                    importance=2,
+                )
+                continue
+
+            world.tension += 0.05
             continue
 
         healer = next(
