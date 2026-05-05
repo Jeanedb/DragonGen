@@ -30,7 +30,7 @@ def generate_dragon(dragon_id: int, forced_tribe: str | None = None) -> Dragon:
 
     name = random.choice(NAMES_BY_TRIBE[tribe])
 
-    return Dragon(
+    dragon = Dragon(
         id=dragon_id,
         name=name,
         tribe=tribe,
@@ -39,6 +39,11 @@ def generate_dragon(dragon_id: int, forced_tribe: str | None = None) -> Dragon:
         personality=personality,
         rank="None"
     )
+
+    if role == "Healer":
+        dragon.healer_skill = round(random.uniform(0.8, 1.4), 2)
+
+    return dragon
 
 
 def generate_dragonet(dragon_id: int, tribe: str, parents=None) -> Dragon:

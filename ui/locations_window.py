@@ -5,6 +5,7 @@ from ui.tribal_relations import TribalRelationsWindow
 from core.sim.locations import get_location_name
 from core.sim.location_utils import get_dragons_here_text
 from ui.encyclopedia import EncyclopediaWindow
+from ui.healer_den import HealerDenWindow
 
 
 class LocationsWindow(ctk.CTkToplevel):
@@ -61,7 +62,7 @@ class LocationsWindow(ctk.CTkToplevel):
         locations = [
             ("village_center", "Open conversations and social interactions", self.open_village_center),
             ("queen_palace", "Review diplomacy and tribal relations", self.open_queen_palace),
-            ("healer_den", "Healing, injuries, and recovery", self.open_placeholder),
+            ("healer_den", "Healing, injuries, and recovery", self.open_healer_den),
             ("training_grounds", "Training, sparring, and warrior activity", self.open_placeholder),
             ("hunting_grounds", "Hunting and resource activity", self.open_placeholder),
             ("border_routes", "Patrols, border incidents, and outside threats", self.open_placeholder),
@@ -101,6 +102,9 @@ class LocationsWindow(ctk.CTkToplevel):
                 command=lambda loc_id=loc_id, command=command: command(loc_id)
             )
             btn.pack(fill="x", padx=12, pady=(0, 12))
+
+    def open_healer_den(self, loc_id):
+        HealerDenWindow(self, self.world)
 
     def open_scroll_library(self, loc_id):
         EncyclopediaWindow(self.parent, self.world)

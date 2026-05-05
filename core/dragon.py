@@ -12,6 +12,8 @@ class Dragon:
 
     rank: str = "None"
     health: str = "Healthy"
+    assigned_healer_id: Optional[int] = None
+    injury_duration: int = 0
     status: str = "Alive"
     location: str = "village_center"
 
@@ -26,6 +28,7 @@ class Dragon:
     legend_flags: dict[str, int] = field(default_factory=dict)  
 
     combat_skill: int = 0
+    healer_skill: float = 1.0
     combat_wins: int = 0
     combat_losses: int = 0
     hardship_survived: int = 0

@@ -85,6 +85,7 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 	>Village → role/location events
 - change nomenclature to better suit WoF
 - Player ability to evict Dragon
+- Different injury types/severities/durations. No injury less then 3 moons
 - context/location conversations e.g. two dragons in training area talk about sparing
 - roles and ranks need amending, there is no leader or deputy. add "QUEEN' and "KING", Only needs to be on UI, not system
 - Make roles meaningful e.g. healers heal, scouts go on patrol, warriors train and fight, etc

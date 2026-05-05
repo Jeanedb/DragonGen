@@ -11,7 +11,8 @@ def add_injury(world: World, dragon):
 
     dragon.health = "Injured"
 
-    dragon.health = "Injured"
+    dragon.injury_duration = 0
+    dragon.assigned_healer_id = None
 
     healed = try_healer_intervention(world, dragon)
 

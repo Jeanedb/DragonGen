@@ -77,7 +77,7 @@ def try_healer_intervention(world, injured):
     if healer.id == injured.id:
         return False
 
-    chance = 0.45
+    chance = 0.20
 
     if healer.trust.get(injured.id, 0) >= 2:
         chance += 0.20

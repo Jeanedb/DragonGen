@@ -670,6 +670,60 @@ def advance_moon(world: World):
     
     apply_world_drift(world)
 
+    # --- HEALING PHASE ---
+    for dragon in world.dragons:
+        if dragon.status != "Alive":
+            continue
+
+        if dragon.health != "Injured":
+            continue
+
+        dragon.injury_duration = getattr(dragon, "injury_duration", 0) + 1
+
+        # MINIMUM INJURY TIME (NEW)
+        if dragon.injury_duration < 3:
+            continue
+
+        # must have a healer assigned
+        if dragon.assigned_healer_id is None:
+            if dragon.injury_duration >= 3:
+                world.tension += 0.05
+            continue
+
+        healer = next(
+            (d for d in world.dragons if d.id == dragon.assigned_healer_id and d.status == "Alive"),
+            None
+        )
+
+        if not healer:
+            dragon.assigned_healer_id = None
+            continue
+
+        # healing chance (you can tweak this)
+        base_chance = 0.25
+
+        skill_modifier = getattr(healer, "healer_skill", 1.0)
+
+        chance = base_chance * skill_modifier
+
+        if healer.trust.get(dragon.id, 0) >= 2:
+            chance += 0.15
+
+        chance = max(0.05, min(0.85, chance))
+
+        if random.random() < chance:
+            dragon.health = "Healthy"
+            dragon.assigned_healer_id = None
+            dragon.injury_duration = 0
+
+            log_event(
+                world,
+                f"{healer.name} (skill {round(getattr(healer, 'healer_skill', 1.0), 2)}) successfully treated {dragon.name}'s injuries.",
+                involved_ids=[healer.id, dragon.id],
+                event_type="healed",
+                importance=3,
+            )
+
     move_dragons_between_locations(world)
 
     process_scheduled_events(world)
