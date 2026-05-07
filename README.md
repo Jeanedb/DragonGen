@@ -95,7 +95,6 @@ sim/ → modular systems (events, injuries, leadership, etc.)
 
 Full structure available in the repository.
 
----
 
 ## 🚀 Getting Started
 
