@@ -86,7 +86,7 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 	>Village → role/location events
 - change nomenclature to better suit WoF
 - context/location conversations e.g. two dragons in training area talk about sparing
-- roles and ranks need amending, there is no leader or deputy. add "QUEEN' and "KING", Only needs to be on UI, not system
+- roles and ranks need amending, there is no leader or deputy. add "QUEEN' and "KING", Only needs to be on UI, not system, Only female
 - Make roles meaningful e.g. healers heal, scouts go on patrol, warriors train and fight, etc
 - Re-evaluate world choice system thresholds, triggers, placements within UIs
 - Make "TRIBE" cultures and attributes more accurate to book lore e.g. mythos and camo, fire scale, and water breathing etc...
@@ -99,6 +99,7 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 - Make dead remember name of past MATE in attributes
 - Conversation feature: talk about another dragon, politics, relationships etc
 - Dragons live to 150 yrs ish, not 250+
+- Resource system e.g. food/medicine
 - Find correct time span to jump by months/weeks/days/years?
 - Add conflict kills/deaths
 - Add rumor system. not certain what that would entail
@@ -108,6 +109,8 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 - Slow down reproduction
 - Add sexes. male, female, trans, fluid, etc.
 - add dragons leaving/entering/returning. Good and bad events. perhaps hidden story lines
+- More diverse personality types, mix and hybrid personalities to e.g angry bruting clever
+
 
 #SCROLL LIBRARY/ENCYCLOPEDIA
 - Add family tree. e.g. dragon a was granddaughter of dragon b, a past great leader of the tribe.....
@@ -119,6 +122,24 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 - leadership pressure system broken/working/function? I dont remember. Should only be visible on affected dragons
 - Add war state. tie in leader choice "calm, push, vigilant" to affect rival/war time event
 - Player ability to evict Dragon
+
+
+#VILLAGE CENTER
+- Commerce community?
+- Market place. inter tribe resource market. import/export
+	>tie to trade route choices e.g. dont accept resources from tribe, less of the resource available
+
+
+#HUNTING GROUNDS 
+- Resource gathering/medicinal herbs
+- Hunting foods for resources
+
+
+#HATCHERY
+- Rare eggs e.g. blood red egg
+- incubation period
+- Attribute clues e.g. eggs does not stir much = calm dragon
+- Communal hatchery e.g. rainwings, hivewings
 
 
 #TRANING GROUNDS/WARRIORS
@@ -135,10 +156,6 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 - Healer get ever slightly better with every successful heal
 - Healer may need supplies for some extensive heal 
 	>create patrol choice to gather supplies
-
-
-
-
 
 
 #COMPLETED
@@ -185,4 +202,7 @@ no feeling of consequences/involvement
 
 ADD:
 conversation. select two dragons and have them have a conversation. text choices during. Personality impacts convo
+
+BUGS:
+restart tribe has no dragons in roster
 

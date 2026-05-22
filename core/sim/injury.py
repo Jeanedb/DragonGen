@@ -10,7 +10,8 @@ def add_injury(world: World, dragon):
         return False
 
     dragon.health = "Injured"
-
+    dragon.location = "healer_den"
+    
     dragon.injury_duration = 0
     dragon.assigned_healer_id = None
 

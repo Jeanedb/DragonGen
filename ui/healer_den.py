@@ -1,4 +1,16 @@
 import customtkinter as ctk
+from PIL import Image, ImageTk
+import tkinter as tk
+import os
+import sys
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 
 class HealerDenWindow(ctk.CTkToplevel):
@@ -9,7 +21,8 @@ class HealerDenWindow(ctk.CTkToplevel):
         self.world = world
 
         self.title("Healer's Den")
-        self.geometry("650x520")
+        self.geometry("900x650")
+        self.minsize(700, 500)
 
         self.transient(parent)
         self.lift()
@@ -22,29 +35,54 @@ class HealerDenWindow(ctk.CTkToplevel):
 
         self.create_layout()
 
+    
+    def set_background(self, image_path):
+        self.bg_raw = Image.open(resource_path(image_path))
+
+        self.canvas = tk.Canvas(self, highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
+
+        def resize_bg(event):
+            w = event.width
+            h = event.height
+
+            resized = self.bg_raw.resize((w, h))
+            self.bg_image = ImageTk.PhotoImage(resized)
+
+            self.canvas.delete("bg")
+            self.canvas.create_image(0, 0, image=self.bg_image, anchor="nw", tags="bg")
+            self.canvas.tag_lower("bg")
+
+        self.canvas.bind("<Configure>", resize_bg)
+
+
     def create_layout(self):
+        self.set_background("assets/menu/healer_bg.png")
+
+        content = ctk.CTkFrame(self.canvas, fg_color="#111111", corner_radius=28)
+        self.canvas.create_window(350, 325, anchor="center", window=content, width=700, height=560)
         title = ctk.CTkLabel(
-            self,
+            content,
             text="Healer's Den",
-            font=("Arial", 24, "bold")
+            font=("Arial", 22, "bold")
         )
         title.pack(pady=(18, 4))
 
         subtitle = ctk.CTkLabel(
-            self,
+            content,
             text="Review injured dragons and the healers available to care for them.",
             font=("Arial", 13),
             text_color="#BDBDBD"
         )
         subtitle.pack(pady=(0, 14))
 
-        body = ctk.CTkFrame(self)
-        body.pack(fill="both", expand=True, padx=16, pady=10)
+        body = ctk.CTkFrame(content, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=14, pady=10)
 
-        injured_frame = ctk.CTkFrame(body)
+        injured_frame = ctk.CTkFrame(body, fg_color="#202020", corner_radius=14)
         injured_frame.pack(side="left", fill="both", expand=True, padx=(0, 8), pady=8)
 
-        healer_frame = ctk.CTkFrame(body)
+        healer_frame = ctk.CTkFrame(body, fg_color="#202020", corner_radius=14)
         healer_frame.pack(side="right", fill="both", expand=True, padx=(8, 0), pady=8)
 
         injured_title = ctk.CTkLabel(
@@ -109,7 +147,7 @@ class HealerDenWindow(ctk.CTkToplevel):
             none_label.pack(anchor="w", padx=8, pady=8)
 
         close_btn = ctk.CTkButton(
-            self,
+            content,
             text="Return",
             width=140,
             command=self.destroy
@@ -259,7 +297,7 @@ class HealerDenWindow(ctk.CTkToplevel):
                 f"Tribe: {getattr(healer, 'tribe', 'Unknown')}\n"
                 f"Health: {getattr(healer, 'health', 'Unknown')}\n"
                 f"Healer Skill: {getattr(healer, 'healer_skill', 1.0)}\n"
-                f"Location: {getattr(healer, 'location', 'Unknown')}"
+                f"Location: {getattr(healer, 'location', 'Unknown')}\n"
                 f"Patients: {patient_count}/2\n"
             ),
             font=("Arial", 12),

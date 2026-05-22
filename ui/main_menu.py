@@ -1,11 +1,19 @@
 import customtkinter as ctk
-from ui.app import DragonGenApp
-import subprocess
+from game_main import run_game
 import sys
 import random
 from PIL import Image, ImageTk
 import tkinter as tk
+import os
+import sys
 
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 TRIBES = [
     ("skywing", "SkyWing", "Proud, fierce, and battle-ready."),
@@ -39,7 +47,7 @@ class MainMenu(ctk.CTk):
             widget.destroy()
 
     def set_background(self, image_path):
-        self.bg_raw = Image.open(image_path)
+        self.bg_raw = Image.open(resource_path(image_path))
 
         self.canvas = tk.Canvas(self, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
@@ -337,13 +345,14 @@ class MainMenu(ctk.CTk):
         step_progress()
 
     def launch_selected_tribe(self):
-        subprocess.Popen([sys.executable, "game_main.py", self.selected_tribe])
+        selected = self.selected_tribe
         self.destroy()
+        run_game(selected)
 
 
     def load_game(self):
-        subprocess.Popen([sys.executable, "game_main.py"])
         self.destroy()
+        run_game("mixed")
         
     def show_options(self):
         self.clear()

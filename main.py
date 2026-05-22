@@ -1,3 +1,4 @@
+
 from ui.main_menu import MainMenu
 
 if __name__ == "__main__":

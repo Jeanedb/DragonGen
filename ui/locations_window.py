@@ -40,6 +40,7 @@ class LocationsWindow(ctk.CTkToplevel):
 
         self.create_layout()
 
+
     def create_layout(self):
         title = ctk.CTkLabel(
             self,
@@ -79,9 +80,11 @@ class LocationsWindow(ctk.CTkToplevel):
 
             self.grid.grid_columnconfigure(col, weight=1)
 
+            count = self.get_location_count(loc_id)
+
             name = ctk.CTkLabel(
                 card,
-                text=get_location_name(loc_id),
+                text=f"{get_location_name(loc_id)} ({count})",
                 font=("Arial", 15, "bold")
             )
             name.pack(anchor="w", padx=12, pady=(10, 2))
@@ -117,6 +120,13 @@ class LocationsWindow(ctk.CTkToplevel):
 
     def open_placeholder(self, loc_id):
         PlaceholderLocationWindow(self, self.world, loc_id)
+
+    def get_location_count(self, loc_id):
+        return sum(
+            1 for d in self.world.dragons
+            if getattr(d, "status", "") == "Alive"
+            and getattr(d, "location", "") == loc_id
+        )
 
 
 class PlaceholderLocationWindow(ctk.CTkToplevel):

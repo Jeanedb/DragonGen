@@ -6,6 +6,14 @@ def get_living_dragons(world: World):
     return [d for d in world.dragons if d.status == "Alive"]
 
 
+def get_healthy_living_dragons(world: World):
+    return [
+        d for d in world.dragons
+        if d.status == "Alive"
+        and d.health == "Healthy"
+    ]
+
+
 def get_eligible_non_dragonets(world: World):
     return [
         d for d in world.dragons
@@ -69,8 +77,6 @@ def get_tribe_climate(world):
         climate["risk_bias"] += 0.20
     elif direction == "watchful":
         climate["suspicion_bias"] += 0.30
-
-    return climate
 
     
     # ---- Leader effects: long-term cultural pressure ----
