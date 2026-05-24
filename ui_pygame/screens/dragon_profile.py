@@ -50,7 +50,7 @@ class DragonProfileScreen(BaseScreen):
         titles = ", ".join(getattr(d, "earned_titles", [])) or "None"
         memory_flags = list(getattr(d, "memory_flags", []))
 
-        memory_text = ", ".join(memory_flags) if memory_flags else "None"
+        memory_text = ", ".join(str(m) for m in memory_flags) if memory_flags else "None"
 
         return (
             "=== Identity ===\n"
@@ -119,6 +119,7 @@ class DragonProfileScreen(BaseScreen):
 
         title = self.title_font.render("Dragon Profile", True, TEXT)
         screen.blit(title, title.get_rect(center=(WIDTH // 2, 70)))
+
 
         left = pygame.Rect(80, 130, 280, 500)
         right = pygame.Rect(390, 130, 530, 500)

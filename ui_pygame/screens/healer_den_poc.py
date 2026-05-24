@@ -114,23 +114,37 @@ class HealerDenScreen(BaseScreen):
         self.scroll_left = max(min_left_scroll, min(max_left_scroll, self.scroll_left))
         self.scroll_right = max(min_right_scroll, min(max_right_scroll, self.scroll_right))
 
+    def get_dragons(self):
+        if hasattr(self.world, "dragons"):
+            return self.world.dragons
+        return self.world
+
     def get_injured_dragons(self):
         return [
-            d for d in self.world
-            if d.status == "Alive" and d.health != "Healthy"
+            d for d in self.get_dragons()
+            if d.status == "Alive"
+            and d.health != "Healthy"
         ]
 
     def get_healers(self):
         return [
-            d for d in self.world
-            if d.status == "Alive" and d.role == "Healer"
+            d for d in self.get_dragons()
+            if d.status == "Alive"
+            and d.role == "Healer"
         ]
 
     def get_dragon_by_id(self, dragon_id):
-        return next((d for d in self.world if d.id == dragon_id), None)
+        return next(
+            (d for d in self.get_dragons() if d.id == dragon_id),
+            None
+        )
 
     def get_patient_count(self, healer):
-        return sum(1 for d in self.world if d.assigned_healer_id == healer.id)
+        return sum(
+            1
+            for d in self.get_dragons()
+            if d.assigned_healer_id == healer.id
+        )
 
     def assign_healer(self, injured_dragon, healer):
         injured_dragon.assigned_healer_id = healer.id
@@ -175,6 +189,49 @@ class HealerDenScreen(BaseScreen):
             MUTED
         )
         screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 125)))
+
+        den_dragons = [
+            d for d in self.get_dragons()
+            if getattr(d, "location", None) in [
+                "healer_den",
+                "Healer's Den"
+            ]
+        ]
+
+        self.draw_text(
+            screen,
+            "Present:",
+            55,
+            40,
+            self.small,
+            GOLD
+        )
+
+        y = 60
+
+        if not den_dragons:
+            self.draw_text(screen, "No dragons here", 55, y, self.small, MUTED)
+        else:
+            for d in den_dragons[:5]:
+                self.draw_text(
+                    screen,
+                    f"{d.name} ({getattr(d, 'role', 'Unknown')})",
+                    55,
+                    y,
+                    self.small,
+                    MUTED
+                )
+                y += 18
+
+            if len(den_dragons) > 5:
+                self.draw_text(
+                    screen,
+                    f"+{len(den_dragons) - 5} more",
+                    55,
+                    y,
+                    self.small,
+                    MUTED
+                )
 
         left_panel = pygame.Rect(155, 220, 320, 330)
         right_panel = pygame.Rect(525, 220, 320, 330)

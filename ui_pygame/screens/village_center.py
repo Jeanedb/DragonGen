@@ -60,6 +60,30 @@ class VillageCenterScreen(BaseScreen):
     def update(self, dt):
         pass
 
+    def get_dragons_at_village(self):
+        dragons = getattr(self.world, "dragons", self.world)
+
+        return [
+            d for d in dragons
+            if getattr(d, "location", None) in [
+                "village",
+                "village_center",
+                "Village Center"
+            ]
+        ]
+
+    def get_dragons_at_village(self):
+        dragons = getattr(self.world, "dragons", self.world)
+
+        return [
+            d for d in dragons
+            if getattr(d, "location", None) in [
+                "village",
+                "village_center",
+                "Village Center"
+            ]
+        ]
+
     def draw(self, screen):
         self.buttons.clear()
 
@@ -81,6 +105,42 @@ class VillageCenterScreen(BaseScreen):
             MUTED
         )
         screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 115)))
+
+        village_dragons = self.get_dragons_at_village()
+
+        self.draw_text(
+            screen,
+            "Here:",
+            55,
+            40,
+            self.small,
+            GOLD
+        )
+
+        y = 60
+        if not village_dragons:
+            self.draw_text(screen, "No dragons here", 55, y, self.small, MUTED)
+        else:
+            for d in village_dragons[:5]:
+                self.draw_text(
+                    screen,
+                    f"{d.name} ({getattr(d, 'role', 'Unknown')})",
+                    55,
+                    y,
+                    self.small,
+                    MUTED
+                )
+                y += 15
+
+            if len(village_dragons) > 5:
+                self.draw_text(
+                    screen,
+                    f"+{len(village_dragons) - 5} more",
+                    55,
+                    y,
+                    self.small,
+                    MUTED
+                )
 
         left = pygame.Rect(85, 155, 260, 390)
         right = pygame.Rect(675, 155, 260, 390)

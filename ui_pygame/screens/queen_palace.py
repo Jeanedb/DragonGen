@@ -195,6 +195,49 @@ class QueenPalaceScreen(BaseScreen):
         )
         screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 115)))
 
+        palace_dragons = [
+            d for d in self.world.dragons
+            if getattr(d, "location", None) in [
+                "queen_palace",
+                "Queen's Palace"
+            ]
+        ]
+
+        self.draw_text(
+            screen,
+            "Present:",
+            55,
+            40,
+            self.small,
+            GOLD
+        )
+
+        y = 60
+
+        if not palace_dragons:
+            self.draw_text(screen, "No dragons here", 55, y, self.small, MUTED)
+        else:
+            for d in palace_dragons[:5]:
+                self.draw_text(
+                    screen,
+                    f"{d.name} ({getattr(d, 'role', 'Unknown')})",
+                    55,
+                    y,
+                    self.small,
+                    MUTED
+                )
+                y += 18
+
+            if len(palace_dragons) > 5:
+                self.draw_text(
+                    screen,
+                    f"+{len(palace_dragons) - 5} more",
+                    55,
+                    y,
+                    self.small,
+                    MUTED
+                )
+
         main_panel = pygame.Rect(90, 145, 820, 485)
         self.draw_transparent_rect(screen, main_panel, (28, 28, 28, 175), (45, 45, 45), 22)
 

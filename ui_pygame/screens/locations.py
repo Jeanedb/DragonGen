@@ -35,6 +35,47 @@ class LocationsScreen(BaseScreen):
     def update(self, dt):
         pass
 
+    def get_dragons_at_location(self, loc_id):
+        dragons = getattr(self.world, "dragons", self.world)
+
+        aliases = {
+            "village": ["village", "village_center", "Village Center"],
+            "relations": ["relations", "queen_palace", "Queen's Palace"],
+            "healer_den": ["healer_den", "Healer's Den"],
+            "training": ["training", "training_grounds", "Training Grounds"],
+            "hunting": ["hunting", "hunting_grounds", "Hunting Grounds"],
+            "border": ["border", "border_routes", "Border Routes"],
+            "library": ["library", "scroll_library", "Scroll Library"],
+            "hatchery": ["hatchery", "Hatchery"],
+        }
+
+        valid_names = aliases.get(loc_id, [loc_id])
+
+        return [
+            d for d in dragons
+            if getattr(d, "location", None) in valid_names
+        ]
+
+
+    def get_location_label(self, name, loc_id):
+        count = len(self.get_dragons_at_location(loc_id))
+        return f"{name} ({count})"
+
+
+    def get_location_dragons_text(self, loc_id):
+        dragons = self.get_dragons_at_location(loc_id)
+
+        if not dragons:
+            return "No dragons here."
+
+        shown = dragons[:3]
+        names = [f"{d.name} ({d.role})" for d in shown]
+
+        if len(dragons) > 3:
+            names.append(f"+{len(dragons) - 3} more")
+
+        return " • ".join(names)
+
     def draw(self, screen):
         mouse_pos = scale_mouse_pos(
             pygame.mouse.get_pos(),
@@ -61,6 +102,22 @@ class LocationsScreen(BaseScreen):
             MUTED
         )
         screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 120)))
+
+        dashboard_btn = Button(
+            (755, 50, 150, 36),
+            "Tribe Overview",
+            lambda: self.open_location("dashboard")
+        )
+        self.buttons.append(dashboard_btn)
+        dashboard_btn.draw(screen, self.small)
+
+        profile_btn = Button(
+            (755, 92, 150, 36),
+            "Dragon Profile",
+            lambda: self.open_location("dragon_profile")
+        )
+        self.buttons.append(profile_btn)
+        profile_btn.draw(screen, self.small)
 
         panel = pygame.Rect(130, 135, 740, 550)
         panel_surface = pygame.Surface((panel.width, panel.height), pygame.SRCALPHA)
@@ -103,6 +160,7 @@ class LocationsScreen(BaseScreen):
             draw_rect = card.move(0, hover_offset)
 
             card_surface = pygame.Surface((draw_rect.width, draw_rect.height), pygame.SRCALPHA)
+            
 
             if is_hovered:
                 card_surface.fill((60, 60, 60, 235))
@@ -121,8 +179,17 @@ class LocationsScreen(BaseScreen):
                 border_radius=12
             )
 
-            self.draw_text(screen, name, draw_rect.x + 14, draw_rect.y + 10, self.section_font, GOLD)
+            self.draw_text(
+                screen,
+                self.get_location_label(name, loc_id),
+                draw_rect.x + 14,
+                draw_rect.y + 10,
+                self.section_font,
+                GOLD
+            )
+
             self.draw_text(screen, desc, draw_rect.x + 14, draw_rect.y + 42, self.small, MUTED)
+
 
             btn = Button(
                 (draw_rect.x + 210, draw_rect.y + 62, 90, 28),
@@ -140,6 +207,10 @@ class LocationsScreen(BaseScreen):
         elif loc_id == "village":
             self.change_screen("village")
         elif loc_id == "library":
+            self.change_screen("scroll_library")
+        elif loc_id == "dashboard":
+            self.change_screen("dashboard")
+        elif loc_id == "dragon_profile":
             self.change_screen("dragon_profile")
         else:
             print(f"{loc_id} not built yet.")

@@ -1,19 +1,29 @@
 import pygame
-from ui_pygame.screens.healer_den_poc import HealerDenScreen, create_test_world
+from ui_pygame.screens.healer_den_poc import HealerDenScreen
+from core.generator import generate_starting_world
+from core.sim.locations import initialize_dragon_locations
+from core.sim.flavor import ensure_dragon_flavor
+from core.sim.leadership import maintain_hierarchy
 from ui_pygame.screens.locations import LocationsScreen
 from ui_pygame.screens.queen_palace import QueenPalaceScreen
 from ui_pygame.screens.village_center import VillageCenterScreen
 from ui_pygame.screens.dragon_profile import DragonProfileScreen
 from ui_pygame.widgets.decision_popup import DecisionPopup
 from core.sim.choices import resolve_choice
+from ui_pygame.screens.world_dashboard import WorldDashboardScreen
+from ui_pygame.screens.scroll_library import ScrollLibraryScreen
+from ui_pygame.screens.dragon_portrait import DragonPortraitScreen
+
 
 WIDTH, HEIGHT = 1000, 700
 FPS = 60
 
 
 class PygameApp:
-    def __init__(self):
+    def __init__(self, starting_tribe="mixed"):
         pygame.init()
+
+        self.selected_portrait_dragon = None
 
         self.decision_popup = None
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
@@ -21,34 +31,19 @@ class PygameApp:
         pygame.display.set_caption("DragonGen - Pygame")
 
         self.clock = pygame.time.Clock()
-        self.world = create_test_world()
+        self.world = generate_starting_world(starting_tribe)
+        initialize_dragon_locations(self.world)
+        maintain_hierarchy(self.world)
 
-        self.test_pending_choice = {
-            "text": "Ashclaw is injured near the border. Mossglade hears rival dragons approaching. What should Mossglade do?",
-            "options": [
-                {
-                    "id": "stay_help",
-                    "text": "Stay and help Ashclaw",
-                    "hint": "“No dragon deserves to be left behind.”"
-                },
-                {
-                    "id": "run_for_help",
-                    "text": "Run back to camp for help",
-                    "hint": "“If both are lost, no one gets saved.”"
-                },
-                {
-                    "id": "hide_wait",
-                    "text": "Hide and wait for the rivals to pass",
-                    "hint": "“Sometimes survival means silence.”"
-                },
-            ]
-        }
+        for dragon in self.world.dragons:
+            ensure_dragon_flavor(dragon)
+
 
         self.current_screen = LocationsScreen(self.world, self.change_screen)
         self.running = True
 
     def check_pending_choice(self):
-        choice = getattr(self, "test_pending_choice", None)
+        choice = getattr(self.world, "pending_choice", None)
 
         if choice and self.decision_popup is None:
             self.decision_popup = DecisionPopup(
@@ -62,8 +57,7 @@ class PygameApp:
             self.decision_popup = None
 
     def resolve_decision(self, option_id):
-        print(f"Chose option: {option_id}")
-        self.test_pending_choice = None
+        resolve_choice(self.world, option_id)
         self.decision_popup = None
 
     def change_screen(self, screen_name):
@@ -77,6 +71,16 @@ class PygameApp:
             self.current_screen = VillageCenterScreen(self.world, self.change_screen)
         elif screen_name == "dragon_profile":
             self.current_screen = DragonProfileScreen(self.world, self.change_screen)
+        elif screen_name == "dashboard":
+            self.current_screen = WorldDashboardScreen(self.world, self.change_screen)
+        elif screen_name == "scroll_library":
+            self.current_screen = ScrollLibraryScreen(self.world, self.change_screen)
+        elif screen_name == "dragon_portrait":
+            self.current_screen = DragonPortraitScreen(
+                self.world,
+                self.change_screen,
+                getattr(self.world, "selected_portrait_dragon", None)
+            )
 
     def scale_surface_to_window(self):
         window_w, window_h = self.screen.get_size()
