@@ -14,6 +14,7 @@ from ui_pygame.screens.world_dashboard import WorldDashboardScreen
 from ui_pygame.screens.scroll_library import ScrollLibraryScreen
 from ui_pygame.screens.dragon_portrait import DragonPortraitScreen
 from ui_pygame.screens.training_grounds import TrainingGroundsScreen
+from ui_pygame.screens.hunting_grounds import HuntingGroundsScreen
 
 
 WIDTH, HEIGHT = 1000, 700
@@ -78,6 +79,8 @@ class PygameApp:
             self.current_screen = ScrollLibraryScreen(self.world, self.change_screen)
         elif screen_name == "training_grounds":
             self.current_screen = TrainingGroundsScreen(self.world, self.change_screen)
+        elif screen_name == "hunting_grounds":
+            self.current_screen = HuntingGroundsScreen(self.world, self.change_screen)
         elif screen_name == "dragon_portrait":
             self.current_screen = DragonPortraitScreen(
                 self.world,
