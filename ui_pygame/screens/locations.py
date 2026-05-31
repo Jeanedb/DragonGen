@@ -216,6 +216,8 @@ class LocationsScreen(BaseScreen):
             self.change_screen("training_grounds")
         elif loc_id == "hunting":
             self.change_screen("hunting_grounds")
+        elif loc_id == "border":
+            self.change_screen("border_routes")
         else:
             print(f"{loc_id} not built yet.")
 

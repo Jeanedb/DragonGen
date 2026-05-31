@@ -133,6 +133,16 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 #HUNTING GROUNDS 
 - Resource gathering/medicinal herbs
 - Hunting foods for resources
+- Future elements V 
+    Small Hunt
+      Low risk
+      Low reward
+    Large Hunt
+      Medium risk
+      Medium reward
+    Dangerous Hunt
+      High risk
+      High reward
 
 
 #HATCHERY
