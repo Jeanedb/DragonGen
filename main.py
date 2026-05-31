@@ -1,6 +1,4 @@
-
-from ui.main_menu import MainMenu
+from ui_pygame.main_menu import PygameMainMenu
 
 if __name__ == "__main__":
-    app = MainMenu()
-    app.mainloop()
+    PygameMainMenu().run()

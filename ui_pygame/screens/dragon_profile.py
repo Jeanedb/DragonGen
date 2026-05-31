@@ -20,6 +20,7 @@ class DragonProfileScreen(BaseScreen):
         self.change_screen = change_screen
         self.selected_dragon = self.get_dragons()[0] if self.get_dragons() else None
         self.detail_scroll = 0
+        self.list_scroll = 0
 
         project_root = Path(__file__).resolve().parents[2]
         bg_path = project_root / "assets" / "menu" / "village_bg.png"
@@ -30,10 +31,46 @@ class DragonProfileScreen(BaseScreen):
         except Exception:
             self.bg_image = None
 
+    def get_dragon_list_label(self, d):
+        name = getattr(d, "name", "Unknown")
+        tribe = getattr(d, "tribe", "Unknown")
+        rank = getattr(d, "rank", "")
+
+        if rank == "Leader":
+            return f"{name} — Leader ({tribe})"
+
+        if rank == "Deputy":
+            return f"{name} — Deputy ({tribe})"
+
+        return f"{name} ({tribe})"
+
     def get_dragons(self):
         if hasattr(self.world, "dragons"):
-            return list(self.world.dragons)
-        return list(self.world)
+            dragons = list(self.world.dragons)
+        else:
+            dragons = list(self.world)
+
+        # remove dead dragons
+        dragons = [
+            d for d in dragons
+            if getattr(d, "status", "Alive") != "Dead"
+        ]
+
+        def sort_key(d):
+            rank = getattr(d, "rank", "")
+
+            if rank == "Leader":
+                priority = 0
+            elif rank == "Deputy":
+                priority = 1
+            else:
+                priority = 2
+
+            return (priority, d.name.lower())
+
+        dragons.sort(key=sort_key)
+
+        return dragons
 
     def draw_panel(self, screen, rect, alpha=185):
         surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
@@ -157,21 +194,39 @@ class DragonProfileScreen(BaseScreen):
             )
 
 
-        y = left.y + 60
-        for d in self.get_dragons()[:10]:
-            selected = d == self.selected_dragon
-            btn = Button(
-                (left.x + 18, y, 240, 34),
-                f"{d.name} ({d.tribe})",
-                lambda dragon=d: self.select_dragon(dragon)
-            )
-            self.buttons.append(btn)
-            btn.draw(screen, self.small)
+        list_rect = pygame.Rect(left.x + 12, left.y + 55, left.width - 24, left.height - 75)
 
-            if selected:
-                pygame.draw.rect(screen, GOLD, pygame.Rect(left.x + 14, y - 3, 248, 40), width=2, border_radius=8)
+        old_clip = screen.get_clip()
+        screen.set_clip(list_rect)
+
+        y = list_rect.y + self.list_scroll
+
+        for d in self.get_dragons():
+            selected = d == self.selected_dragon
+
+            btn_rect = pygame.Rect(left.x + 18, y, 240, 34)
+
+            if btn_rect.bottom >= list_rect.top and btn_rect.top <= list_rect.bottom:
+                btn = Button(
+                    (btn_rect.x, btn_rect.y, btn_rect.width, btn_rect.height),
+                    self.get_dragon_list_label(d),
+                    lambda dragon=d: self.select_dragon(dragon)
+                )
+                self.buttons.append(btn)
+                btn.draw(screen, self.small)
+
+                if selected:
+                    pygame.draw.rect(
+                        screen,
+                        GOLD,
+                        pygame.Rect(left.x + 14, y - 3, 248, 40),
+                        width=2,
+                        border_radius=8
+                    )
 
             y += 42
+
+        screen.set_clip(old_clip)
 
         detail_rect = pygame.Rect(right.x + 18, right.y + 205, right.width - 36, right.height - 230)
         self.draw_panel(screen, detail_rect, alpha=150)
@@ -215,9 +270,24 @@ class DragonProfileScreen(BaseScreen):
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEWHEEL:
-            self.detail_scroll += event.y * 25
-            self.detail_scroll = min(0, self.detail_scroll)
-            self.detail_scroll = max(-700, self.detail_scroll)
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+
+            left_rect = pygame.Rect(80, 130, 280, 500)
+            right_detail_rect = pygame.Rect(408, 335, 494, 270)
+
+            if left_rect.collidepoint(mouse_x, mouse_y):
+                total_height = len(self.get_dragons()) * 42
+                visible_height = left_rect.height - 75
+                max_scroll = max(0, total_height - visible_height)
+
+                self.list_scroll += event.y * 30
+                self.list_scroll = min(0, self.list_scroll)
+                self.list_scroll = max(-max_scroll, self.list_scroll)
+
+            elif right_detail_rect.collidepoint(mouse_x, mouse_y):
+                self.detail_scroll += event.y * 25
+                self.detail_scroll = min(0, self.detail_scroll)
+                self.detail_scroll = max(-700, self.detail_scroll)
 
         for button in self.buttons:
             button.handle_event(event)

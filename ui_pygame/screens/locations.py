@@ -212,6 +212,8 @@ class LocationsScreen(BaseScreen):
             self.change_screen("dashboard")
         elif loc_id == "dragon_profile":
             self.change_screen("dragon_profile")
+        elif loc_id == "training":
+            self.change_screen("training_grounds")
         else:
             print(f"{loc_id} not built yet.")
 

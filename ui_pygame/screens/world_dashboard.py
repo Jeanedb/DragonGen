@@ -77,15 +77,58 @@ class WorldDashboardScreen(BaseScreen):
         events = getattr(self.world, "event_log", [])
         lines = []
 
-        for event in events[-30:]:
+        filter_map = {
+            "Rumors": {"rumor"},
+            "Social": {
+                "friend_event",
+                "rival_event",
+                "grief_event",
+                "rivalry_escalation",
+                "rivalry_crisis",
+                "rivalry_break",
+            },
+            "Recovery": {
+                "recovery_visit",
+                "recovery_neglect",
+                "healed",
+                "natural_healing",
+            },
+            "Injuries": {
+                "injury",
+                "rivalry_injury",
+                "injury_strain",
+            },
+            "Leadership": {
+                "leader",
+                "leadership",
+                "leader_event",
+            },
+            "Politics": {
+                "political",
+                "diplomacy",
+                "border",
+                "relations",
+            },
+        }
+
+        allowed_types = filter_map.get(self.event_filter)
+
+        for event in events[-50:]:
             if isinstance(event, dict):
+                event_type = event.get("type", "")
                 text = event.get("text", str(event))
             else:
+                event_type = ""
                 text = str(event)
+
+            if allowed_types:
+                if not any(key in event_type for key in allowed_types):
+                    continue
+
             lines.append(f"- {text}")
 
         if not lines:
-            return ["No events yet."]
+            return [f"No {self.event_filter.lower()} events yet."]
 
         return lines
 
@@ -121,8 +164,8 @@ class WorldDashboardScreen(BaseScreen):
         )
         screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 110)))
 
-        left = pygame.Rect(85, 150, 280, 430)
-        right = pygame.Rect(395, 150, 520, 430)
+        left = pygame.Rect(80, 150, 300, 455)
+        right = pygame.Rect(405, 150, 535, 455)
 
         self.draw_panel(screen, left)
         self.draw_panel(screen, right)
@@ -161,7 +204,7 @@ class WorldDashboardScreen(BaseScreen):
         self.draw_text(screen, mood_desc, left.x + 24, bar_rect.y + 65, self.small, MUTED)
 
         advance_btn = Button(
-            (left.x + 45, left.y + 350, 190, 42),
+            (left.x + 55, left.y + 375, 190, 42),
             "Advance Week",
             self.advance_week
         )
@@ -170,22 +213,15 @@ class WorldDashboardScreen(BaseScreen):
 
         self.draw_text(screen, "World Event Log", right.x + 18, right.y + 18, self.section_font, GOLD)
 
-        filters = ["All", "Rumors", "Social", "Injuries", "Political"]
+        filter_btn = Button(
+            (right.x + 18, right.y + 55, 190, 32),
+            f"Filter: {self.event_filter} ▼",
+            self.cycle_event_filter
+        )
+        self.buttons.append(filter_btn)
+        filter_btn.draw(screen, self.small)
 
-        x = right.x + 18
-        y = right.y + 55
-
-        for filter_name in filters:
-            btn = Button(
-                (x, y, 88, 28),
-                filter_name,
-                lambda f=filter_name: self.set_event_filter(f)
-            )
-            self.buttons.append(btn)
-            btn.draw(screen, self.small)
-            x += 96
-
-        log_rect = pygame.Rect(right.x + 18, right.y + 95, right.width - 36, right.height - 120)
+        log_rect = pygame.Rect(right.x + 18, right.y + 95, right.width - 36, right.height - 115)
         self.draw_panel(screen, log_rect, alpha=150)
 
         old_clip = screen.get_clip()
@@ -213,6 +249,21 @@ class WorldDashboardScreen(BaseScreen):
         )
         self.buttons.append(return_btn)
         return_btn.draw(screen, self.font)
+
+    def cycle_event_filter(self):
+        filters = [
+            "All",
+            "Social",
+            "Recovery",
+            "Injuries",
+            "Leadership",
+            "Politics",
+            "Rumors",
+        ]
+
+        current_index = filters.index(self.event_filter)
+        self.event_filter = filters[(current_index + 1) % len(filters)]
+        self.log_scroll = 0
 
     def update(self, dt):
         pass

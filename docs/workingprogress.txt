@@ -7,7 +7,7 @@ DragonGen/
 ├── data/
 │   ├── names.py					Tribe specific name pool
 │   ├── tribes.py					Different tribes/tribe personality bias/roles
-│   ├── personalities.py  			Personality types
+│   ├── personalities.py  			Perso nality types
 │   ├── tribe_profiles.py  		Tribes blurb/tendencies/relations
 │   ├── regions.py  				Regions tied to tribes
 │   └── events.py					Empty 
@@ -145,6 +145,21 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 #TRANING GROUNDS/WARRIORS
 - Add war state. tie in leader choice "calm, push, vigilant" to affect rival/war time events
 - Warrior gets tiny bit better with sparring
+- tie in Training → combat skill → better patrol outcomes
+         Training → leadership skill → promotion/deputy candidacy 
+         Training → hunting skill → food success
+         Training → border skill → survival chance
+	TRAINING GROUNDS - FUTURE IMPROVEMENTS
+
+	[ ] Training affects combat skill
+	[ ] Training affects hunting success
+	[ ] Training affects border patrol survival
+	[ ] Leadership training influences promotion candidates
+	[ ] Mentorship creates loyalty relationships
+	[ ] Injuries can occur during sparring
+	[ ] Leader can order tribe-wide training programs
+	[ ] Training specialties (Warrior, Hunter, Scout, Healer)
+	[ ] Training history visible on dragon profile
 
 
 #INJURY/HEALER DEN

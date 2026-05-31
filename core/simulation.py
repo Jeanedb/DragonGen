@@ -11,6 +11,8 @@ from core.sim.consequences import process_scheduled_events
 from core.sim.phases.healing_phase import run_healing_phase
 from core.sim.locations import move_dragons_between_locations
 from core.sim.phases.reputation_phase import run_reputation_phase
+from core.sim.phases.progression_phase import run_progression_phase
+from core.sim.phases.leadership_phase import run_leadership_phase
 from core.sim.phases.recovery_phase import run_recovery_phase
 from core.sim.world_state import (
     get_living_dragons,
@@ -46,18 +48,12 @@ from core.sim.leadership import (
     get_leader_by_id,
 )
 
-
-
-
-
 def are_family(a, b):
     if a.id in b.parents or b.id in a.parents:
         return True
     if set(a.parents) & set(b.parents):
         return True
     return False
-
-
 
 def add_friend_event(world, a, b):
     direction = getattr(world, "direction", None)
@@ -160,7 +156,6 @@ def add_friend_event(world, a, b):
         cause=cause,
     )
     return True
-
 
 def add_rival_event(world, a, b):
     direction = getattr(world, "direction", None)
@@ -343,8 +338,6 @@ def add_rival_event(world, a, b):
             a.resentment[b.id] = a.resentment.get(b.id, 0) + 3
             b.resentment[a.id] = b.resentment.get(a.id, 0) + 3
 
-            
-
     return True
 
 def add_new_dragonet(world: World):
@@ -416,86 +409,6 @@ def add_new_dragonet(world: World):
 
     log_event(world, text, involved_ids=ids, event_type="birth", importance=4)
     return True
-
-
-def handle_possible_death(world: World, dragon):
-    if dragon.status != "Alive":
-        return False
-
-    death_chance = 0.0
-
-    if dragon.age_moons >= 180:
-        death_chance += 0.02
-    if dragon.age_moons >= 220:
-        death_chance += 0.05
-    if dragon.age_moons >= 260:
-        death_chance += 0.10
-
-    if dragon.role == "Elder":
-        death_chance += 0.03
-
-    was_injured = (dragon.health == "Injured")
-    if was_injured:
-        death_chance += 0.05
-
-    if random.random() < death_chance:
-        dragon.status = "Dead"
-        dragon.health = "Dead"
-
-        if was_injured:
-            dragon.cause_of_death = "injury"
-        elif dragon.age_moons >= 180 or dragon.role == "Elder":
-            dragon.cause_of_death = "natural"
-        else:
-            dragon.cause_of_death = "natural"
-
-        surviving_mate = None
-
-        if dragon.mate_id is not None:
-            surviving_mate = next(
-                (d for d in world.dragons if d.id == dragon.mate_id and d.status == "Alive"),
-                None
-            )
-
-            if surviving_mate:
-                flag = ("lost_mate", dragon.id, world.moon)
-
-                already_recorded = any(
-                    len(memory) >= 2 and memory[0] == "lost_mate" and memory[1] == dragon.id
-                    for memory in surviving_mate.memory_flags
-                )
-
-                if not already_recorded:
-                    surviving_mate.memory_flags.append(flag)
-
-                surviving_mate.grief_level = 12
-                surviving_mate.mate_id = None
-
-                if hasattr(world, "tension"):
-                    world.tension += 0.18
-
-        if surviving_mate:
-            texts = [
-                f"{dragon.name} passed away under the stars, leaving {surviving_mate.name} behind in grief.",
-                f"The tribe mourns the loss of {dragon.name}, and {surviving_mate.name} seems deeply shaken.",
-                f"In the {world.tribe_name}, {dragon.name} died, leaving their mate {surviving_mate.name} to carry the loss.",
-            ]
-        else:
-            texts = [
-                f"{dragon.name} passed away under the stars.",
-                f"The tribe mourns the loss of {dragon.name}.",
-                f"In the {world.tribe_name}, {dragon.name} ascended to the sky after death.",
-                f"{dragon.name} has died, leaving behind memories in the tribe."
-            ]
-
-        text = random.choice(texts)
-        log_event(world, text, involved_ids=[dragon.id], event_type="death", importance=5)
-
-        dragon.mate_id = None
-        return True
-
-    return False
-
 
 def try_existing_relationship_event(world: World, living):
     climate = get_tribe_climate(world)
@@ -631,7 +544,6 @@ def try_existing_relationship_event(world: World, living):
 
     return False
 
-
 # ---------- PLAYER CHOICES ----------
 
 
@@ -663,9 +575,6 @@ def apply_world_drift(world: World):
             if abs(dragon.perceived_reputation[k]) < 0.05:
                 del dragon.perceived_reputation[k]
 
-
-
-
 def advance_moon(world: World):
 
     living = get_living_dragons(world)
@@ -692,15 +601,7 @@ def advance_moon(world: World):
 
     run_reputation_phase(world)
 
-    for dragon in living:
-        tick_dragon_progression(world, dragon, living)
-        handle_possible_death(world, dragon)
-
-
-
-        if dragon.status == "Alive" and dragon.legend_flags.get("pending_survival_check") == 1:
-            dragon.hardship_survived += 1
-            dragon.legend_flags["pending_survival_check"] = 0
+    run_progression_phase(world, living)
 
     maintain_hierarchy(world)
     apply_leader_influence(world)
@@ -777,30 +678,7 @@ def advance_moon(world: World):
 
     run_event_phase(world)
 
-    leader = get_leader_by_id(world)
-
-    if leader and leader.status == "Alive":
-        pressure = 0
-
-        # tension contributes
-        pressure += int(getattr(world, "tension", 0))
-
-        # injured dragons increase pressure
-        injured = sum(1 for d in world.dragons if d.health == "Injured")
-        pressure += injured * 0.5
-
-        # recent deaths increase pressure
-        recent_deaths = [
-            e for e in world.event_log[-5:]
-            if isinstance(e, dict) and e.get("type") == "death"
-        ]
-        pressure += len(recent_deaths) * 1.5
-
-        leader.leadership_pressure += int(pressure)
-
-    try_leader_event(world)
-
-
+    run_leadership_phase(world)
 
     run_politics_phase(world)
     drift_relations(world)
