@@ -16,6 +16,7 @@ from ui_pygame.screens.dragon_portrait import DragonPortraitScreen
 from ui_pygame.screens.training_grounds import TrainingGroundsScreen
 from ui_pygame.screens.hunting_grounds import HuntingGroundsScreen
 from ui_pygame.screens.border_routes import BorderRoutesScreen
+from ui_pygame.screens.hatchery import HatcheryScreen
 
 
 WIDTH, HEIGHT = 1000, 700
@@ -84,6 +85,8 @@ class PygameApp:
             self.current_screen = HuntingGroundsScreen(self.world, self.change_screen)
         elif screen_name == "border_routes":
             self.current_screen = BorderRoutesScreen(self.world, self.change_screen)
+        elif screen_name == "hatchery":
+            self.current_screen = HatcheryScreen(self.world, self.change_screen)    
         elif screen_name == "dragon_portrait":
             self.current_screen = DragonPortraitScreen(
                 self.world,
