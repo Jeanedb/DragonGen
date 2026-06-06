@@ -46,6 +46,15 @@ def run_progression_phase(world, living):
             if d.name in {egg.get("mother"), egg.get("father")}
         ]
 
+        caretaker = next(
+            (
+                d for d in world.dragons
+                if d.name == egg.get("caretaker")
+                and d.status == "Alive"
+            ),
+            None
+        )
+
         if parents:
             tribe = random.choice(parents).tribe
         else:
@@ -54,6 +63,29 @@ def run_progression_phase(world, living):
         dragonet = generate_dragonet(new_id, tribe, parents)
         dragonet.parents = [p.id for p in parents]
         dragonet.location = "hatchery"
+
+        if caretaker:
+            dragonet.trust[caretaker.id] = 2.0
+            caretaker.trust[dragonet.id] = 1.0
+
+            dragonet.caretaker_id = caretaker.id
+            dragonet.caretaker_role = caretaker.role
+
+            if caretaker.role == "Healer":
+                dragonet.health = "Healthy"
+                dragonet.reputation["reliable"] += 0.2
+
+            elif caretaker.role == "Elder":
+                dragonet.reputation["reliable"] += 0.3
+
+            elif caretaker.role == "Warrior":
+                dragonet.combat_skill += 1
+
+            elif caretaker.role == "Scout":
+                dragonet.watchful_actions += 1
+
+            elif caretaker.role == "Hunter":
+                dragonet.hardship_survived += 1
 
         world.dragons.append(dragonet)
 
@@ -65,9 +97,15 @@ def run_progression_phase(world, living):
 
         parent_names = " and ".join([p.name for p in parents]) if parents else "unknown parents"
 
+        caretaker_text = (
+            f" {caretaker.name}'s care left an early mark on them."
+            if caretaker
+            else ""
+        )
+
         log_event(
             world,
-            f"The egg of {parent_names} hatched. The dragonet {dragonet.name} was born.",
+            f"The egg of {parent_names} hatched. The dragonet {dragonet.name} was born.{caretaker_text}",
             involved_ids=[dragonet.id] + [p.id for p in parents],
             event_type="hatchery",
             importance=5,

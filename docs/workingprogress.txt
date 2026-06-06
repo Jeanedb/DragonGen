@@ -48,6 +48,35 @@ DragonGen/
 └── assets/
     └── .gitkeep
 
+##DRAGONGEN LONG-TERM VISION##
+
+The tribe should remember.
+
+Actions should create relationships.
+Relationships should create stories.
+Stories should create future consequences.
+
+Goal:
+Build persistent social links that survive across years and generations.
+
+Examples:
+
+- Parents
+- Caretakers
+- Mentors
+- Rivals
+- Friends
+- First Hunt Partner
+- Apprentices
+- Political Allies
+- Political Enemies
+
+A dragon's history should matter more than its stats.
+
+Immediate effects are good.
+Delayed effects are better.
+Remembered effects are best.
+
 ##VISION##
 At its heart, this is a social insight game. A simulator as much as it is a story teller. It is about bringing believable relationships to life in a complex and real environment. Complete dragons with flaws, preferences, social status, histories, etc living withing a tribe withing a geopolitical landscape. This game should have the essence and feel of one of the Wings of Fire novels, with protagonist and antagonists and evolving character arcs. A clearly narrative based game with memorable quotes from all dragons involved, each character bringing a new and unique perspective. Memorable characters will developed and Players will create fondness and dislike for these characters which will , in turn, immerse them into the game of DranGen.
 
@@ -110,6 +139,7 @@ At its heart, this is a social insight game. A simulator as much as it is a stor
 - Add sexes. male, female, trans, fluid, etc.
 - add dragons leaving/entering/returning. Good and bad events. perhaps hidden story lines
 - More diverse personality types, mix and hybrid personalities to e.g angry bruting clever
+- persistant social links e.g. caretaker takes care of egg, bond, attends caretaker funeral, grief
 
 
 #SCROLL LIBRARY/ENCYCLOPEDIA

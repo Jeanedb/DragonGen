@@ -113,6 +113,9 @@ class HatcheryScreen(BaseScreen):
             selected = self.get_selected_dragon()
             if not selected:
                 return
+            
+            if egg.get("caretaker") == selected.name:
+                return
 
             egg["caretaker"] = selected.name
             self.add_training_event(
@@ -159,7 +162,7 @@ class HatcheryScreen(BaseScreen):
         )
         screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 110)))
 
-        left = pygame.Rect(70, 150, 300, 455)
+        left = pygame.Rect(70, 150, 300, 500)
         right = pygame.Rect(400, 150, 560, 455)
 
         self.draw_panel(screen, left)
@@ -238,22 +241,13 @@ class HatcheryScreen(BaseScreen):
 
         dragons = self.get_dragons()
 
-        self.draw_text(
-            screen,
-            f"Available Dragons: {len(dragons)}",
-            left.x + 22,
-            left.y + 70,
-            self.font,
-            TEXT
-        )
-
         egg_count = len(getattr(self.world, "eggs", []))
 
         self.draw_text(
             screen,
             f"Eggs Incubating: {egg_count}",
             left.x + 22,
-            left.y + 85,
+            left.y + 70,
             self.small,
             GOLD
         )
@@ -284,19 +278,32 @@ class HatcheryScreen(BaseScreen):
                 self.buttons.append(btn)
                 btn.draw(screen, self.small)
 
-                if i == self.selected_egg_index:
+                selected_egg = self.get_selected_egg()
+                current_caretaker = selected_egg.get("caretaker") if selected_egg else None
+
+                if dragon == self.selected_dragon:
                     pygame.draw.rect(screen, GOLD, btn_rect, width=2, border_radius=6)
+
+                if dragon.name == current_caretaker:
+                    pygame.draw.rect(screen, RED, btn_rect, width=2, border_radius=6)
 
             y += 34
 
         screen.set_clip(old_clip)
 
 
-               
+        self.draw_text(
+            screen,
+            "Caretaker",
+            left.x + 22,
+            left.y + 215,
+            self.small,
+            GOLD
+        )
 
 
 
-        list_rect = pygame.Rect(left.x + 20, left.y + 350, left.width - 40, 95)
+        list_rect = pygame.Rect(left.x + 20, left.y + 235, left.width - 40, 140)
         self.draw_panel(screen, list_rect, alpha=120)
 
         old_clip = screen.get_clip()
@@ -325,10 +332,9 @@ class HatcheryScreen(BaseScreen):
 
         buttons = [
             ("Assign Caretaker", "caretaker"),
-            ("Inspect Egg", "inspect"),
         ]
 
-        btn_y = left.y + 440
+        btn_y = left.y + 420
 
         for label, training_type in buttons:
             btn = Button(
@@ -415,7 +421,7 @@ class HatcheryScreen(BaseScreen):
                 self.egg_scroll = max(-max_scroll, self.egg_scroll)
                 return
 
-            dragon_list_rect = pygame.Rect(90, 450, 260, 95)
+            dragon_list_rect = pygame.Rect(90, 385, 260, 140)
 
             if dragon_list_rect.collidepoint(mouse_x, mouse_y):
                 total_height = len(self.get_dragons()) * 34
