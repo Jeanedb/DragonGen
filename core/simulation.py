@@ -609,6 +609,9 @@ def advance_moon(world: World):
 
     run_progression_phase(world, living)
 
+    if random.random() < 0.35:
+        try_existing_relationship_event(world, living)
+
     maintain_hierarchy(world)
     apply_leader_influence(world)
 
