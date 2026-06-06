@@ -1,4 +1,5 @@
 import random
+from core.sim.eggs import create_egg
 from core.world import World
 from core.generator import generate_dragonet
 from core.sim.logging import log_event
@@ -391,23 +392,25 @@ def add_new_dragonet(world: World):
     elif len(candidates) == 1:
         parents = [candidates[0]]
 
-    dragonet = generate_dragonet(new_id, chosen_tribe, parents)
-    dragonet.parents = [p.id for p in parents]
+    if not parents:
+        return False
 
-    world.dragons.append(dragonet)
+    if not hasattr(world, "eggs"):
+        world.eggs = []
 
-    for p in parents:
-        p.dragonets.append(dragonet.id)
+    egg = create_egg(parents[0], parents[1] if len(parents) > 1 else parents[0])
+    world.eggs.append(egg)
 
-    if parents:
-        parent_names = " and ".join([p.name for p in parents])
-        text = f"{parent_names} welcomed a new dragonet named {dragonet.name}."
-        ids = [dragonet.id] + [p.id for p in parents]
-    else:
-        text = f"A new dragonet named {dragonet.name} appeared in the tribe."
-        ids = [dragonet.id]
+    parent_names = " and ".join([p.name for p in parents])
 
-    log_event(world, text, involved_ids=ids, event_type="birth", importance=4)
+    log_event(
+        world,
+        f"{parent_names} produced an egg. It has been taken to the hatchery.",
+        involved_ids=[p.id for p in parents],
+        event_type="hatchery",
+        importance=4,
+    )
+
     return True
 
 def try_existing_relationship_event(world: World, living):

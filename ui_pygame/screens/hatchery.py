@@ -18,15 +18,15 @@ class HatcheryScreen(BaseScreen):
     def __init__(self, world, change_screen):
         super().__init__()
 
-        self.training_mode = "sparring"
+        self.selected_egg_index = 0
+        self.egg_scroll = 0
 
         self.world = world
         self.change_screen = change_screen
         self.log_scroll = 0
 
         self.selected_dragon = None
-        self.parent1 = None
-        self.parent2 = None
+
         self.list_scroll = 0
 
         project_root = Path(__file__).resolve().parents[2]
@@ -37,6 +37,29 @@ class HatcheryScreen(BaseScreen):
             self.bg_image = pygame.transform.scale(self.bg_image, (WIDTH, HEIGHT))
         except Exception:
             self.bg_image = None
+
+        egg_path = project_root / "assets" / "hatchery" / "egg.png"
+
+        try:
+            self.egg_image = pygame.image.load(str(egg_path)).convert_alpha()
+            self.egg_image = pygame.transform.smoothscale(
+                self.egg_image,
+                (90, 90)
+            )
+        except Exception:
+            self.egg_image = None
+
+    def get_selected_egg(self):
+        eggs = getattr(self.world, "eggs", [])
+
+        if not eggs:
+            return None
+
+        self.selected_egg_index %= len(eggs)
+        return eggs[self.selected_egg_index]
+
+    def select_egg(self, index):
+        self.selected_egg_index = index
 
     def get_selected_dragon(self):
         dragons = self.get_dragons()
@@ -65,110 +88,40 @@ class HatcheryScreen(BaseScreen):
             "type": "hatchery",
         })
 
+
+
     def run_training(self, action):
+        if not hasattr(self.world, "eggs"):
+            self.world.eggs = []
 
-        selected = self.get_selected_dragon()
+        eggs = self.world.eggs
 
-        if not selected:
+        if not eggs:
+            self.add_training_event("There are no eggs in the hatchery.")
             return
 
-        if action == "parent1":
-            self.parent1 = selected
+        egg = eggs[self.selected_egg_index % len(eggs)]
+
+        if action == "inspect":
             self.add_training_event(
-                f"{selected.name} selected as Parent 1."
+                f"The egg of {egg.get('mother', 'Unknown')} and {egg.get('father', 'Unknown')} was inspected. "
+                f"It appears {egg.get('size', 'ordinary')} with a {egg.get('shell_color', 'plain')} shell. "
+                f"It {egg.get('movement', 'rests quietly')}."
             )
 
-        elif action == "parent2":
-            self.parent2 = selected
-            self.add_training_event(
-                f"{selected.name} selected as Parent 2."
-            )
-
-        elif action == "egg":
-
-            if not self.parent1 or not self.parent2:
-                self.add_training_event(
-                    "Two parents must be selected."
-                )
+        elif action == "caretaker":
+            selected = self.get_selected_dragon()
+            if not selected:
                 return
 
-            if self.parent1 == self.parent2:
-                self.add_training_event(
-                    "A dragon cannot be both parents."
-                )
-                return
-
-            if not hasattr(self.world, "eggs"):
-                self.world.eggs = []
-
-            egg = {
-                "mother": self.parent1.name,
-                "father": self.parent2.name,
-                "age": 0,
-                "hatch_time": random.randint(3, 6)
-            }
-
-            self.world.eggs.append(egg)
-
-            parent1_name = self.parent1.name
-            parent2_name = self.parent2.name
-
-            self.world.eggs.append(egg)
-
+            egg["caretaker"] = selected.name
             self.add_training_event(
-                f"{parent1_name} and {parent2_name} laid an egg."
-            )
-
-            self.parent1 = None
-            self.parent2 = None
-            
+                f"{selected.name} was assigned to care for the egg of "
+                f"{egg.get('mother', 'Unknown')} and {egg.get('father', 'Unknown')}."
+            )            
         
 
-    def get_training_effect_text(self, a, b, outcome_type):
-        if outcome_type == "bond":
-            return f"{a.name} and {b.name} trust each other more."
 
-        if outcome_type == "embarrass":
-            return f"{b.name} resents {a.name} more."
-
-        if outcome_type == "strain":
-            return "The tribe feels slightly more tense."
-
-        if outcome_type == "challenge":
-            return f"Tension between {a.name} and {b.name} increased."
-
-        if outcome_type == "impress":
-            return f"{a.name}'s reputation improved."
-
-        if outcome_type == "mentor":
-            return f"{a.name} gained respect as a mentor."
-
-        return "The training left a mark."
-
-
-    def apply_training_effect(self, a, b, outcome_type):
-
-        if outcome_type == "bond":
-            a.trust[b.id] = a.trust.get(b.id, 0) + 0.4
-            b.trust[a.id] = b.trust.get(a.id, 0) + 0.4
-
-        elif outcome_type == "embarrass":
-            b.resentment[a.id] = b.resentment.get(a.id, 0) + 0.5
-            a.reputation["harsh"] = a.reputation.get("harsh", 0) + 0.2
-
-        elif outcome_type == "strain":
-            self.world.tension += 0.08
-            a.reputation["harsh"] = a.reputation.get("harsh", 0) + 0.1
-
-        elif outcome_type == "challenge":
-            a.resentment[b.id] = a.resentment.get(b.id, 0) + 0.3
-            b.resentment[a.id] = b.resentment.get(a.id, 0) + 0.3
-
-        elif outcome_type == "impress":
-            a.reputation["kind"] = a.reputation.get("kind", 0) + 0.2
-
-        elif outcome_type == "mentor":
-            a.reputation["kind"] = a.reputation.get("kind", 0) + 0.3
 
     def draw_panel(self, screen, rect, alpha=185):
         surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
@@ -206,8 +159,8 @@ class HatcheryScreen(BaseScreen):
         )
         screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 110)))
 
-        left = pygame.Rect(80, 150, 280, 455)
-        right = pygame.Rect(405, 150, 535, 455)
+        left = pygame.Rect(70, 150, 300, 455)
+        right = pygame.Rect(400, 150, 560, 455)
 
         self.draw_panel(screen, left)
         self.draw_panel(screen, right)
@@ -229,6 +182,59 @@ class HatcheryScreen(BaseScreen):
             self.section_font,
             GOLD
         )
+
+        egg = self.get_selected_egg()
+
+        profile_rect = pygame.Rect(right.x + 18, right.y + 55, right.width - 36, 145)
+        self.draw_panel(screen, profile_rect, alpha=130)
+
+        if egg:
+
+            sprite_rect = pygame.Rect(
+                profile_rect.x + 15,
+                profile_rect.y + 20,
+                90,
+                90
+            )
+
+            if self.egg_image:
+                screen.blit(self.egg_image, sprite_rect.topleft)
+
+            pygame.draw.rect(
+                screen,
+                GOLD,
+                sprite_rect,
+                width=2,
+                border_radius=8
+            )
+        
+
+        if egg:
+            lines = [
+                "Selected Egg",
+                f"Egg of {egg.get('mother', 'Unknown')} & {egg.get('father', 'Unknown')}",
+                f"Age: {egg.get('age', 0)} / {egg.get('hatch_time', '?')} moons",
+                f"Shell: {egg.get('shell_color', 'plain')}",
+                f"Size: {egg.get('size', 'ordinary')}",
+                f"Movement: {egg.get('movement', 'quiet')}",
+                f"Condition: {egg.get('condition', 'unknown')}",
+                f"Caretaker: {egg.get('caretaker') or 'None'}",
+            ]
+
+            y = profile_rect.y + 12
+            for i, line in enumerate(lines):
+                color = GOLD if i in [0, 7] else TEXT
+                self.draw_text(screen, line, profile_rect.x + 125, y, self.small, color)
+                y += 17
+        else:
+            self.draw_text(
+                screen,
+                "No eggs in the hatchery.",
+                profile_rect.x + 125,
+                profile_rect.y + 40,
+                self.small,
+                MUTED
+            )
 
         dragons = self.get_dragons()
 
@@ -252,50 +258,45 @@ class HatcheryScreen(BaseScreen):
             GOLD
         )
 
-        selected = self.get_selected_dragon()
+        egg = self.get_selected_egg()
 
-        if selected:
-            trust_count = len([
-                v for v in getattr(selected, "trust", {}).values()
-                if v > 0
-            ])
+        eggs = getattr(self.world, "eggs", [])
 
-            rival_count = len([
-                v for v in getattr(selected, "resentment", {}).values()
-                if v > 0
-            ])
+        egg_list_rect = pygame.Rect(left.x + 20, left.y + 105, left.width - 40, 85)
+        self.draw_panel(screen, egg_list_rect, alpha=120)
 
-            age = getattr(selected, "age_moons", getattr(selected, "age", "Unknown"))
-            role = getattr(selected, "role", "Unknown")
+        old_clip = screen.get_clip()
+        screen.set_clip(egg_list_rect)
 
-            self.draw_text(screen, f"Focus: {selected.name}", left.x + 22, left.y + 100, self.small, GOLD)
-            self.draw_text(screen, f"Role: {role}", left.x + 22, left.y + 120, self.small, TEXT)
-            self.draw_text(screen, f"Age: {age}", left.x + 22, left.y + 140, self.small, TEXT)
-            self.draw_text(screen, f"Trusted By: {trust_count}", left.x + 22, left.y + 160, self.small, TEXT)
-            self.draw_text(screen, f"Rivals: {rival_count}", left.x + 22, left.y + 180, self.small, TEXT)
-        
-        p1 = self.parent1.name if self.parent1 else "None"
-        p2 = self.parent2.name if self.parent2 else "None"
+        y = egg_list_rect.y + 8 + self.egg_scroll
 
-        self.draw_text(
-            screen,
-            f"Parent 1: {p1}",
-            left.x + 22,
-            left.y + 200,
-            self.small,
-            GOLD
-        )
+        for i, egg in enumerate(eggs):
+            label = f"Egg of {egg.get('mother', '?')} & {egg.get('father', '?')}"
 
-        self.draw_text(
-            screen,
-            f"Parent 2: {p2}",
-            left.x + 22,
-            left.y + 220,
-            self.small,
-            GOLD
-        )
+            btn_rect = pygame.Rect(egg_list_rect.x + 8, y, egg_list_rect.width - 16, 28)
 
-        list_rect = pygame.Rect(left.x + 20, left.y + 250, left.width - 40, 110)
+            if btn_rect.bottom >= egg_list_rect.top and btn_rect.top <= egg_list_rect.bottom:
+                btn = Button(
+                    (btn_rect.x, btn_rect.y, btn_rect.width, btn_rect.height),
+                    label,
+                    lambda idx=i: self.select_egg(idx)
+                )
+                self.buttons.append(btn)
+                btn.draw(screen, self.small)
+
+                if i == self.selected_egg_index:
+                    pygame.draw.rect(screen, GOLD, btn_rect, width=2, border_radius=6)
+
+            y += 34
+
+        screen.set_clip(old_clip)
+
+
+               
+
+
+
+        list_rect = pygame.Rect(left.x + 20, left.y + 350, left.width - 40, 95)
         self.draw_panel(screen, list_rect, alpha=120)
 
         old_clip = screen.get_clip()
@@ -323,12 +324,11 @@ class HatcheryScreen(BaseScreen):
         screen.set_clip(old_clip)
 
         buttons = [
-            ("Select Parent 1", "parent1"),
-            ("Select Parent 2", "parent2"),
-            ("Lay Egg", "egg"),
+            ("Assign Caretaker", "caretaker"),
+            ("Inspect Egg", "inspect"),
         ]
 
-        btn_y = left.y + 330
+        btn_y = left.y + 440
 
         for label, training_type in buttons:
             btn = Button(
@@ -344,9 +344,9 @@ class HatcheryScreen(BaseScreen):
 
         log_rect = pygame.Rect(
             right.x + 18,
-            right.y + 60,
+            right.y + 215,
             right.width - 36,
-            right.height - 78
+            right.height - 235
         )
 
         self.draw_panel(screen, log_rect, alpha=150)
@@ -402,7 +402,20 @@ class HatcheryScreen(BaseScreen):
         if event.type == pygame.MOUSEWHEEL:
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
-            dragon_list_rect = pygame.Rect(100, 355, 240, 110)
+            egg_list_rect = pygame.Rect(90, 255, 260, 85)
+
+            if egg_list_rect.collidepoint(mouse_x, mouse_y):
+                eggs = getattr(self.world, "eggs", [])
+                total_height = len(eggs) * 34
+                visible_height = egg_list_rect.height
+                max_scroll = max(0, total_height - visible_height)
+
+                self.egg_scroll += event.y * 25
+                self.egg_scroll = min(0, self.egg_scroll)
+                self.egg_scroll = max(-max_scroll, self.egg_scroll)
+                return
+
+            dragon_list_rect = pygame.Rect(90, 450, 260, 95)
 
             if dragon_list_rect.collidepoint(mouse_x, mouse_y):
                 total_height = len(self.get_dragons()) * 34
