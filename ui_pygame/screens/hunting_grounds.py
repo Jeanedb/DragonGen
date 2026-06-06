@@ -18,7 +18,7 @@ class HuntingGroundsScreen(BaseScreen):
     def __init__(self, world, change_screen):
         super().__init__()
 
-        self.training_mode = "sparring"
+        self.hunt_mode = "small"
 
         self.world = world
         self.change_screen = change_screen
@@ -52,9 +52,10 @@ class HuntingGroundsScreen(BaseScreen):
         return [
             d for d in getattr(self.world, "dragons", [])
             if getattr(d, "status", "") == "Alive"
+            and getattr(d, "role", "") != "Dragonet"
         ]
 
-    def add_training_event(self, text):
+    def add_hunting_event(self, text):
         if not hasattr(self.world, "event_log"):
             self.world.event_log = []
 
@@ -63,7 +64,7 @@ class HuntingGroundsScreen(BaseScreen):
             "type": "hunt",
         })
 
-    def run_training(self, training_type):
+    def run_hunt(self, hunt_type):  
 
         dragons = self.get_dragons()
 
@@ -77,9 +78,11 @@ class HuntingGroundsScreen(BaseScreen):
         if not a or not others:
             return
 
+        hunting_score = self.get_hunting_score(a, hunt_type)
+
         b = random.choice(others)
 
-        if training_type == "small":
+        if hunt_type == "small":
 
             outcomes = [
                 (
@@ -101,7 +104,7 @@ class HuntingGroundsScreen(BaseScreen):
                 ),
             ]
 
-        elif training_type == "large":
+        elif hunt_type == "large":
 
             outcomes = [
                 (
@@ -129,7 +132,7 @@ class HuntingGroundsScreen(BaseScreen):
                 ),
             ]
 
-        elif training_type == "dangerous":
+        elif hunt_type == "dangerous":
 
             outcomes = [
                 (
@@ -160,18 +163,25 @@ class HuntingGroundsScreen(BaseScreen):
         else:
             return
 
-        chosen = random.choice(outcomes)
+        success_bias = hunting_score / 2.0
+
+        if random.random() < success_bias:
+            good_outcomes = [o for o in outcomes if o[0] in {"impress", "bond"}]
+            chosen = random.choice(good_outcomes)
+        else:
+            bad_outcomes = [o for o in outcomes if o[0] in {"strain", "challenge", "embarrass"}]
+            chosen = random.choice(bad_outcomes or outcomes)
 
         outcome_type = chosen[0]
         text = chosen[1]
-        effect_text = chosen[2] if len(chosen) > 2 else self.get_training_effect_text(a, b, outcome_type)
+        effect_text = chosen[2] if len(chosen) > 2 else self.get_hunting_effect_text(a, b, outcome_type)
 
-        self.apply_training_effect(a, b, outcome_type)
-        self.add_training_event(
+        self.apply_hunting_effect(a, b, outcome_type)
+        self.add_hunting_event(
             f"{text}\n    {effect_text}"
         )
 
-    def get_training_effect_text(self, a, b, outcome_type):
+    def get_hunting_effect_text(self, a, b, outcome_type):
         if outcome_type == "bond":
             return f"{a.name} and {b.name} trust each other more."
 
@@ -190,10 +200,10 @@ class HuntingGroundsScreen(BaseScreen):
         if outcome_type == "mentor":
             return f"{a.name} gained respect as a mentor."
 
-        return "The training left a mark."
+        return "The hunt left a mark."
 
 
-    def apply_training_effect(self, a, b, outcome_type):
+    def apply_hunting_effect(self, a, b, outcome_type):
 
         if outcome_type == "bond":
             a.trust[b.id] = a.trust.get(b.id, 0) + 0.4
@@ -216,6 +226,30 @@ class HuntingGroundsScreen(BaseScreen):
 
         elif outcome_type == "mentor":
             a.reputation["kind"] = a.reputation.get("kind", 0) + 0.3
+
+    def get_hunting_score(self, dragon, hunt_type):
+        score = 1.0
+
+        if dragon.role == "Hunter":
+            score += 0.6
+        elif dragon.role == "Scout":
+            score += 0.25
+        elif dragon.role == "Warrior":
+            score += 0.15
+        elif dragon.role == "Healer":
+            score -= 0.1
+        elif dragon.role == "Dragonet":
+            score -= 0.8
+
+        if dragon.health == "Injured":
+            score -= 0.7
+
+        if hunt_type == "large":
+            score -= 0.2
+        elif hunt_type == "dangerous":
+            score -= 0.5
+
+        return max(0.1, score)
 
     def draw_panel(self, screen, rect, alpha=185):
         surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
@@ -345,11 +379,11 @@ class HuntingGroundsScreen(BaseScreen):
 
         btn_y = left.y + 330
 
-        for label, training_type in buttons:
+        for label, hunt_type in buttons:
             btn = Button(
                 (left.x + 45, btn_y, 190, 42),
                 label,
-                lambda t=training_type: self.run_training(t)
+                lambda t=hunt_type: self.run_hunt(t)
             )
 
             self.buttons.append(btn)

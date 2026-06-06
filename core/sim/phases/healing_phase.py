@@ -50,6 +50,10 @@ def run_healing_phase(world):
             dragon.assigned_healer_id = None
             continue
 
+        # Ongoing care builds trust and healer reputation.
+        dragon.trust[healer.id] = dragon.trust.get(healer.id, 0) + 0.1
+        healer.reputation["kind"] = healer.reputation.get("kind", 0) + 0.05
+
         base_chance = 0.25
         skill_modifier = getattr(healer, "healer_skill", 1.0)
         chance = base_chance * skill_modifier
@@ -67,6 +71,11 @@ def run_healing_phase(world):
 
             old_skill = getattr(healer, "healer_skill", 1.0)
             healer.healer_skill = min(2.0, round(old_skill + 0.01, 2))
+
+            dragon.memory_flags.add(("healed_by", healer.id))
+            healer.memory_flags.add(("healed", dragon.id))
+            dragon.trust[healer.id] = dragon.trust.get(healer.id, 0) + 1.0
+            healer.reputation["kind"] = healer.reputation.get("kind", 0) + 0.3
 
             log_event(
                 world,

@@ -1,4 +1,5 @@
 import random
+from core.sim.phases.role_phase import run_role_phase
 from core.sim.eggs import create_egg
 from core.world import World
 from core.generator import generate_dragonet
@@ -590,6 +591,8 @@ def advance_moon(world: World):
     run_healing_phase(world)
 
     move_dragons_between_locations(world)
+
+    run_role_phase(world)
 
     run_recovery_phase(world)
 
