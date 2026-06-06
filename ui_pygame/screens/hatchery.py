@@ -278,14 +278,7 @@ class HatcheryScreen(BaseScreen):
                 self.buttons.append(btn)
                 btn.draw(screen, self.small)
 
-                selected_egg = self.get_selected_egg()
-                current_caretaker = selected_egg.get("caretaker") if selected_egg else None
 
-                if dragon == self.selected_dragon:
-                    pygame.draw.rect(screen, GOLD, btn_rect, width=2, border_radius=6)
-
-                if dragon.name == current_caretaker:
-                    pygame.draw.rect(screen, RED, btn_rect, width=2, border_radius=6)
 
             y += 34
 
@@ -323,8 +316,14 @@ class HatcheryScreen(BaseScreen):
                 self.buttons.append(btn)
                 btn.draw(screen, self.small)
 
-                if dragon == self.selected_dragon:
-                    pygame.draw.rect(screen, GOLD, btn_rect, width=2, border_radius=6)
+            selected_egg = self.get_selected_egg()
+            current_caretaker = selected_egg.get("caretaker") if selected_egg else None
+
+            if dragon == self.selected_dragon:
+                pygame.draw.rect(screen, GOLD, btn_rect, width=2, border_radius=6)
+
+            if dragon.name == current_caretaker:
+                pygame.draw.rect(screen, RED, btn_rect, width=2, border_radius=6)
 
             y += 34
 
