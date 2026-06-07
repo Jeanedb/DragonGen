@@ -27,6 +27,9 @@ class HuntingGroundsScreen(BaseScreen):
         self.selected_dragon = None
         self.list_scroll = 0
 
+        self.selected_party = []
+        self.hunt_party_mode = "single"
+
         project_root = Path(__file__).resolve().parents[2]
         bg_path = project_root / "assets" / "menu" / "training_bg.png"
 
@@ -35,6 +38,13 @@ class HuntingGroundsScreen(BaseScreen):
             self.bg_image = pygame.transform.scale(self.bg_image, (WIDTH, HEIGHT))
         except Exception:
             self.bg_image = None
+
+        forest_path = project_root / "assets" / "hunting" / "forest.png"
+
+        try:
+            self.forest_image = pygame.image.load(str(forest_path)).convert()
+        except Exception:
+            self.forest_image = None
 
     def get_selected_dragon(self):
         dragons = self.get_dragons()
@@ -71,7 +81,15 @@ class HuntingGroundsScreen(BaseScreen):
         if len(dragons) < 2:
             return
 
-        a = self.get_selected_dragon()
+        if self.hunt_party_mode == "single":
+            party = [self.get_selected_dragon()]
+        else:
+            party = self.selected_party
+
+        if not party:
+            return
+
+        a = random.choice(party)
 
         others = [d for d in dragons if d != a]
 
@@ -251,6 +269,26 @@ class HuntingGroundsScreen(BaseScreen):
 
         return max(0.1, score)
 
+    def get_party_strength_text(self):
+        if not self.selected_party:
+            return "No Party Selected"
+
+        scores = [
+            self.get_hunting_score(d, "small")
+            for d in self.selected_party
+        ]
+
+        avg_score = sum(scores) / len(scores)
+
+        if avg_score >= 1.5:
+            rating = "Strong"
+        elif avg_score >= 1.0:
+            rating = "Capable"
+        else:
+            rating = "Weak"
+
+        return f"Party Strength: {rating}"
+
     def draw_panel(self, screen, rect, alpha=185):
         surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
         surf.fill((28, 28, 28, alpha))
@@ -280,6 +318,8 @@ class HuntingGroundsScreen(BaseScreen):
         title = self.title_font.render("Hunting Grounds", True, TEXT)
         screen.blit(title, title.get_rect(center=(WIDTH // 2, 70)))
 
+
+
         subtitle = self.small.render(
             "Lead hunting parties and provide food for the tribe.",
             True,
@@ -287,19 +327,131 @@ class HuntingGroundsScreen(BaseScreen):
         )
         screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 110)))
 
-        left = pygame.Rect(80, 150, 280, 455)
-        right = pygame.Rect(405, 150, 535, 455)
+        left = pygame.Rect(60, 150, 240, 455)
+        center = pygame.Rect(330, 150, 300, 455)
+        right = pygame.Rect(660, 150, 280, 455)
+        
 
         self.draw_panel(screen, left)
+        self.draw_panel(screen, center)
         self.draw_panel(screen, right)
 
         self.draw_text(
             screen,
-            "Hunting Actions",
+            "Forest Trail",
+            center.x + 18,
+            center.y + 18,
+            self.section_font,
+            GOLD
+        )
+
+        self.draw_text(
+            screen,
+            "Hunting Party",
             left.x + 18,
             left.y + 18,
             self.section_font,
             GOLD
+        )
+
+        single_btn = Button(
+            (center.x + 35, center.y + 65, 105, 32),
+            "Single",
+            lambda: setattr(self, "hunt_party_mode", "single")
+        )
+
+        party_btn = Button(
+            (center.x + 160, center.y + 65, 105, 32),
+            "Party",
+            lambda: setattr(self, "hunt_party_mode", "party")
+        )
+
+        self.buttons.append(single_btn)
+        self.buttons.append(party_btn)
+
+        single_btn.draw(screen, self.small)
+        party_btn.draw(screen, self.small)
+
+        forest_rect = pygame.Rect(
+            center.x + 30,
+            center.y + 115,
+            240,
+            140
+        )
+
+        if self.forest_image:
+            forest_img = pygame.transform.scale(
+                self.forest_image,
+                (forest_rect.width, forest_rect.height)
+            )
+            screen.blit(forest_img, forest_rect.topleft)
+
+            pygame.draw.rect(
+                screen,
+                GOLD,
+                forest_rect,
+                width=1,
+                border_radius=8
+            )
+        else:
+            pygame.draw.rect(
+                screen,
+                (40, 70, 40),
+                forest_rect,
+                border_radius=10
+            )
+
+            self.draw_text(
+                screen,
+                "FOREST",
+                center.x + 90,
+                center.y + 165,
+                self.section_font,
+                GOLD
+            )
+
+        strength_text = self.get_party_strength_text()
+
+        strength_color = MUTED
+
+        if "Strong" in strength_text:
+            strength_color = (111, 207, 151)
+        elif "Capable" in strength_text:
+            strength_color = GOLD
+        elif "Weak" in strength_text:
+            strength_color = RED
+
+        text_surface = self.small.render(
+            strength_text,
+            True,
+            strength_color
+        )
+
+        strength_bar = pygame.Rect(
+            forest_rect.x,
+            forest_rect.bottom - 28,
+            forest_rect.width,
+            28
+        )
+
+        overlay = pygame.Surface(
+            (strength_bar.width, strength_bar.height),
+            pygame.SRCALPHA
+        )
+
+        overlay.fill((0, 0, 0, 160))
+
+        screen.blit(
+            overlay,
+            strength_bar.topleft
+        )
+
+        screen.blit(
+            text_surface,
+            (
+                center.centerx - text_surface.get_width() // 2,
+                strength_bar.y + 4
+            )
         )
 
         self.draw_text(
@@ -315,36 +467,59 @@ class HuntingGroundsScreen(BaseScreen):
 
         self.draw_text(
             screen,
-            f"Available Dragons: {len(dragons)}",
+            f"Mode: {self.hunt_party_mode.title()}",
             left.x + 22,
-            left.y + 70,
-            self.font,
+            left.y + 62,
+            self.small,
+            MUTED
+        )
+
+        self.draw_text(
+            screen,
+            f"Party Size: {len(self.selected_party)}",
+            left.x + 22,
+            left.y + 82,
+            self.small,
             TEXT
         )
 
-        selected = self.get_selected_dragon()
+        self.draw_text(
+            screen,
+            "Party Members:",
+            left.x + 22,
+            left.y + 112,
+            self.small,
+            GOLD
+        )
 
-        if selected:
-            trust_count = len([
-                v for v in getattr(selected, "trust", {}).values()
-                if v > 0
-            ])
+        py = left.y + 137
 
-            rival_count = len([
-                v for v in getattr(selected, "resentment", {}).values()
-                if v > 0
-            ])
+        if not self.selected_party:
+            self.draw_text(screen, "None selected", left.x + 30, py, self.small, MUTED)
+            py += 20
+        else:
+            for dragon in self.selected_party[:6]:
+                self.draw_text(
+                    screen,
+                    f"• {dragon.name} ({dragon.role})",
+                    left.x + 30,
+                    py,
+                    self.small,
+                    TEXT
+                )
+                py += 20
 
-            age = getattr(selected, "age_moons", getattr(selected, "age", "Unknown"))
-            role = getattr(selected, "role", "Unknown")
+        self.draw_text(
+            screen,
+            "Available Dragons:",
+            left.x + 22,
+            left.y + 255,
+            self.small,
+            GOLD
+        )
 
-            self.draw_text(screen, f"Focus: {selected.name}", left.x + 22, left.y + 100, self.small, GOLD)
-            self.draw_text(screen, f"Role: {role}", left.x + 22, left.y + 120, self.small, TEXT)
-            self.draw_text(screen, f"Age: {age}", left.x + 22, left.y + 140, self.small, TEXT)
-            self.draw_text(screen, f"Trusted By: {trust_count}", left.x + 22, left.y + 160, self.small, TEXT)
-            self.draw_text(screen, f"Rivals: {rival_count}", left.x + 22, left.y + 180, self.small, TEXT)
+        list_rect = pygame.Rect(left.x + 20, left.y + 280, left.width - 40, 140)
 
-        list_rect = pygame.Rect(left.x + 20, left.y + 205, left.width - 40, 110)
         self.draw_panel(screen, list_rect, alpha=120)
 
         old_clip = screen.get_clip()
@@ -364,32 +539,71 @@ class HuntingGroundsScreen(BaseScreen):
                 self.buttons.append(btn)
                 btn.draw(screen, self.small)
 
-                if dragon == self.selected_dragon:
+                if dragon in self.selected_party:
                     pygame.draw.rect(screen, GOLD, btn_rect, width=2, border_radius=6)
+                elif dragon == self.selected_dragon:
+                    pygame.draw.rect(screen, MUTED, btn_rect, width=1, border_radius=6)
 
             y += 34
 
         screen.set_clip(old_clip)
 
         buttons = [
-            ("Small Hunt", "small"),
-            ("Large Hunt", "large"),
-            ("Dangerous Hunt", "dangerous"),
+            ("Small Hunt", "small", "Low", "Quick food gathering"),
+            ("Large Hunt", "large", "Medium", "Requires coordination"),
+            ("Dangerous Hunt", "dangerous", "High", "Rare prey and trophies"),
         ]
 
-        btn_y = left.y + 330
+        card_y = center.y + 265
 
-        for label, hunt_type in buttons:
+        for label, hunt_type, risk, desc in buttons:
+
+            card_rect = pygame.Rect(
+                center.x + 15,
+                card_y,
+                270,
+                48
+            )
+
+            pygame.draw.rect(
+                screen,
+                (35, 35, 35),
+                card_rect,
+                border_radius=8
+            )
+
+            pygame.draw.rect(
+                screen,
+                (60, 60, 60),
+                card_rect,
+                width=1,
+                border_radius=8
+            )
+
+            self.draw_text(
+                screen,
+                f"{risk} Risk • {desc}",
+                card_rect.x + 12,
+                card_rect.y + 16,
+                self.small,
+                MUTED
+            )
+
             btn = Button(
-                (left.x + 45, btn_y, 190, 42),
+                (
+                    card_rect.right - 120,
+                    card_rect.y + 8,
+                    105,
+                    30
+                ),
                 label,
                 lambda t=hunt_type: self.run_hunt(t)
             )
 
             self.buttons.append(btn)
-            btn.draw(screen, self.font)
+            btn.draw(screen, self.small)
 
-            btn_y += 55
+            card_y += 58
 
         log_rect = pygame.Rect(
             right.x + 18,
@@ -432,7 +646,7 @@ class HuntingGroundsScreen(BaseScreen):
         screen.set_clip(old_clip)
 
         return_btn = Button(
-            (430, 645, 140, 38),
+            (430, 655, 140, 34),
             "Return",
             lambda: self.change_screen("locations")
         )
@@ -444,14 +658,29 @@ class HuntingGroundsScreen(BaseScreen):
         pass
 
     def select_dragon(self, dragon):
-        self.selected_dragon = dragon
+
+        if self.hunt_party_mode == "single":
+            self.selected_dragon = dragon
+            self.selected_party = [dragon]
+
+        else:
+            self.selected_dragon = dragon
+
+
+            if dragon in self.selected_party:
+                self.selected_party.remove(dragon)
+            else:
+                self.selected_party.append(dragon)
+
+            if not self.selected_party:
+                self.selected_dragon = None
 
     def handle_event(self, event):
 
         if event.type == pygame.MOUSEWHEEL:
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
-            dragon_list_rect = pygame.Rect(100, 355, 240, 110)
+            dragon_list_rect = pygame.Rect(80, 430, 200, 140)
 
             if dragon_list_rect.collidepoint(mouse_x, mouse_y):
                 total_height = len(self.get_dragons()) * 34
