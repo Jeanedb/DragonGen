@@ -110,3 +110,57 @@ def run_progression_phase(world, living):
             event_type="hatchery",
             importance=5,
         )
+
+    if random.random() < 0.25:
+        resolve_old_training_memories(world, living)
+
+def resolve_old_training_memories(world, living):
+    import random
+
+    if not living:
+        return
+
+    dragon = random.choice(living)
+    memories = getattr(dragon, "memory_flags", [])
+
+    if not memories:
+        return
+
+    memory = random.choice(memories)
+
+    if not isinstance(memory, tuple):
+        return
+
+    memory_type = memory[0]
+
+    if memory_type == "mentored_by":
+        mentor_id = memory[1]
+        mentor = next((d for d in living if d.id == mentor_id), None)
+
+        if mentor:
+            dragon.trust[mentor.id] = dragon.trust.get(mentor.id, 0) + 0.2
+
+            world.event_log.append({
+                "type": "social",
+                "text": f"{dragon.name} sought advice from {mentor.name}, remembering their time as a student."
+            })
+
+    elif memory_type == "was_embarrassed_by":
+        rival_id = memory[1]
+        rival = next((d for d in living if d.id == rival_id), None)
+
+        if rival:
+            dragon.resentment[rival.id] = dragon.resentment.get(rival.id, 0) + 0.2
+
+            world.event_log.append({
+                "type": "social",
+                "text": f"{dragon.name} still remembers being humiliated by {rival.name} during training."
+            })
+
+    elif memory_type == "won_team_drill":
+        dragon.reputation["reliable"] = dragon.reputation.get("reliable", 0) + 0.1
+
+        world.event_log.append({
+            "type": "social",
+            "text": f"The tribe still remembers {dragon.name}'s strong performance in past team drills."
+        })

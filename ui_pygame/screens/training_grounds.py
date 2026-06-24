@@ -12,13 +12,13 @@ MUTED = (180, 180, 180)
 GOLD = (242, 201, 76)
 RED = (235, 87, 87)
 
+def world_moon_safe(world):
+    return getattr(world, "moon", 0)
 
 class TrainingGroundsScreen(BaseScreen):
 
     def __init__(self, world, change_screen):
         super().__init__()
-
-        self.training_mode = "sparring"
 
         self.training_group_a = []
         self.training_group_b = []
@@ -150,7 +150,33 @@ class TrainingGroundsScreen(BaseScreen):
         text = chosen[1]
         effect_text = chosen[2] if len(chosen) > 2 else self.get_training_effect_text(a, b, outcome_type)
 
-        self.apply_training_effect(a, b, outcome_type)
+        if training_type == "team":
+            for team_a_dragon in self.training_group_a:
+                for team_b_dragon in self.training_group_b:
+                    self.apply_training_effect(team_a_dragon, team_b_dragon, outcome_type)
+
+            skill_a = sum(getattr(d, "combat_skill", 0) for d in self.training_group_a)
+            skill_b = sum(getattr(d, "combat_skill", 0) for d in self.training_group_b)
+
+            if skill_a >= skill_b:
+                winners = self.training_group_a
+                losers = self.training_group_b
+                winning_team_name = "Team A"
+            else:
+                winners = self.training_group_b
+                losers = self.training_group_a
+                winning_team_name = "Team B"
+
+            for dragon in winners:
+                self.add_memory(dragon, ("won_team_drill", world_moon_safe(self.world)))
+                dragon.reputation["reliable"] = dragon.reputation.get("reliable", 0) + 0.1
+
+            for dragon in losers:
+                self.add_memory(dragon, ("lost_team_drill", world_moon_safe(self.world)))
+
+            text += f" {winning_team_name} performed better overall."
+        else:
+            self.apply_training_effect(a, b, outcome_type)
         self.add_training_event(
             f"{text}\n    {effect_text}"
         )
@@ -177,6 +203,14 @@ class TrainingGroundsScreen(BaseScreen):
         return "The training left a mark."
 
 
+    def add_memory(self, dragon, memory):
+        if not hasattr(dragon, "memory_flags") or dragon.memory_flags is None:
+            dragon.memory_flags = []
+
+        if memory not in dragon.memory_flags:
+            dragon.memory_flags.append(memory)
+
+
     def apply_training_effect(self, a, b, outcome_type):
 
         if outcome_type == "bond":
@@ -187,6 +221,9 @@ class TrainingGroundsScreen(BaseScreen):
             b.resentment[a.id] = b.resentment.get(a.id, 0) + 0.5
             a.reputation["harsh"] = a.reputation.get("harsh", 0) + 0.2
 
+            self.add_memory(a, ("embarrassed", b.id))
+            self.add_memory(b, ("was_embarrassed_by", a.id))
+
         elif outcome_type == "strain":
             self.world.tension += 0.08
             a.reputation["harsh"] = a.reputation.get("harsh", 0) + 0.1
@@ -194,6 +231,9 @@ class TrainingGroundsScreen(BaseScreen):
         elif outcome_type == "challenge":
             a.resentment[b.id] = a.resentment.get(b.id, 0) + 0.3
             b.resentment[a.id] = b.resentment.get(a.id, 0) + 0.3
+
+            self.add_memory(a, ("challenged", b.id))
+            self.add_memory(b, ("was_challenged_by", a.id))
 
         elif outcome_type == "impress":
             a.reputation["kind"] = a.reputation.get("kind", 0) + 0.2
@@ -203,6 +243,11 @@ class TrainingGroundsScreen(BaseScreen):
 
         elif outcome_type == "mentor":
             a.reputation["kind"] = a.reputation.get("kind", 0) + 0.3
+
+            self.add_memory(a, ("mentored", b.id))
+            self.add_memory(b, ("mentored_by", a.id))
+
+            b.trust[a.id] = b.trust.get(a.id, 0) + 0.6
 
     def get_training_score(self, dragon, training_type):
         score = 1.0
@@ -289,7 +334,7 @@ class TrainingGroundsScreen(BaseScreen):
             right.x + 33,
             right.y + 65,
             self.small,
-            MUTED
+            GOLD
         )
 
         self.draw_text(
@@ -339,15 +384,17 @@ class TrainingGroundsScreen(BaseScreen):
         if self.training_group_a or self.training_group_b:
 
             def draw_team_grid(team, start_y):
+
                 positions = [
-                    (center.x + 55, start_y),
-                    (center.x + 155, start_y),
-                    (center.x + 55, start_y + 24),
-                    (center.x + 155, start_y + 24),
+                    (center.x + 50,  start_y),
+                    (center.x + 140, start_y),
+                    (center.x + 50,  start_y + 26),
                 ]
 
-                for i, dragon in enumerate(team[:4]):
+                for i, dragon in enumerate(team[:3]):
+
                     x, y = positions[i]
+
                     self.draw_text(
                         screen,
                         dragon.name[:10],
@@ -380,8 +427,8 @@ class TrainingGroundsScreen(BaseScreen):
             self.draw_text(
                 screen,
                 "VS",
-                center.centerx - 15,
-                center.y + 135,
+                center.centerx - 23,
+                center.y + 125,
                 self.section_font,
                 GOLD
             )
@@ -478,14 +525,52 @@ class TrainingGroundsScreen(BaseScreen):
 
             btn_y += 55
 
-        start_btn = Button(
-            (center.x + 55, center.y + 425, 190, 42),
-            "Begin Training",
-            lambda: self.run_training(self.training_mode)
-        )
+        valid_training = False
 
-        self.buttons.append(start_btn)
-        start_btn.draw(screen, self.font)
+        if self.training_mode == "team":
+            valid_training = (
+                len(self.training_group_a) >= 1
+                and len(self.training_group_b) >= 1
+            )
+        else:
+            valid_training = (
+                len(self.training_group_a) == 1
+                and len(self.training_group_b) == 1
+            )
+
+        if valid_training:
+            start_btn = Button(
+                (center.x + 55, center.y + 425, 190, 42),
+                "Begin Training",
+                lambda: self.run_training(self.training_mode)
+            )
+
+            self.buttons.append(start_btn)
+            start_btn.draw(screen, self.font)
+
+        else:
+            disabled_rect = pygame.Rect(
+                center.x + 55,
+                center.y + 425,
+                190,
+                42
+            )
+
+            pygame.draw.rect(
+                screen,
+                (70, 70, 70),
+                disabled_rect,
+                border_radius=8
+            )
+
+            self.draw_text(
+                screen,
+                "Select Teams",
+                disabled_rect.x + 45,
+                disabled_rect.y + 10,
+                self.font,
+                MUTED
+            )
 
         log_rect = pygame.Rect(
             right.x + 18,
