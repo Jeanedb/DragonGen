@@ -2,8 +2,10 @@ import json
 from dataclasses import asdict
 from core.world import World
 from core.dragon import Dragon
+from core.sim.memory import Memory
+from core.sim.relationships import Relationship
 
-SAVE_VERSION = 3
+SAVE_VERSION = 7
 
 
 def _keys_to_int(value):
@@ -31,6 +33,40 @@ def _normalize_dragon_after_load(dragon: Dragon):
     # but converting back keeps the field consistent with the dataclass intent.
     dragon.memory_flags = [tuple(flag) for flag in getattr(dragon, "memory_flags", [])]
 
+    dragon.memories = [
+        memory
+        if isinstance(memory, Memory)
+        else Memory(**memory)
+        for memory in getattr(dragon, "memories", [])
+        if isinstance(memory, (Memory, dict))
+    ]
+
+    restored_relationships = []
+
+    for relationship in getattr(dragon, "relationships", []):
+        if isinstance(relationship, Relationship):
+            restored_relationships.append(relationship)
+            continue
+
+        if not isinstance(relationship, dict):
+            continue
+
+        relationship_data = dict(relationship)
+
+        relationship_data["history"] = [
+            memory
+            if isinstance(memory, Memory)
+            else Memory(**memory)
+            for memory in relationship_data.get("history", [])
+            if isinstance(memory, (Memory, dict))
+        ]
+
+        restored_relationships.append(
+            Relationship(**relationship_data)
+        )
+
+    dragon.relationships = restored_relationships
+
     return dragon
 
 
@@ -40,10 +76,12 @@ def save_world(world: World, filename: str):
 
         "tribe_name": world.tribe_name,
         "moon": world.moon,
+        "eggs": world.eggs,
         "dragons": [asdict(dragon) for dragon in world.dragons],
         "event_log": world.event_log,
         "pending_choice": world.pending_choice,
         "tension": world.tension,
+        "food_stores": world.food_stores,
 
         "leader_id": world.leader_id,
         "deputy_id": world.deputy_id,
@@ -78,10 +116,12 @@ def load_world(filename: str) -> World:
     world = World(
         tribe_name=data.get("tribe_name", "Unknown Tribe"),
         moon=data.get("moon", 0),
+        eggs=data.get("eggs", []),
         dragons=[],
         event_log=data.get("event_log", []),
         pending_choice=data.get("pending_choice"),
         tension=data.get("tension", 0.0),
+        food_stores=data.get("food_stores", 100),
 
         leader_id=data.get("leader_id"),
         deputy_id=data.get("deputy_id"),
@@ -104,7 +144,7 @@ def load_world(filename: str) -> World:
     )
 
     for d in data.get("dragons", []):
-        dragon = Dragon(**d)
+        dragon = _normalize_dragon_after_load(Dragon(**d))
         world.dragons.append(dragon)
 
     return world

@@ -1,7 +1,12 @@
+import math
 import pygame
-from ui_pygame.widgets.button import Button
 from ui_pygame.core.base_screen import BaseScreen
 from pathlib import Path
+
+try:
+    from core.simulation import advance_moon
+except Exception:
+    advance_moon = None
 
 WIDTH, HEIGHT = 1000, 700
 
@@ -11,15 +16,164 @@ MUTED = (180, 180, 180)
 PANEL = (28, 28, 28)
 CARD = (42, 42, 42)
 GOLD = (242, 201, 76)
+BRONZE = (145, 101, 55)
+PARCHMENT = (229, 209, 168)
+PANEL_DARK = (30, 24, 20)
+
+
+class ClickTarget:
+    """A lightweight clickable region compatible with BaseScreen.buttons."""
+
+    def __init__(self, rect, callback):
+        self.rect = pygame.Rect(rect)
+        self.callback = callback
+
+    def handle_event(self, event):
+        if (
+            event.type == pygame.MOUSEBUTTONDOWN
+            and event.button == 1
+            and self.rect.collidepoint(event.pos)
+        ):
+            self.callback()
+
+
+class FantasyButton(ClickTarget):
+    """Compact fantasy navigation button used by the top HUD."""
+
+    def __init__(self, rect, label, callback):
+        super().__init__(rect, callback)
+        self.label = label
+
+
+
+    def draw(self, screen, font, mouse_pos):
+        hovered = self.rect.collidepoint(mouse_pos)
+        shadow = self.rect.move(0, 4)
+        pygame.draw.rect(screen, (10, 7, 5), shadow, border_radius=8)
+
+        edge = GOLD if hovered else (125, 91, 57)
+        fill = (83, 54, 29) if hovered else (43, 35, 29)
+        pygame.draw.rect(screen, edge, self.rect, border_radius=8)
+        inner = self.rect.inflate(-5, -5)
+        pygame.draw.rect(screen, fill, inner, border_radius=6)
+        pygame.draw.line(
+            screen,
+            (219, 174, 100),
+            (inner.left + 7, inner.top + 3),
+            (inner.right - 7, inner.top + 3),
+            1,
+        )
+
+        image = font.render(self.label, True, (244, 224, 184))
+        screen.blit(image, image.get_rect(center=self.rect.center))
 
 
 class LocationsScreen(BaseScreen):
     def __init__(self, world, change_screen):
         super().__init__()
+
+        self.world = world
+        self.change_screen = change_screen
+
+        self.show_advance_confirmation = False
+
         self.hovered_card = None
+
+        self.fantasy_title = pygame.font.SysFont("georgia", 30, bold=True)
+        self.fantasy_heading = pygame.font.SysFont("georgia", 18, bold=True)
+        self.fantasy_body = pygame.font.SysFont("georgia", 15)
+        self.marker_font = pygame.font.SysFont("georgia", 14, bold=True)
+        self.marker_icon_font = pygame.font.SysFont("georgia", 12, bold=True)
+
+        self.locations = [
+            {
+                "name": "Village Center",
+                "desc": "Conversations and social interactions.",
+                "id": "village",
+                "icon": "VC",
+                "anchor": (450, 250),
+                "side": "right",
+            },
+            {
+                "name": "Queen's Palace",
+                "desc": "Diplomacy and tribal relations.",
+                "id": "relations",
+                "icon": "QP",
+                "anchor": (108, 112),
+                "side": "right",
+            },
+            {
+                "name": "Healer's Den",
+                "desc": "Healing, injuries, and recovery.",
+                "id": "healer_den",
+                "icon": "HD",
+                "anchor": (112, 305),
+                "side": "right",
+            },
+            {
+                "name": "Training Grounds",
+                "desc": "Training, sparring, and warriors.",
+                "id": "training",
+                "icon": "TG",
+                "anchor": (865, 205),
+                "side": "left",
+            },
+            {
+                "name": "Hunting Grounds",
+                "desc": "Food, hunting, and survival.",
+                "id": "hunting",
+                "icon": "HG",
+                "anchor": (870, 350),
+                "side": "left",
+            },
+            {
+                "name": "Border Routes",
+                "desc": "Patrols, threats, and outside conflict.",
+                "id": "border",
+                "icon": "BR",
+                "anchor": (455, 520),
+                "side": "right",
+            },
+            {
+                "name": "Scroll Library",
+                "desc": "History, knowledge, and records.",
+                "id": "library",
+                "icon": "SL",
+                "anchor": (105, 500),
+                "side": "right",
+            },
+            {
+                "name": "Hatchery",
+                "desc": "Dragonets, family, and future generations.",
+                "id": "hatchery",
+                "icon": "HA",
+                "anchor": (870, 510),
+                "side": "left",
+            },
+        ]
              
         PROJECT_ROOT = Path(__file__).resolve().parents[2]
-        bg_path = PROJECT_ROOT / "assets" / "menu" / "main_locations_bg.png"
+
+        # Get the tribe being played.
+        tribe = getattr(self.world, "tribe_name", "MudWing Tribe")
+
+        tribe = (
+            str(tribe)
+            .lower()
+            .replace(" tribe", "")
+            .replace(" ", "")
+        )
+
+        print("LOCATION MAP TRIBE:", tribe)
+        print("WORLD ATTRIBUTES:", vars(self.world))
+
+        # Try the tribe-specific location map first.
+        bg_path = PROJECT_ROOT / "assets" / tribe / "location_map.png"
+
+        # If that tribe doesn't have a map yet, use the old generic map.
+        if not bg_path.exists():
+            print(f"No location map found for {tribe}. Using default.")
+            bg_path = PROJECT_ROOT / "assets" / "menu" / "main_locations_bg.png"
 
         try:
             self.bg_image = pygame.image.load(str(bg_path)).convert()
@@ -28,9 +182,98 @@ class LocationsScreen(BaseScreen):
             print(f"Could not load locations background: {e}")
             self.bg_image = None
         
-        self.world = world
-        self.change_screen = change_screen
+    def advance_week(self):
+        if advance_moon:
+            try:
+                advance_moon(self.world)
+            except Exception as error:
+                print(f"Could not advance moon/week: {error}")
+        else:
+            # Emergency fallback if the simulation import fails.
+            if hasattr(self.world, "moon"):
+                self.world.moon += 1
 
+    def request_advance_week(self):
+        self.show_advance_confirmation = True
+
+
+    def cancel_advance_week(self):
+        self.show_advance_confirmation = False
+
+
+    def confirm_advance_week(self):
+        self.show_advance_confirmation = False
+        self.advance_week()
+
+    def get_pending_choice_location(self):
+        choice = getattr(self.world, "pending_choice", None)
+        if not isinstance(choice, dict):
+            return None
+
+        # Older saves may contain choices created before locations were added.
+        return choice.get("location", "relations")
+
+    def open_pending_choice(self):
+        location = self.get_pending_choice_location()
+        if location:
+            self.open_location(location)
+
+    def draw_advance_confirmation(self, screen, mouse_pos):
+        # Darken and temporarily disable everything behind the prompt.
+        darkness = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        darkness.fill((5, 3, 2, 185))
+        screen.blit(darkness, (0, 0))
+
+        panel_rect = pygame.Rect(250, 210, 500, 250)
+
+        self.draw_beveled_panel(
+            screen,
+            panel_rect,
+            fill=(31, 24, 20),
+            edge=(154, 105, 52),
+        )
+
+        title = self.fantasy_heading.render(
+            "ADVANCE TO THE NEXT WEEK?",
+            True,
+            (246, 216, 158),
+        )
+        screen.blit(title, title.get_rect(center=(500, 260)))
+
+        current_moon = getattr(self.world, "moon", 0)
+
+        message = self.fantasy_body.render(
+            f"Moon {current_moon} will end and the tribe simulation will advance.",
+            True,
+            (220, 207, 183),
+        )
+        screen.blit(message, message.get_rect(center=(500, 310)))
+
+        warning = self.fantasy_body.render(
+            "Events, food consumption, relationships, and injuries may change.",
+            True,
+            (174, 158, 135),
+        )
+        screen.blit(warning, warning.get_rect(center=(500, 340)))
+
+        confirm_btn = FantasyButton(
+            (315, 385, 175, 46),
+            "ADVANCE",
+            self.confirm_advance_week,
+        )
+
+        cancel_btn = FantasyButton(
+            (510, 385, 175, 46),
+            "CANCEL",
+            self.cancel_advance_week,
+        )
+
+        # Remove every map button while the confirmation is open.
+        self.buttons.clear()
+
+        for button in (confirm_btn, cancel_btn):
+            self.buttons.append(button)
+            button.draw(screen, self.fantasy_body, mouse_pos)
 
     def update(self, dt):
         pass
@@ -76,128 +319,282 @@ class LocationsScreen(BaseScreen):
 
         return " • ".join(names)
 
+    def draw_beveled_panel(self, screen, rect, fill=PANEL_DARK, edge=BRONZE, cut=12):
+        x, y, w, h = rect
+        points = [
+            (x + cut, y),
+            (x + w - cut, y),
+            (x + w, y + cut),
+            (x + w, y + h - cut),
+            (x + w - cut, y + h),
+            (x + cut, y + h),
+            (x, y + h - cut),
+            (x, y + cut),
+        ]
+
+        pygame.draw.polygon(screen, (10, 7, 5), [(px, py + 5) for px, py in points])
+        pygame.draw.polygon(screen, edge, points)
+
+        inner = pygame.Rect(rect).inflate(-6, -6)
+        ix, iy, iw, ih = inner
+        inner_cut = max(4, cut - 3)
+        inner_points = [
+            (ix + inner_cut, iy),
+            (ix + iw - inner_cut, iy),
+            (ix + iw, iy + inner_cut),
+            (ix + iw, iy + ih - inner_cut),
+            (ix + iw - inner_cut, iy + ih),
+            (ix + inner_cut, iy + ih),
+            (ix, iy + ih - inner_cut),
+            (ix, iy + inner_cut),
+        ]
+        pygame.draw.polygon(screen, fill, inner_points)
+        pygame.draw.lines(screen, (211, 165, 92), False, inner_points[:3], 1)
+
+    def draw_location_marker(self, screen, location, mouse_pos):
+        name = location["name"]
+        loc_id = location["id"]
+        icon = location["icon"]
+        anchor_x, anchor_y = location["anchor"]
+        side = location["side"]
+
+        count = len(self.get_dragons_at_location(loc_id))
+        label_text = f"{name.upper()}  •  {count}"
+        label_image = self.marker_font.render(label_text, True, (238, 220, 184))
+        plaque_w = max(150, label_image.get_width() + 30)
+        plaque_h = 34
+
+        if side == "right":
+            plaque = pygame.Rect(anchor_x + 15, anchor_y - plaque_h // 2, plaque_w, plaque_h)
+        else:
+            plaque = pygame.Rect(anchor_x - plaque_w - 15, anchor_y - plaque_h // 2, plaque_w, plaque_h)
+
+        icon_rect = pygame.Rect(anchor_x - 23, anchor_y - 23, 46, 46)
+        hit_rect = plaque.union(icon_rect)
+        hovered = hit_rect.collidepoint(mouse_pos)
+        needs_attention = self.get_pending_choice_location() == loc_id
+
+        if hovered:
+            glow = pygame.Surface((hit_rect.width + 28, hit_rect.height + 28), pygame.SRCALPHA)
+            pygame.draw.rect(glow, (242, 201, 76, 42), glow.get_rect(), border_radius=18)
+            screen.blit(glow, glow.get_rect(center=hit_rect.center))
+
+        shadow = plaque.move(0, 4)
+        pygame.draw.rect(screen, (9, 6, 5), shadow, border_radius=7)
+        plaque_edge = (225, 91, 48) if needs_attention else (121, 86, 52)
+        pygame.draw.rect(screen, GOLD if hovered else plaque_edge, plaque, border_radius=7)
+        inner = plaque.inflate(-5, -5)
+        pygame.draw.rect(
+            screen,
+            (79, 50, 27) if hovered else (41, 32, 27),
+            inner,
+            border_radius=5,
+        )
+
+        screen.blit(label_image, label_image.get_rect(center=plaque.center))
+
+        pygame.draw.circle(screen, (9, 6, 5), (anchor_x, anchor_y + 4), 25)
+        pygame.draw.circle(screen, GOLD if hovered else (132, 92, 51), (anchor_x, anchor_y), 24)
+        pygame.draw.circle(screen, (44, 33, 27), (anchor_x, anchor_y), 19)
+        pygame.draw.circle(screen, (111, 64, 28) if hovered else (76, 48, 31), (anchor_x, anchor_y), 15)
+
+        icon_image = self.marker_icon_font.render(icon, True, (250, 226, 177))
+        screen.blit(icon_image, icon_image.get_rect(center=(anchor_x, anchor_y)))
+
+        if needs_attention:
+            # A gentle pulse keeps the indicator visible without obscuring the map.
+            pulse = (math.sin(pygame.time.get_ticks() / 220.0) + 1.0) / 2.0
+            badge_x = anchor_x
+            badge_y = anchor_y - 38
+            glow_radius = 15 + int(pulse * 4)
+
+            glow = pygame.Surface((50, 50), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (242, 201, 76, 45), (25, 25), glow_radius)
+            screen.blit(glow, glow.get_rect(center=(badge_x, badge_y)))
+
+            pygame.draw.circle(screen, (48, 25, 15), (badge_x, badge_y), 13)
+            pygame.draw.circle(screen, GOLD, (badge_x, badge_y), 13, 3)
+            pygame.draw.circle(screen, (177, 48, 34), (badge_x, badge_y), 9)
+
+            alert_image = self.fantasy_heading.render("!", True, (255, 235, 184))
+            screen.blit(alert_image, alert_image.get_rect(center=(badge_x, badge_y - 1)))
+
+        target = ClickTarget(hit_rect, lambda lid=loc_id: self.open_location(lid))
+        self.buttons.append(target)
+
+        return hovered
+
+    def draw_location_tooltip(self, screen, location, mouse_pos):
+        """Draw location details beside the hovered marker."""
+
+        card_w = 350
+        needs_attention = self.get_pending_choice_location() == location["id"]
+        card_h = 120 if needs_attention else 96
+        gap = 18
+
+        # Initially place the tooltip below and right of the cursor.
+        x = mouse_pos[0] + gap
+        y = mouse_pos[1] + gap
+
+        # Move it left if it would leave the right side of the screen.
+        if x + card_w > WIDTH - 20:
+            x = mouse_pos[0] - card_w - gap
+
+        # Move it above if it would leave the bottom of the screen.
+        if y + card_h > HEIGHT - 20:
+            y = mouse_pos[1] - card_h - gap
+
+        # Keep it inside the screen and beneath the header.
+        x = max(20, min(x, WIDTH - card_w - 20))
+        y = max(95, min(y, HEIGHT - card_h - 20))
+
+        self.draw_beveled_panel(
+            screen,
+            (x, y, card_w, card_h),
+            fill=(31, 27, 23),
+            edge=(127, 91, 55),
+        )
+
+        count = len(self.get_dragons_at_location(location["id"]))
+
+        heading = self.fantasy_heading.render(
+            f"{location['name'].upper()}  •  {count} DRAGONS",
+            True,
+            (246, 216, 158),
+        )
+        screen.blit(heading, (x + 18, y + 14))
+
+        description = self.fantasy_body.render(
+            location["desc"],
+            True,
+            (220, 207, 183),
+        )
+        screen.blit(description, (x + 18, y + 43))
+
+        residents = self.small.render(
+            self.get_location_dragons_text(location["id"]),
+            True,
+            (168, 155, 134),
+        )
+        screen.blit(residents, (x + 18, y + 68))
+
+        if needs_attention:
+            attention = self.small.render(
+                "! A decision requires your attention.",
+                True,
+                (242, 201, 76),
+            )
+            screen.blit(attention, (x + 18, y + 91))
+
     def draw(self, screen):
         mouse_pos = scale_mouse_pos(
             pygame.mouse.get_pos(),
             pygame.display.get_surface().get_size()
         )
-        self.hovered_card = None
-
         self.buttons.clear()
+
         if self.bg_image:
             screen.blit(self.bg_image, (0, 0))
         else:
             screen.fill(BG)
 
+        # Keep the illustrated settlement visible. A light vignette improves
+        # text contrast without turning the scene back into a dark menu.
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 120))
+        overlay.fill((15, 9, 6, 52))
         screen.blit(overlay, (0, 0))
 
-        title = self.title_font.render("Tribe Locations", True, TEXT)
-        screen.blit(title, title.get_rect(center=(WIDTH // 2, 80)))
-
-        subtitle = self.small.render(
-            "Choose where to focus your attention this week.",
-            True,
-            MUTED
+        pygame.draw.rect(
+            screen,
+            (108, 76, 47),
+            (18, 16, 964, 668),
+            width=3,
+            border_radius=18,
         )
-        screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 120)))
-
-        dashboard_btn = Button(
-            (755, 50, 150, 36),
-            "Tribe Overview",
-            lambda: self.open_location("dashboard")
+        pygame.draw.rect(
+            screen,
+            (35, 27, 22),
+            (25, 23, 950, 654),
+            width=2,
+            border_radius=15,
         )
-        self.buttons.append(dashboard_btn)
-        dashboard_btn.draw(screen, self.small)
 
-        profile_btn = Button(
-            (755, 92, 150, 36),
-            "Dragon Profile",
-            lambda: self.open_location("dragon_profile")
+        self.draw_beveled_panel(
+            screen,
+            (300, 18, 400, 67),
+            fill=(31, 24, 20),
+            edge=(136, 95, 52),
         )
-        self.buttons.append(profile_btn)
-        profile_btn.draw(screen, self.small)
+        title = self.fantasy_title.render("TRIBE LOCATIONS", True, (246, 216, 158))
+        screen.blit(title, title.get_rect(center=(WIDTH // 2, 43)))
 
-        panel = pygame.Rect(130, 135, 740, 550)
-        panel_surface = pygame.Surface((panel.width, panel.height), pygame.SRCALPHA)
-        panel_surface.fill((28, 28, 28, 175))
-        screen.blit(panel_surface, panel.topleft)
-        pygame.draw.rect(screen, (45, 45, 45), panel, width=2, border_radius=22)
-
-        locations = [
-            ("Village Center", "Conversations and social interactions.", "village"),
-            ("Queen's Palace", "Diplomacy and tribal relations.", "relations"),
-            ("Healer's Den", "Healing, injuries, and recovery.", "healer_den"),
-            ("Training Grounds", "Training, sparring, and warriors.", "training"),
-            ("Hunting Grounds", "Food, hunting, and survival.", "hunting"),
-            ("Border Routes", "Patrols, threats, and outside conflict.", "border"),
-            ("Scroll Library", "History, knowledge, and records.", "library"),
-            ("Hatchery", "Dragonets, family, and future generations.", "hatchery"),
+        living = [
+            dragon
+            for dragon in getattr(self.world, "dragons", [])
+            if getattr(dragon, "status", "Alive") == "Alive"
         ]
 
-        card_w = 320
-        card_h = 105
-        start_x = 170
-        start_y = 170
-        gap_x = 40
-        gap_y = 20
+        moon = getattr(self.world, "moon", 0)
+        food = getattr(self.world, "food_stores", 0)
+        tension = getattr(self.world, "tension", 0.0)
 
-        for idx, (name, desc, loc_id) in enumerate(locations):
-            col = idx % 2
-            row = idx // 2
+        status_text = (
+            f"MOON {moon}  •  "
+            f"{len(living)} LIVING  •  "
+            f"FOOD {food}  •  "
+            f"TENSION {tension:.1f}"
+        )
 
-            x = start_x + col * (card_w + gap_x)
-            y = start_y + row * (card_h + gap_y)
+        subtitle = self.small.render(
+            status_text,
+            True,
+            (184, 166, 135),
+        )
+        screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 68)))
 
-            card = pygame.Rect(x, y, card_w, card_h)
-            if card.collidepoint(mouse_pos):
-                self.hovered_card = idx
+        if self.get_pending_choice_location():
+            advance_btn = FantasyButton(
+                (28, 28, 175, 39),
+                "DECISION PENDING",
+                self.open_pending_choice,
+            )
+        else:
+            advance_btn = FantasyButton(
+                (28, 28, 175, 39),
+                "ADVANCE WEEK",
+                self.request_advance_week,
+            )
 
-            is_hovered = self.hovered_card == idx
+        dashboard_btn = FantasyButton(
+            (744, 28, 112, 39),
+            "OVERVIEW",
+            lambda: self.open_location("dashboard")
+        )
+        profile_btn = FantasyButton(
+            (864, 28, 112, 39),
+            "DRAGONS",
+            lambda: self.open_location("dragon_profile")
+        )
 
-            hover_offset = -4 if is_hovered else 0
-            draw_rect = card.move(0, hover_offset)
+        for button in (advance_btn, dashboard_btn, profile_btn):
+            self.buttons.append(button)
+            button.draw(screen, self.small, mouse_pos)
 
-            card_surface = pygame.Surface((draw_rect.width, draw_rect.height), pygame.SRCALPHA)
-            
+        hovered_location = None
+        for location in self.locations:
+            if self.draw_location_marker(screen, location, mouse_pos):
+                hovered_location = location
 
-            if is_hovered:
-                card_surface.fill((60, 60, 60, 235))
-            else:
-                card_surface.fill((42, 42, 42, 210))
-
-            screen.blit(card_surface, draw_rect.topleft)
-
-            border_color = (120, 120, 120) if is_hovered else (65, 65, 65)
-
-            pygame.draw.rect(
+        # Show details only while hovering over a location.
+        if hovered_location:
+            self.draw_location_tooltip(
                 screen,
-                border_color,
-                draw_rect,
-                width=2 if is_hovered else 1,
-                border_radius=12
+                hovered_location,
+                mouse_pos,
             )
 
-            self.draw_text(
-                screen,
-                self.get_location_label(name, loc_id),
-                draw_rect.x + 14,
-                draw_rect.y + 10,
-                self.section_font,
-                GOLD
-            )
-
-            self.draw_text(screen, desc, draw_rect.x + 14, draw_rect.y + 42, self.small, MUTED)
-
-
-            btn = Button(
-                (draw_rect.x + 210, draw_rect.y + 62, 90, 28),
-                "Enter",
-                lambda lid=loc_id: self.open_location(lid)
-            )
-            self.buttons.append(btn)
-            btn.draw(screen, self.small)
+        if self.show_advance_confirmation:
+            self.draw_advance_confirmation(screen, mouse_pos)
 
     def open_location(self, loc_id):
         if loc_id == "healer_den":
@@ -224,6 +621,16 @@ class LocationsScreen(BaseScreen):
             print(f"{loc_id} not built yet.")
 
     def handle_event(self, event):
+
+        if self.show_advance_confirmation and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.cancel_advance_week()
+                return
+
+            if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                self.confirm_advance_week()
+                return
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             scaled_pos = scale_mouse_pos(
                 event.pos,

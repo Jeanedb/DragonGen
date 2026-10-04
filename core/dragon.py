@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
+from core.sim.memory import Memory
+from core.sim.relationships import Relationship
 
 @dataclass
 class Dragon:
@@ -74,3 +76,5 @@ class Dragon:
     random_fact: str = ""
 
     cause_of_death: str = ""
+    memories: list[Memory] = field(default_factory=list)
+    relationships: list[Relationship] = field(default_factory=list)

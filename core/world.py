@@ -12,6 +12,7 @@ class World:
     event_log: list[dict] = field(default_factory=list)
     pending_choice: dict | None = None
     tension: float = 0.0
+    food_stores: int = 100
 
     leader_id: int | None = None
     deputy_id: int | None = None

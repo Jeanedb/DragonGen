@@ -5,7 +5,10 @@ TRIBES = [
     "SeaWing",
     "SandWing",
     "MudWing",
-    "IceWing"
+    "IceWing",
+    "HiveWing",
+    "SilkWing",
+    "LeafWing",
 ]
 
 TRIBE_PERSONALITY_BIAS = {
@@ -15,7 +18,10 @@ TRIBE_PERSONALITY_BIAS = {
     "SeaWing": ["Loyal", "Clever"],
     "SandWing": ["Ambitious", "Moody"],
     "MudWing": ["Loyal", "Kind"],
-    "IceWing": ["Ambitious", "Suspicious"]
+    "IceWing": ["Ambitious", "Suspicious"],
+    "HiveWing": ["Ambitious", "Loyal"],
+    "SilkWing": ["Kind", "Playful"],
+    "LeafWing": ["Brave", "Suspicious"],
 }
 
 ROLES = [

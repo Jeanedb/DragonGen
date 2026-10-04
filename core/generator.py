@@ -86,6 +86,9 @@ def generate_starting_world(starting_tribe="mixed"):
         "icewing": "IceWing",
         "nightwing": "NightWing",
         "mudwing": "MudWing",
+        "hivewing": "HiveWing",
+        "silkwing": "SilkWing",
+        "leafwing": "LeafWing",
         "mixed": "Mixed",
     }
 

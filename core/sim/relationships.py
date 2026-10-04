@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from core.sim.logging import log_event
 
 
@@ -148,4 +149,133 @@ def add_rivalry(world, d1, d2):
         [d1.id, d2.id],
         event_type="rivalry",
         importance=2,
+    )
+
+
+
+@dataclass
+class Relationship:
+    type: str
+    other_id: int
+    strength: float = 1.0
+    created_moon: int = 0
+    last_changed_moon: int = 0
+    history: list = field(default_factory=list)
+
+    def display_name(self):
+        names = {
+            "bond": "Bond",
+            "mentor": "Mentor",
+            "student": "Student",
+            "rivalry": "Rival",
+        }
+
+        return names.get(self.type, self.type.title())
+
+    def description(self):
+        descriptions = {
+            "bond": "These dragons work well together.",
+            "mentor": "Has taken this dragon under their wing.",
+            "student": "Looks up to this dragon for guidance.",
+            "rivalry": "Competition has become personal.",
+        }
+
+        return descriptions.get(self.type, "")
+
+
+def add_relationship(dragon, relationship):
+    if not hasattr(dragon, "relationships") or dragon.relationships is None:
+        dragon.relationships = []
+
+    for existing in dragon.relationships:
+        if existing.other_id == relationship.other_id and existing.type == relationship.type:
+            existing.strength += relationship.strength
+            existing.last_changed_moon = relationship.last_changed_moon
+
+            for memory in relationship.history:
+                if memory not in existing.history:
+                    existing.history.append(memory)
+
+            return existing
+
+    dragon.relationships.append(relationship)
+    return relationship
+
+def get_relationship(dragon, other_id, relationship_type=None):
+    for relationship in getattr(dragon, "relationships", []):
+        if relationship.other_id != other_id:
+            continue
+
+        if relationship_type is not None and relationship.type != relationship_type:
+            continue
+
+        return relationship
+
+    return None
+
+
+def strengthen_relationship(dragon, other_id, amount, world=None, relationship_type="bond", memory=None):
+    moon = getattr(world, "moon", 0) if world else 0
+
+    relationship = get_relationship(dragon, other_id, relationship_type)
+
+    if not hasattr(dragon, "relationships") or dragon.relationships is None:
+        dragon.relationships = []
+
+    if relationship is None:
+        relationship = Relationship(
+            type=relationship_type,
+            other_id=other_id,
+            strength=0,
+            created_moon=moon,
+            last_changed_moon=moon,
+        )
+        dragon.relationships.append(relationship)
+
+    relationship.strength += amount
+    relationship.last_changed_moon = moon
+
+    if memory is not None and memory not in relationship.history:
+        relationship.history.append(memory)
+
+    return relationship
+
+
+def weaken_relationship(dragon, other_id, amount, world=None, relationship_type="bond", memory=None):
+    relationship = get_relationship(dragon, other_id, relationship_type)
+
+    if not hasattr(dragon, "relationships") or dragon.relationships is None:
+        dragon.relationships = []
+
+    if relationship is None:
+        return None
+
+    moon = getattr(world, "moon", 0) if world else 0
+
+    relationship.strength -= amount
+    relationship.last_changed_moon = moon
+
+    if memory is not None and memory not in relationship.history:
+        relationship.history.append(memory)
+
+    return relationship
+
+
+def has_relationship(dragon, relationship_type, other_id=None):
+    for relationship in getattr(dragon, "relationships", []):
+        if relationship.type != relationship_type:
+            continue
+
+        if other_id is not None and relationship.other_id != other_id:
+            continue
+
+        return True
+
+    return False
+
+def get_relationships(dragon):
+    return sorted(
+        getattr(dragon, "relationships", []),
+        key=lambda relationship: relationship.strength,
+        reverse=True
     )

@@ -1,4 +1,5 @@
 import random
+from core.sim.behavior import get_behavior_score
 from core.sim.phases.role_phase import run_role_phase
 from core.sim.eggs import create_egg
 from core.world import World
@@ -49,6 +50,33 @@ from core.sim.leadership import (
     apply_leader_influence,
     get_leader_by_id,
 )
+
+
+# Map player-facing decisions to the location where they should be resolved.
+# The choice generators can override this by supplying their own "location".
+CHOICE_LOCATIONS = {
+    "leader_decision": "relations",
+    "ai_conversation_choice": "village",
+    "diplomatic_choice": "relations",
+    "tribal_policy_choice": "relations",
+    "incoming_diplomacy_choice": "relations",
+    "border_sighting": "border",
+    "border_violation": "border",
+    "aid_delivery": "border",
+    "injured_patrol_choice": "healer_den",
+    "rival_confrontation_choice": "village",
+}
+
+
+def prepare_pending_choice(world):
+    """Attach map-routing information to a newly generated choice."""
+    choice = getattr(world, "pending_choice", None)
+    if not isinstance(choice, dict):
+        return False
+
+    choice_type = choice.get("type")
+    choice.setdefault("location", CHOICE_LOCATIONS.get(choice_type, "relations"))
+    return True
 
 def are_family(a, b):
     if a.id in b.parents or b.id in a.parents:
@@ -564,21 +592,50 @@ def apply_world_drift(world: World):
         if dragon.status == "Alive" and getattr(dragon, "leadership_pressure", 0) > 0:
             dragon.leadership_pressure -= 1
 
+        # Trust slowly fades.
+        # Family loyalty changes how quickly trust in relatives fades.
         for k in list(dragon.trust.keys()):
-            dragon.trust[k] *= 0.95
+            other_dragon = next(
+                (d for d in world.dragons if d.id == k),
+                None
+            )
+
+            trust_decay_rate = 0.05
+
+            if other_dragon and are_family(dragon, other_dragon):
+                family_loyalty = get_behavior_score(
+                    dragon,
+                    "family_loyalty"
+                )
+
+                trust_decay_rate = 0.07 - (family_loyalty * 0.04)
+
+            dragon.trust[k] *= (1.0 - trust_decay_rate)
+
             if dragon.trust[k] < 0.1:
                 del dragon.trust[k]
 
+        # Forgiveness changes how quickly resentment fades.
+        forgiveness = get_behavior_score(
+            dragon,
+            "forgiveness"
+        )
+
+        resentment_decay_rate = 0.02 + (forgiveness * 0.08)
+
         for k in list(dragon.resentment.keys()):
-            dragon.resentment[k] *= 0.95
+            dragon.resentment[k] *= (1.0 - resentment_decay_rate)
+
             if dragon.resentment[k] < 0.1:
                 del dragon.resentment[k]
 
+        # Perceived reputation slowly fades.
         for k in list(dragon.perceived_reputation.keys()):
             dragon.perceived_reputation[k] *= 0.98
+
             if abs(dragon.perceived_reputation[k]) < 0.05:
                 del dragon.perceived_reputation[k]
-
+                
 def advance_moon(world: World):
 
     living = get_living_dragons(world)
@@ -625,6 +682,7 @@ def advance_moon(world: World):
         if random.random() < 0.10:
             created = create_ai_conversation_choice(world)
             if created:
+                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
                 return True
 
@@ -633,54 +691,63 @@ def advance_moon(world: World):
         if choice_roll < 0.08:
             created = create_leader_decision(world)
             if created:
+                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
                 return True
 
         elif choice_roll < 0.14:
             created = create_injured_patrol_choice(world)
             if created:
+                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
                 return True
 
         elif choice_roll < 0.20:
             created = create_rival_confrontation_choice(world)
             if created:
+                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
                 return True
 
         elif choice_roll < 0.25:
             created = create_diplomatic_choice(world)
             if created:
+                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
                 return True
 
         elif choice_roll < 0.31:
             created = create_tribal_policy_choice(world)
             if created:
+                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
                 return True
 
         elif choice_roll < 0.36:
             created = create_incoming_diplomacy_choice(world)
             if created:
+                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
                 return True
 
         elif choice_roll < 0.41:
             created = create_border_sighting_event(world)
             if created:
+                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
                 return True
 
         elif choice_roll < 0.46:
             created = create_border_violation_event(world)
             if created:
+                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
                 return True
 
         elif choice_roll < 0.51:
             created = create_aid_delivery_event(world)
             if created:
+                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
                 return True
 

@@ -1,3 +1,5 @@
+from core.sim.behavior import get_behavior_score
+
 def run_reputation_phase(world):
 
     for observer in world.dragons:
@@ -13,8 +15,15 @@ def run_reputation_phase(world):
 
             current = observer.perceived_reputation.get(target.id, 0)
 
-            # base drift toward objective reputation
-            new_value = current + (rep_score * 0.05)
+            reputation_importance = get_behavior_score(
+                observer,
+                "reputation_importance"
+            )
+
+            # Dragons who care more about reputation form stronger opinions
+            reputation_rate = 0.025 + (reputation_importance * 0.05)
+
+            new_value = current + (rep_score * reputation_rate)
 
             # social influence: trusted dragons affect opinion
             for other in world.dragons:
@@ -42,6 +51,13 @@ def run_reputation_phase(world):
                 elif personality == "Moody":
                     resistance = 1.2
 
-                new_value += other_view * 0.02 * trust * resistance
+                social_reputation_rate = 0.01 + (reputation_importance * 0.02)
+
+                new_value += (
+                    other_view
+                    * social_reputation_rate
+                    * trust
+                    * resistance
+                )
 
             observer.perceived_reputation[target.id] = new_value

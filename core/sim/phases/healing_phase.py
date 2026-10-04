@@ -72,8 +72,14 @@ def run_healing_phase(world):
             old_skill = getattr(healer, "healer_skill", 1.0)
             healer.healer_skill = min(2.0, round(old_skill + 0.01, 2))
 
-            dragon.memory_flags.add(("healed_by", healer.id))
-            healer.memory_flags.add(("healed", dragon.id))
+            healed_by_flag = ("healed_by", healer.id)
+            healer_success_flag = ("healed", dragon.id)
+
+            if healed_by_flag not in dragon.memory_flags:
+                dragon.memory_flags.append(healed_by_flag)
+
+            if healer_success_flag not in healer.memory_flags:
+                healer.memory_flags.append(healer_success_flag)
             dragon.trust[healer.id] = dragon.trust.get(healer.id, 0) + 1.0
             healer.reputation["kind"] = healer.reputation.get("kind", 0) + 0.3
 
