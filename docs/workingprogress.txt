@@ -1,0 +1,607 @@
+DRAGONGEN DEVELOPMENT ROADMAP
+Last reorganized: 4 October 2026
+
+======================================================================
+1. CORE VISION
+======================================================================
+
+The tribe should remember.
+
+Actions should create relationships.
+Relationships should create stories.
+Stories should create future consequences.
+
+DragonGen is a social simulation and procedural story generator. Its central
+goal is to create believable dragons with flaws, preferences, social status,
+relationships, histories, and evolving character arcs inside a living tribe.
+
+The player should remember dragons because of what they did and whom they
+affected—not merely because of their statistics.
+
+Immediate effects are good.
+Delayed effects are better.
+Remembered effects are best.
+
+Persistent social links may include:
+
+- Parents, grandparents, and siblings
+- Caretakers and wards
+- Mentors and apprentices
+- Friends and rivals
+- Mates and former mates
+- First hunt or patrol partners
+- Political allies and enemies
+- Dragons connected through injuries, rescues, betrayals, and deaths
+
+
+======================================================================
+2. TRIBE DIFFERENTIATION — CORE DESIGN PILLAR
+======================================================================
+
+Every tribe must share DragonGen's underlying simulation principles while
+creating a meaningfully different campaign. Tribe identity cannot be limited
+to colour palettes, name pools, background art, or small statistical bonuses.
+
+SHARED FOUNDATION
+
+Every tribe uses the same core systems:
+
+- Aging, injury, death, reproduction, and lineage
+- Personality, mood, relationships, memory, and reputation
+- Food, hunting, patrols, training, healing, and leadership
+- Locations, weekly events, player choices, and long-term consequences
+- Individual histories, family records, biographies, and obituaries
+
+LAYERS OF TRIBE IDENTITY
+
+Each tribe should differ through at least five interconnected layers:
+
+1. Social structure — family groups, hierarchy, leadership, and belonging
+2. Cultural values — which traits and actions earn prestige or disapproval
+3. Biological traits — common abilities, rare conditions, and life stages
+4. Locations and events — tribe-specific activities, conflicts, and choices
+5. Language and presentation — titles, terminology, UI motifs, and narration
+
+A tribe-specific mechanic is substantial only when it affects at least three
+systems. For example, a MudWing sibling group should affect relationships,
+location behaviour, event choices, grief, and individual history—not merely
+appear as a family-tree label.
+
+IMPLEMENTATION STRATEGY
+
+Do not build ten separate simulations or scatter dozens of
+"if tribe == ..." checks throughout the code.
+
+[ ] Create a data-driven Tribe Identity/Profile structure
+[ ] Give every tribe standard hooks for family, prestige, rare traits, events,
+    locations, role biases, dialogue, and history text
+[ ] Build MudWings first as the complete vertical slice
+[ ] Test whether a MudWing campaign genuinely feels different by week 10
+[ ] Generalize the successful framework before implementing the next tribe
+[ ] Add tribes incrementally and test each one independently
+[ ] Store culture and birth-condition data in save files
+[ ] Allow mixed tribes to inherit traits without automatically receiving every
+    advantage from both parents
+
+MUDWINGS — FIRST VERTICAL SLICE
+
+[ ] Generate persistent sibling groups (Sibs)
+[ ] Identify a BigWing and give that role social and behavioural importance
+[ ] Make sibling bonds unusually strong and durable
+[ ] Prefer Sibs for shared hunts, patrols, defence, and grief events
+[ ] Record Sib membership in profiles, histories, family trees, and obituaries
+[ ] Add blood-red eggs as a rare birth condition producing fire immunity
+[ ] Create choices involving loyalty to Sibs versus loyalty to the wider tribe
+[ ] Add marsh, mud, endurance, communal care, and practical survival events
+[ ] Make loyalty, reliability, strength, and protection culturally prestigious
+
+SKYWINGS
+
+[ ] Make combat ability, courage, flight skill, and military service prestigious
+[ ] Add arena, combat trial, military training, and aerial competition events
+[ ] Treat the arena as a campaign-era institution rather than an eternal trait
+[ ] Add rare twin-egg fire imbalance: firescales and fireless outcomes
+[ ] Connect martial prestige to rank, rivalry, leadership, and court politics
+[ ] Create consequences for weakness, cowardice, exceptional service, and mercy
+
+SEAWINGS
+
+[ ] Use underwater locations, travel, hunting, danger, and recovery events
+[ ] Represent aquatic communication and bioluminescent scale patterns
+[ ] Strengthen royal-family and court-politics systems
+[ ] Give suitable SeaWing bloodlines a greater animus inheritance chance
+[ ] Add events involving depth, currents, surface travel, and divided loyalties
+[ ] Let aquatic skill affect rescue, patrol, hunting, and social prestige
+
+RAINWINGS
+
+[ ] Connect scale colour to emotion, mood presentation, and social signalling
+[ ] Use camouflage and venom in hunting, defence, rescue, and political events
+[ ] Represent communal hatchery and parenting traditions
+[ ] Create tribe-specific food, rainforest, sleep, and community events
+[ ] Make diplomacy and alternative conflict resolution mechanically meaningful
+[ ] Avoid portraying a peaceful culture as simply weak or inactive
+
+SANDWINGS
+
+[ ] Connect tail venom to combat, injury, medicine, and fear responses
+[ ] Add desert survival, heat, water, oasis, trade, and travel events
+[ ] Expand succession, loyalty, wealth, and competing-faction politics
+[ ] Make navigation and resource knowledge culturally valuable
+[ ] Give venom injuries and treatment distinct consequences
+
+ICEWINGS
+
+[ ] Implement formal ranks, circles, prestige, and family expectations
+[ ] Make reputation and rule-following unusually consequential
+[ ] Use frostbreath and cold adaptation in combat, travel, and survival
+[ ] Give suitable IceWing bloodlines a greater animus inheritance chance
+[ ] Add choices involving duty, status, family honour, and personal loyalty
+[ ] Allow exceptional or disgraced dragons to move through the hierarchy
+
+NIGHTWINGS
+
+[ ] Record the number of full moons and moonlight exposure at hatching
+[ ] Use those birth conditions to determine possible mind-reading or prophecy
+[ ] Make multi-moon births exceptionally rare and socially important
+[ ] Add secrecy, scholarship, deception, prophecy, and information-based events
+[ ] Let powers affect dialogue and choices without becoming automatic solutions
+[ ] Record prophecies, visions, and discovered secrets in personal histories
+
+SILKWINGS
+
+[ ] Implement age-based metamorphosis and wing development
+[ ] Use silk production in work, rescue, construction, and community events
+[ ] Make flamesilk a rare trait with political and personal consequences
+[ ] Add cultural memory concerning oppression, freedom, and social cooperation
+[ ] Ensure pre-metamorphosis dragonets have distinct limitations and experiences
+
+HIVEWINGS
+
+[ ] Generate varied natural weapons such as stingers, venom, or defensive traits
+[ ] Reflect hive, occupation, caste, ambition, and structured social expectations
+[ ] Make historical mind-control mechanics dependent on campaign era and setting
+[ ] Create tension between personal agency, duty, status, and collective order
+[ ] Connect specialised traits to roles without predetermining personality
+
+LEAFWINGS
+
+[ ] Make plant knowledge valuable in healing, food, shelter, and conflict
+[ ] Add rare leafspeak with strength, limitations, and social consequences
+[ ] Support subgroup and ideological conflict when appropriate to campaign era
+[ ] Create jungle survival, cultivation, sabotage, and restoration events
+[ ] Connect environmental choices to relationships and political identity
+
+MIXED TRIBES
+
+[ ] Inherit a limited combination of parental traits and cultural influences
+[ ] Allow identity, acceptance, prejudice, or belonging to become story material
+[ ] Avoid making mixed dragons automatically stronger than single-tribe dragons
+[ ] Allow upbringing to affect culture independently from biological inheritance
+[ ] Record both ancestry and chosen cultural affiliation
+
+RARE POWERS AND CAMPAIGN ERA
+
+Rare powers must be world-changing, not decorative bonuses.
+
+[ ] Base animus potential on ancestry and campaign settings, not a flat random roll
+[ ] Begin with animus ancestry or latent potential before implementing free-form magic
+[ ] Design costs, secrecy, fear, political pressure, and long-term consequences
+[ ] Define a campaign era because arenas, royal systems, mind control, wars, and
+    access to animus magic are not equally appropriate in every historical period
+[ ] Keep rare traits rare enough that their appearance creates a memorable campaign
+
+
+======================================================================
+3. CURRENT DEVELOPMENT PRIORITY
+======================================================================
+
+CURRENT MILESTONE: STABILIZATION AND SYSTEM INTEGRATION
+
+The interface and primary locations have received major upgrades. The next
+step is not another large redesign. The next step is proving that the existing
+systems remain coherent across a long campaign.
+
+Recommended order:
+
+1. Conduct a deliberate 25-40 week playtest.
+2. Record confirmed bugs separately from uncertain or outdated notes.
+3. Verify save/load after major events and with pending choices.
+4. Inspect whether roles, skills, relationships, injuries, rumors, food, and
+   history influence one another as intended.
+5. Repair broken links between existing systems.
+6. Build role progression and cross-system consequences.
+7. Build the MudWing tribe-identity vertical slice.
+8. Generalize the tribe framework and add other tribes incrementally.
+9. Expand politics, resources, and visual polish only after stabilization.
+
+
+======================================================================
+4. PLAYTEST CHECKLIST
+======================================================================
+
+Run at least one continuous 25-40 week campaign. Do not immediately repair
+every minor issue while testing; record it first so broader patterns become
+visible.
+
+SAVE AND STATE
+
+[ ] New game creates a valid tribe and roster
+[ ] Fixed save slots work correctly
+[ ] Loading restores the correct week, food, population, and locations
+[ ] Pending choices remain pending after save/load
+[ ] Resolved choices do not reappear after save/load
+[ ] Returning to the main menu offers the correct save options
+[ ] Restarting or replacing a tribe creates a valid roster
+
+POPULATION AND LIFE CYCLE
+
+[ ] Population remains stable enough to sustain a long campaign
+[ ] Reproduction is selective and not excessively frequent
+[ ] Dragonets cannot receive adult roles, mates, rivals, or patrol assignments
+[ ] Dragons age and die within the intended lifespan
+[ ] Death, parentage, mates, and descendants remain correctly recorded
+[ ] Injured dragons recover, worsen, or die according to understandable rules
+
+ROLES AND LOCATIONS
+
+[ ] Hunters prefer the Hunting Grounds without emptying other locations
+[ ] Scouts prefer Border Routes without emptying other locations
+[ ] Healers perform meaningful healing work
+[ ] Warriors train and improve appropriately
+[ ] Village Center attendance varies but remains socially active
+[ ] Roleless dragons still behave plausibly
+[ ] Dragons at a location can participate in that location's events
+
+ECONOMY AND RISK
+
+[ ] Food rises and falls at a believable rate
+[ ] Hunts remaining reset correctly each week
+[ ] Patrols remaining reset correctly each week
+[ ] Small, large, and dangerous hunts have distinct risk/reward profiles
+[ ] Skill and party composition noticeably affect outcomes
+[ ] Eggs, injuries, food, and other expedition results reach the proper systems
+
+SOCIAL SIMULATION
+
+[ ] Relationships change for understandable reasons
+[ ] Rumors can be true, false, or unsubstantiated
+[ ] Rumors refer to suitable dragons and past events
+[ ] Conversations reflect location, relationships, memory, mood, and personality
+[ ] Dragons remember rescues, abandonment, betrayal, mentorship, and grief
+[ ] Important personal events appear in individual dragon histories
+[ ] Major public events appear in the overview history
+
+TRIBE IDENTITY
+
+[ ] The founding tribe changes more than artwork, names, and attribute weights
+[ ] A unique family or hierarchy structure is visible during ordinary play
+[ ] At least one tribe-specific mechanic matters within the first 10 weeks
+[ ] Tribe-specific prestige affects reputation, roles, or relationships
+[ ] Rare traits obey their required ancestry or birth conditions
+[ ] Tribe-specific events create consequences recorded in histories
+[ ] Mixed dragons inherit limited traits and culturally plausible identities
+
+PLAYER CHOICES
+
+[ ] Events surface globally but resolve at the correct location
+[ ] Choice indicators clearly identify locations needing attention
+[ ] Choice outcomes appear in the decision interface
+[ ] Outcomes update relationships, reputation, injury, food, or history
+[ ] Choices create delayed consequences rather than only immediate text
+
+
+======================================================================
+5. CONFIRMED BUGS
+======================================================================
+
+Only place reproducible problems here. Include the steps required to reproduce
+them. Do not promote an old suspicion into this section without retesting it.
+
+- None currently confirmed after the latest UI and location overhaul.
+
+
+======================================================================
+6. NEEDS VERIFICATION
+======================================================================
+
+These notes came from earlier development stages and may already be fixed.
+
+[ ] Restarting a tribe may create an empty roster
+[ ] Choice results always resolve inside the choice box, not only in the log
+[ ] Grief is visible only on affected dragons
+[ ] Leadership pressure is visible only on affected dragons
+[ ] Roles consistently create meaningful behaviour and location preferences
+[ ] Training currently improves useful skills
+[ ] Combat skill currently improves patrol or conflict outcomes
+[ ] Injured dragons are excluded from unsuitable events and patrols
+[ ] Mate bonding and reproduction frequencies are sufficiently selective
+[ ] Dragons generally form friendship/courtship before becoming mates
+[ ] Lifespans remain near the intended range rather than exceeding 250 years
+[ ] Titles and rank weights produce sensible results
+[ ] Existing scar data has gameplay or biography effects
+
+
+======================================================================
+7. NEXT SYSTEM: ROLE PROGRESSION AND CONSEQUENCES
+======================================================================
+
+This is the strongest next gameplay upgrade because it connects systems that
+already exist instead of adding another isolated feature.
+
+DESIRED LOOP
+
+Training or work
+    -> skill growth
+    -> improved hunt, patrol, healing, or leadership performance
+    -> success, failure, injury, rescue, or conflict
+    -> reputation and relationship changes
+    -> remembered history and future opportunities
+
+TRAINING GROUNDS
+
+[ ] Training improves combat skill
+[ ] Hunting training improves hunt success
+[ ] Scout training improves border survival and discovery
+[ ] Leadership training influences future promotion candidates
+[ ] Healer training improves treatment outcomes
+[ ] Mentorship creates loyalty and relationship memories
+[ ] Sparring can cause appropriate minor injuries
+[ ] Leaders can order tribe-wide training priorities
+[ ] Training history appears on individual dragon profiles
+
+ROLE PROGRESSION
+
+[ ] Define skill ranges and meaningful thresholds
+[ ] Add slow improvement through successful work
+[ ] Add rare regression through age, severe injury, or prolonged inactivity
+[ ] Use experience and reputation in promotion decisions
+[ ] Allow exceptional performance to create titles or social recognition
+[ ] Ensure personality influences how a dragon performs and develops
+
+
+======================================================================
+8. SYSTEM BACKLOG
+======================================================================
+
+SOCIAL MEMORY AND LIFE STORIES
+
+[ ] Expand persistent links: caretaker, mentor, apprentice, patrol partner
+[ ] Remember deceased or former mates by name
+[ ] Make dragons react to funerals of caregivers, mentors, and close companions
+[ ] Add dragons leaving, entering, disappearing, and returning
+[ ] Allow hidden storylines to surface through rumor and later revelation
+[ ] Expand mixed or layered personalities
+[ ] Finish scars and connect them to remembered events
+[ ] Improve obituary biographies using relationships and important events
+
+MATES, FAMILY, AND REPRODUCTION
+
+[ ] Slow reproduction and mate formation where necessary
+[ ] Require compatible relationships or courtship for most tribes
+[ ] Respect tribe-specific family customs, including MudWing sibling groups
+[ ] Prefer same-tribe mates while allowing uncommon hybrids
+[ ] Usually limit dragons to one active mate, with cultural exceptions
+[ ] Add meaningful consequences for separation, death, jealousy, and remarriage
+
+INJURY AND HEALING
+
+[ ] Add multiple injury types, severities, and recovery durations
+[ ] Avoid trivial injuries lasting fewer than three weeks unless appropriate
+[ ] Connect risky choices and patrol frequency to injury/death probability
+[ ] Prevent serious injuries from participating in unsuitable events
+[ ] Let healers improve slowly after successful treatment
+[ ] Add treatment requirements for severe injuries
+[ ] Eventually add medicinal supply gathering and shortages
+[ ] Display living, injured, and deceased population summaries where useful
+
+POLITICS AND LEADERSHIP
+
+[ ] Expand tribe-to-tribe diplomacy, friendship, rivalry, alliances, and enemies
+[ ] Add peace, tension, crisis, and war states
+[ ] Connect leader stances such as calm, push, and vigilant to political events
+[ ] Make leadership pressure understandable and consequential
+[ ] Review queen/king titles and Wings of Fire naming conventions
+[ ] Define leadership succession and promotion candidates
+[ ] Decide whether the player can exile a dragon and what consequences follow
+[ ] Add conflict injuries and deaths
+
+TRIBE IDENTITY AND LORE
+
+[ ] Implement the tribe-differentiation framework defined in Section 2
+[ ] Replace remaining generic nomenclature with suitable in-world language
+[ ] Establish intended tribe population ranges and sustainable limits
+[ ] Review Pyrrhian, Pantalan, and mixed-tribe interactions
+[ ] Revisit sex and gender representation when it can be implemented coherently
+
+RESOURCES AND COMMERCE — LATER SYSTEM
+
+[ ] Decide whether food alone is sufficient for the next major build
+[ ] Consider medicine or crafting materials only when they have real uses
+[ ] Explore Village Center trade with peaceful or hostile tribes
+[ ] Let diplomatic relations affect prices and available goods
+[ ] Connect Border Route decisions to trade access and supply reliability
+[ ] Avoid adding currency merely to justify a marketplace interface
+
+
+======================================================================
+9. LOCATION-SPECIFIC BACKLOG
+======================================================================
+
+QUEEN'S PALACE
+
+[ ] Expand diplomatic and political events
+[ ] Surface leadership pressure only when relevant
+[ ] Add war-state decisions and long-term diplomatic consequences
+[ ] Determine an appropriate interface for exile, pardon, or appointment
+
+VILLAGE CENTER
+
+[ ] Continue improving community gatherings so they feel like events, not buttons
+[ ] Expand Social Pulse with bonds, rivalries, grief, and community mood
+[ ] Expand recent social changes and rumor presentation
+[ ] Keep visiting dragons distinct from tribe members
+[ ] Preserve context-driven conversations without making the Village Center the
+    only place where dragons can speak
+[ ] Reconsider commerce only after meaningful resources exist
+
+TRAINING GROUNDS
+
+[ ] Implement the role progression loop described above
+[ ] Make training specialties and mentors mechanically distinct
+[ ] Connect preparation to hunts, patrols, conflict, and leadership
+
+HUNTING GROUNDS
+
+[x] Food can be gathered through hunts
+[x] Small, large, and dangerous hunt tiers exist
+[x] Hunts remaining are displayed and reset
+[x] Hunt discoveries can reach other systems, including the Hatchery
+[ ] Verify that party skill, role, and composition affect outcomes
+[ ] Add medicinal gathering only after the healing economy is defined
+
+BORDER ROUTES
+
+[x] Patrols remaining are displayed and reset
+[x] Patrol outcomes can create relationships, injuries, and rumors
+[ ] Expand discoveries, outsiders, threats, trade routes, and diplomacy
+[ ] Connect scout and combat skills to survival and outcome quality
+
+HEALER'S DEN
+
+[x] Injured dragons and recovery information are presented contextually
+[ ] Complete the injury and treatment systems described above
+[ ] Add healer experience and treatment requirements
+
+HATCHERY
+
+[x] Incubation time is displayed
+[x] Eggs can be inspected for possible trait clues
+[x] Eggs discovered elsewhere can arrive in the Hatchery
+[ ] Give rare eggs meaningful but not guaranteed consequences
+[ ] Add tribe-specific communal hatchery customs
+[ ] Verify caretakers form persistent bonds with hatchlings
+
+SCROLL LIBRARY
+
+[x] Detailed lore traits such as height and eye colour are recorded
+[x] Generated biographies and revised obituaries exist
+[x] Family trees show parents and grandparents
+[x] Individual histories can be reviewed
+[ ] Expand MudWing sibling-group lineage presentation
+[ ] Improve biographies using major relationships, titles, failures, and legacy
+[ ] Add filters or search for important historical events and locations
+
+
+======================================================================
+10. UI AND VISUAL POLISH
+======================================================================
+
+[x] Main menu redesigned
+[x] Random static main-menu backgrounds added
+[x] Tribe selection redesigned with illustrated crests and tribe names
+[x] Tribe-specific location-map backgrounds added
+[x] Overview dashboard redesigned
+[x] Major location screens redesigned into a cohesive visual style
+[x] Fixed save/load slot interface added
+[x] Return-to-menu save confirmation added
+[x] Location event markers replace automatic weekly pop-ups
+
+REMAINING POLISH
+
+[ ] Replace two-letter location medallions with readable symbolic artwork
+    - Queen's Palace: crown
+    - Village Center: campfire or gathering circle
+    - Healer's Den: herb, leaf, or mortar and pestle
+    - Training Grounds: target or crossed claws
+    - Hunting Grounds: pawprint or prey track
+    - Border Routes: compass or watchtower
+    - Scroll Library: scroll or open book
+    - Hatchery: egg
+[ ] Diversify dragon sprites and body types
+[ ] Improve low-contrast controls, especially with IceWing colours
+[ ] Add an appropriate application icon
+[ ] Add event search or filtering by location
+[ ] Decide which major events should surface everywhere
+[ ] Improve tribe-specific nameplates, colours, patterns, and motifs
+[ ] Consider minimal menu animation only after higher-priority systems are stable
+
+TRIBE VISUAL MOTIFS
+
+SkyWing:   red, orange, gold | smooth | flames and metal
+SeaWing:   blue, teal | glow stripes | waves and luminous lines
+RainWing:  varied colour | iridescent | rainbows and leaves
+SandWing:  tan, gold | minimal | desert and sun
+IceWing:   white, pale blue | crystalline | frost and sharp lines
+NightWing: black, purple | star speckles | stars and shadows
+MudWing:   brown, amber | thick scales | earth and stone
+HiveWing:  black with bright accents | stripes | hexagons and contrast
+SilkWing:  pastels | butterfly wings | soft gradients
+LeafWing:  greens | leaf veins | vines and foliage
+
+
+======================================================================
+11. COMPLETED MAJOR SYSTEMS
+======================================================================
+
+[x] All principal tribes added
+[x] Tribe culture and personality biases established at a basic level
+[x] Hierarchy affects roster placement
+[x] Roster can be organized in multiple ways
+[x] Dragon profile and overview interfaces improved
+[x] Sprite-part system established
+[x] Dead/cemetery records established
+[x] Family trees established
+[x] Individual dragon history established
+[x] Food resource established
+[x] Hunting and patrol action limits established
+[x] Injuries and recovery represented
+[x] Leader influence affects tension
+[x] Leader choices established
+[x] Mood-aware event text established
+[x] Context-driven conversations established
+[x] Rumor system established
+[x] Memory influences later choices
+[x] Dragonets excluded from adult relationships and duties
+[x] Events surface globally and resolve in relevant locations
+[x] Pending choices persist through save/load
+[x] Major screens and locations visually redesigned
+
+
+======================================================================
+12. LATER IDEAS — NOT CURRENT COMMITMENTS
+======================================================================
+
+- Additional resources beyond food
+- Inter-tribe marketplace and import/export system
+- Cosmetic items such as jewellery, bandanas, or ceremonial decorations
+- More extensive hybrid culture and identity systems
+- Advanced animated menu backgrounds
+- Deeper geopolitical map systems
+- Rare magical or prophetic traits
+- More complex commerce, crafting, and supply chains
+
+These ideas should remain here until they support the core social simulation.
+Do not build them solely because a screen has empty space.
+
+
+======================================================================
+13. DOCUMENTATION MAINTENANCE RULES
+======================================================================
+
+When adding a note, place it in exactly one of these categories:
+
+- CONFIRMED BUG: reproducible and currently broken
+- NEEDS VERIFICATION: suspected, old, or uncertain
+- NEXT SYSTEM: intentionally selected for near-term development
+- SYSTEM BACKLOG: valuable but not currently selected
+- VISUAL POLISH: presentation-only work
+- COMPLETED: implemented and tested
+- LATER IDEA: interesting but not yet justified
+
+When something is completed, move it rather than duplicating it. Add a brief
+note only when the implementation differs materially from the original idea.
+
+The old file-map notes are intentionally omitted because the architecture has
+changed substantially. Refresh the project file map through an actual code
+review rather than preserving obsolete descriptions.
