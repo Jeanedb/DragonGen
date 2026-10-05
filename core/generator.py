@@ -67,6 +67,21 @@ def generate_dragonet(dragon_id: int, tribe: str, parents=None) -> Dragon:
     )
 
 
+def initialize_mudwing_sib_group(dragons, group_id):
+    """Give a founding MudWing troop a shared identity and strong bonds."""
+    for birth_order, dragon in enumerate(dragons, start=1):
+        dragon.sib_group_id = group_id
+        dragon.birth_order = birth_order
+        dragon.is_bigwings = birth_order == 1
+
+        for sibling in dragons:
+            if sibling.id == dragon.id:
+                continue
+            if sibling.id not in dragon.friends:
+                dragon.friends.append(sibling.id)
+            dragon.trust[sibling.id] = max(dragon.trust.get(sibling.id, 0), 3.0)
+
+
 def initialize_regions(world):
     for tribe, regions in REGION_DATA.items():
         for region in regions:
@@ -114,8 +129,32 @@ def generate_starting_world(starting_tribe="mixed"):
     for tribe in world.tribal_relations.keys():
         world.tribal_traits[tribe] = random.choice(TRAITS)
 
-    for i in range(12):
-        world.dragons.append(generate_dragon(i + 1, forced_tribe))
+    if selected_tribe == "MudWing":
+        # A MudWing founding population begins as three age-coherent sibling
+        # troops rather than twelve unrelated dragons with wildly different
+        # ages.  Mixed tribes are intentionally left untouched.
+        next_id = 1
+        for group_number in range(1, 4):
+            group_age = random.randint(12, 160)
+            group = []
+
+            for _ in range(4):
+                dragon = generate_dragon(next_id, "MudWing")
+                dragon.age_moons = group_age
+                dragon.role = pick_role(group_age)
+                if dragon.role == "Healer":
+                    dragon.healer_skill = round(random.uniform(0.8, 1.4), 2)
+                group.append(dragon)
+                next_id += 1
+
+            initialize_mudwing_sib_group(
+                group,
+                f"founding-mudwing-sibs-{group_number}",
+            )
+            world.dragons.extend(group)
+    else:
+        for i in range(12):
+            world.dragons.append(generate_dragon(i + 1, forced_tribe))
 
     adults = [d for d in world.dragons if d.role != "Dragonet"]
 

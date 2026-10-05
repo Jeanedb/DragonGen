@@ -5,7 +5,7 @@ from core.dragon import Dragon
 from core.sim.memory import Memory
 from core.sim.relationships import Relationship
 
-SAVE_VERSION = 8
+SAVE_VERSION = 9
 
 
 def _keys_to_int(value):
@@ -67,7 +67,64 @@ def _normalize_dragon_after_load(dragon: Dragon):
 
     dragon.relationships = restored_relationships
 
+    # Explicit defaults also protect saves made by experimental builds where
+    # Dragon may have been serialized without the current dataclass fields.
+    dragon.sib_group_id = getattr(dragon, "sib_group_id", None)
+    dragon.is_bigwings = bool(getattr(dragon, "is_bigwings", False))
+    dragon.birth_order = getattr(dragon, "birth_order", None)
+    dragon.egg_type = getattr(dragon, "egg_type", "normal") or "normal"
+    dragon.fire_resistant = bool(getattr(dragon, "fire_resistant", False))
+    dragon.last_clutch_moon = int(getattr(dragon, "last_clutch_moon", -999))
+
     return dragon
+
+
+def _normalize_eggs_after_load(world: World):
+    """Migrate eggs made before clutches and real blood-red traits existed."""
+    dragons_by_id = {dragon.id: dragon for dragon in world.dragons}
+    dragons_by_name = {dragon.name: dragon for dragon in world.dragons}
+
+    for egg in getattr(world, "eggs", []):
+        if not isinstance(egg, dict):
+            continue
+
+        parent_ids = egg.get("parent_ids", [])
+        parents = [
+            dragons_by_id[parent_id]
+            for parent_id in parent_ids
+            if parent_id in dragons_by_id
+        ]
+
+        if not parents:
+            parents = [
+                dragons_by_name[name]
+                for name in (egg.get("mother"), egg.get("father"))
+                if name in dragons_by_name
+            ]
+            egg["parent_ids"] = [parent.id for parent in parents]
+
+        tribe = egg.get("tribe")
+        if not tribe and parents:
+            parent_tribes = {parent.tribe for parent in parents}
+            tribe = parents[0].tribe if len(parent_tribes) == 1 else parents[0].tribe
+        egg["tribe"] = tribe or "Unknown"
+
+        legacy_blood_red = str(egg.get("shell_color", "")).lower() == "blood-red"
+        is_blood_red = (
+            egg["tribe"] == "MudWing"
+            and (egg.get("egg_type") == "blood_red" or legacy_blood_red)
+        )
+
+        egg["egg_type"] = "blood_red" if is_blood_red else "normal"
+        egg["fire_resistant"] = bool(is_blood_red)
+        egg.setdefault("clutch_id", None)
+        egg.setdefault("sib_group_id", egg.get("clutch_id") if egg["tribe"] == "MudWing" else None)
+        egg.setdefault("birth_order", 1)
+
+        # Older builds could randomly give any tribe a cosmetic blood-red
+        # shell.  Keep red-brown colouring without falsely granting the trait.
+        if legacy_blood_red and egg["tribe"] != "MudWing":
+            egg["shell_color"] = "rust-red"
 
 
 def save_world(world: World, filename: str):
@@ -148,5 +205,7 @@ def load_world(filename: str) -> World:
     for d in data.get("dragons", []):
         dragon = _normalize_dragon_after_load(Dragon(**d))
         world.dragons.append(dragon)
+
+    _normalize_eggs_after_load(world)
 
     return world

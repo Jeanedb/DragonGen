@@ -51,138 +51,7 @@ from core.sim.leadership import (
     get_leader_by_id,
 )
 
-
-# Map player-facing decisions to the location where they should be resolved.
-# The choice generators can override this by supplying their own "location".
-CHOICE_LOCATIONS = {
-    "leader_decision": "relations",
-    "ai_conversation_choice": "village",
-    "diplomatic_choice": "relations",
-    "tribal_policy_choice": "relations",
-    "incoming_diplomacy_choice": "relations",
-    "border_sighting": "border",
-    "border_violation": "border",
-    "aid_delivery": "border",
-    "injured_patrol_choice": "healer_den",
-    "rival_confrontation_choice": "village",
-}
-
-
-# Informational events are deliberately narrower than the complete chronicle.
-# The map should point players toward meaningful changes, not light up for every
-# line of flavour text written to the event log.
-NOTICE_EVENT_LOCATIONS = {
-    "hatchery": "hatchery",
-    "egg": "hatchery",
-    "hatching": "hatchery",
-    "injury": "healer_den",
-    "rivalry_injury": "healer_den",
-    "recovery": "healer_den",
-    "healing": "healer_den",
-    "recovery_visit": "healer_den",
-    "recovery_neglect": "healer_den",
-    "healed": "healer_den",
-    "natural_healing": "healer_den",
-    "injury_strain": "healer_den",
-    "death": "library",
-    "obituary": "library",
-    "friend_event": "village",
-    "rival_event": "village",
-    "rivalry_escalation": "village",
-    "rivalry_crisis": "village",
-    "rivalry_break": "village",
-    "grief_event": "village",
-    "social": "village",
-    "relationship_shift": "village",
-    "rumor": "village",
-    "leader": "relations",
-    "leadership": "relations",
-    "leader_event": "relations",
-    "leadership_failure": "relations",
-    "politics": "relations",
-    "diplomacy": "relations",
-    "relations": "relations",
-    "border": "border",
-    "patrol": "border",
-    "training": "training",
-    "hunt": "hunting",
-}
-
-
-def get_notice_location(event):
-    """Return the map destination for a player-worthy event, if any."""
-    if not isinstance(event, dict):
-        return None
-
-    event_type = str(event.get("type", "")).strip().lower()
-    if event_type in NOTICE_EVENT_LOCATIONS:
-        return NOTICE_EVENT_LOCATIONS[event_type]
-
-    # Older systems and saves sometimes use a generic event type.  Keep a
-    # conservative text fallback for the three critical life events.
-    text = str(event.get("text", "")).lower()
-    if any(word in text for word in ("laid an egg", "produced an egg", "egg hatched")):
-        return "hatchery"
-    if any(word in text for word in ("was injured", "became injured", "has recovered", "fully recovered")):
-        return "healer_den"
-    if any(word in text for word in ("has died", " died", "was killed", "passed away")):
-        return "library"
-
-    return None
-
-
-def record_location_notices(world, events):
-    """Store new informational events until their destination is visited."""
-    notices = getattr(world, "location_notices", None)
-    if not isinstance(notices, dict):
-        notices = {}
-        world.location_notices = notices
-
-    for event in events:
-        location = get_notice_location(event)
-        if not location:
-            continue
-
-        bucket = notices.setdefault(location, [])
-        bucket.append(
-            {
-                "moon": event.get("moon", getattr(world, "moon", 0)),
-                "type": event.get("type", "general"),
-                "text": event.get("text", "New activity was recorded."),
-            }
-        )
-
-        # Prevent forgotten notices from growing save files forever while still
-        # preserving enough history for a future in-location "NEW" panel.
-        notices[location] = bucket[-50:]
-
-
-def finish_moon_advance(world, previous_event_ids):
-    """Finalize a successful advance and collect only newly logged events."""
-    new_events = [
-        event
-        for event in getattr(world, "event_log", [])
-        if isinstance(event, dict) and id(event) not in previous_event_ids
-    ]
-    record_location_notices(world, new_events)
-    return True
-
-
-def prepare_pending_choice(world):
-    """Attach map-routing information to a newly generated choice."""
-    choice = getattr(world, "pending_choice", None)
-    if not isinstance(choice, dict):
-        return False
-
-    choice_type = choice.get("type")
-    choice.setdefault("location", CHOICE_LOCATIONS.get(choice_type, "relations"))
-    return True
-
 def are_family(a, b):
-    a_sib_group = getattr(a, "sib_group_id", None)
-    b_sib_group = getattr(b, "sib_group_id", None)
-    if a_sib_group and a_sib_group == b_sib_group:
-        return True
     if a.id in b.parents or b.id in a.parents:
         return True
     if set(a.parents) & set(b.parents):
@@ -474,209 +343,75 @@ def add_rival_event(world, a, b):
 
     return True
 
-REPRODUCTIVE_POPULATION_CAP = 24
-PARENT_REPRODUCTION_COOLDOWN = 12
-MUDWING_BLOOD_RED_CLUTCH_CHANCE = 0.10
+def add_new_dragonet(world: World):
+    if not world.dragons:
+        return False
 
+    existing_ids = [d.id for d in world.dragons]
+    new_id = max(existing_ids) + 1 if existing_ids else 1
 
-def get_projected_population(world: World):
-    """Count living dragons plus eggs that are already on their way."""
-    living = sum(
-        1
-        for dragon in getattr(world, "dragons", [])
-        if getattr(dragon, "status", "Alive") == "Alive"
-    )
-    incubating = sum(
-        1 for egg in getattr(world, "eggs", []) if isinstance(egg, dict)
-    )
-    return living + incubating
+    chosen_tribe = random.choice(world.dragons).tribe
 
-
-def get_reproduction_chance(projected_population, mudwing_clutch=False):
-    """Return a falling birth chance as the tribe approaches capacity."""
-    if projected_population >= REPRODUCTIVE_POPULATION_CAP:
-        return 0.0
-
-    if projected_population < 12:
-        return 0.07 if mudwing_clutch else 0.12
-    if projected_population < 16:
-        return 0.05 if mudwing_clutch else 0.08
-    if projected_population < 20:
-        return 0.03 if mudwing_clutch else 0.04
-    return 0.01
-
-
-def get_eligible_parents(world: World):
-    current_moon = int(getattr(world, "moon", 0))
-    return [
-        dragon
-        for dragon in getattr(world, "dragons", [])
-        if getattr(dragon, "status", "Alive") == "Alive"
-        and getattr(dragon, "role", "") != "Dragonet"
-        and int(getattr(dragon, "age_moons", 0)) >= 12
-        and current_moon - int(getattr(dragon, "last_clutch_moon", -999))
-        >= PARENT_REPRODUCTION_COOLDOWN
+    candidates = [
+        d for d in world.dragons
+        if d.status == "Alive" and d.role != "Dragonet"
     ]
 
+    parents = []
 
-def select_parent_pair(candidates):
-    """Prefer established mates while preserving the existing fallback."""
-    if len(candidates) < 2:
-        return []
-
+    # Prefer living mate pairs
     mate_pairs = []
     seen_pairs = set()
 
-    for dragon in candidates:
-        if dragon.mate_id is None:
+    for d in candidates:
+        if d.mate_id is None:
             continue
 
-        mate = next((other for other in candidates if other.id == dragon.mate_id), None)
-        if mate is None:
-            continue
-        if are_family(dragon, mate):
+        mate = next((x for x in candidates if x.id == d.mate_id), None)
+        if not mate:
             continue
 
-        pair_key = tuple(sorted((dragon.id, mate.id)))
+        pair_key = tuple(sorted((d.id, mate.id)))
         if pair_key in seen_pairs:
             continue
+
         seen_pairs.add(pair_key)
 
-        trust_bonus = dragon.trust.get(mate.id, 0) + mate.trust.get(dragon.id, 0)
-        weight = max(0.1, 1.0 + trust_bonus * 0.1)
-        mate_pairs.append((dragon, mate, weight))
+        # optional light weighting by trust
+        trust_bonus = d.trust.get(mate.id, 0) + mate.trust.get(d.id, 0)
+        weight = 1.0 + (trust_bonus * 0.1)
+
+        mate_pairs.append((d, mate, weight))
 
     if mate_pairs and random.random() < 0.8:
-        choices = [(first, second) for first, second, _ in mate_pairs]
-        weights = [weight for _, _, weight in mate_pairs]
-        return list(random.choices(choices, weights=weights, k=1)[0])
+        pair_choices = [(a, b) for a, b, _ in mate_pairs]
+        pair_weights = [w for _, _, w in mate_pairs]
+        p1, p2 = random.choices(pair_choices, weights=pair_weights, k=1)[0]
+        parents = [p1, p2]
 
-    valid_pairs = [
-        (first, second)
-        for index, first in enumerate(candidates)
-        for second in candidates[index + 1:]
-        if not are_family(first, second)
-    ]
-    if not valid_pairs:
-        return []
-    return list(random.choice(valid_pairs))
+    elif len(candidates) >= 2:
+        parents = random.sample(candidates, 2)
+    elif len(candidates) == 1:
+        parents = [candidates[0]]
 
-
-def next_mudwing_clutch_id(world: World):
-    if not hasattr(world, "world_flags") or world.world_flags is None:
-        world.world_flags = {}
-    counter = int(world.world_flags.get("next_clutch_id", 1))
-    world.world_flags["next_clutch_id"] = counter + 1
-    return f"mudwing-clutch-{counter}"
-
-
-def add_new_dragonet(world: World):
-    """Attempt one population-aware egg or MudWing clutch event.
-
-    The historical function name is retained so existing callers continue to
-    work, although this function creates eggs rather than an immediate dragonet.
-    """
-    if not getattr(world, "dragons", None):
+    if not parents:
         return False
-    if not hasattr(world, "eggs") or world.eggs is None:
+
+    if not hasattr(world, "eggs"):
         world.eggs = []
 
-    projected_population = get_projected_population(world)
-    if projected_population >= REPRODUCTIVE_POPULATION_CAP:
-        return False
+    egg = create_egg(parents[0], parents[1] if len(parents) > 1 else parents[0])
+    world.eggs.append(egg)
 
-    parents = select_parent_pair(get_eligible_parents(world))
-    if len(parents) != 2:
-        return False
+    parent_names = " and ".join([p.name for p in parents])
 
-    parent_tribes = {getattr(parent, "tribe", "Unknown") for parent in parents}
-    mudwing_clutch = parent_tribes == {"MudWing"}
-    chance = get_reproduction_chance(projected_population, mudwing_clutch)
-
-    living_count = sum(
-        1
-        for dragon in world.dragons
-        if getattr(dragon, "status", "Alive") == "Alive"
+    log_event(
+        world,
+        f"{parent_names} produced an egg. It has been taken to the hatchery.",
+        involved_ids=[p.id for p in parents],
+        event_type="hatchery",
+        importance=4,
     )
-    food_stores = max(0, int(getattr(world, "food_stores", 0)))
-    if food_stores < max(1, living_count):
-        return False
-    if food_stores < living_count * 2:
-        chance *= 0.5
-
-    tension = float(getattr(world, "tension", 0.0))
-    if tension >= 4.0:
-        chance *= 0.25
-    elif tension >= 3.0:
-        chance *= 0.5
-
-    if chance <= 0 or random.random() >= chance:
-        return False
-
-    population_space = REPRODUCTIVE_POPULATION_CAP - projected_population
-    if mudwing_clutch:
-        if population_space < 3:
-            return False
-        egg_count = min(random.randint(3, 5), population_space)
-        clutch_id = next_mudwing_clutch_id(world)
-        hatch_time = random.randint(3, 6)
-        blood_red_order = (
-            random.randint(1, egg_count)
-            if random.random() < MUDWING_BLOOD_RED_CLUTCH_CHANCE
-            else None
-        )
-
-        for order in range(1, egg_count + 1):
-            egg_type = "blood_red" if order == blood_red_order else "normal"
-            world.eggs.append(
-                create_egg(
-                    parents[0],
-                    parents[1],
-                    tribe="MudWing",
-                    clutch_id=clutch_id,
-                    birth_order=order,
-                    egg_type=egg_type,
-                    hatch_time=hatch_time,
-                )
-            )
-
-        parent_names = " and ".join(parent.name for parent in parents)
-        special_text = (
-            " Among them is an unmistakable blood-red egg."
-            if blood_red_order is not None
-            else ""
-        )
-        log_event(
-            world,
-            (
-                f"{parent_names} produced a clutch of {egg_count} MudWing eggs. "
-                f"They have been taken to the hatchery.{special_text}"
-            ),
-            involved_ids=[parent.id for parent in parents],
-            event_type="hatchery",
-            importance=5 if blood_red_order is not None else 4,
-        )
-    else:
-        offspring_tribe = random.choice(parents).tribe
-        world.eggs.append(
-            create_egg(
-                parents[0],
-                parents[1],
-                tribe=offspring_tribe,
-            )
-        )
-        parent_names = " and ".join(parent.name for parent in parents)
-        log_event(
-            world,
-            f"{parent_names} produced an egg. It has been taken to the hatchery.",
-            involved_ids=[parent.id for parent in parents],
-            event_type="hatchery",
-            importance=4,
-        )
-
-    current_moon = int(getattr(world, "moon", 0))
-    for parent in parents:
-        parent.last_clutch_moon = current_moon
 
     return True
 
@@ -876,12 +611,6 @@ def apply_world_drift(world: World):
                 
 def advance_moon(world: World):
 
-    previous_event_ids = {
-        id(event)
-        for event in getattr(world, "event_log", [])
-        if isinstance(event, dict)
-    }
-
     living = get_living_dragons(world)
 
     if world.pending_choice is not None:
@@ -916,9 +645,8 @@ def advance_moon(world: World):
     maintain_hierarchy(world)
     apply_leader_influence(world)
 
-    # Reproduction performs its own population-, food-, tension-, and
-    # cooldown-aware chance roll.
-    add_new_dragonet(world)
+    if random.random() < 0.20:
+        add_new_dragonet(world)
 
 
     # occasional player choice
@@ -927,74 +655,64 @@ def advance_moon(world: World):
         if random.random() < 0.10:
             created = create_ai_conversation_choice(world)
             if created:
-                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
+                return True
 
         choice_roll = random.random()
 
         if choice_roll < 0.08:
             created = create_leader_decision(world)
             if created:
-                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
+                return True
 
         elif choice_roll < 0.14:
             created = create_injured_patrol_choice(world)
             if created:
-                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
+                return True
 
         elif choice_roll < 0.20:
             created = create_rival_confrontation_choice(world)
             if created:
-                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
+                return True
 
         elif choice_roll < 0.25:
             created = create_diplomatic_choice(world)
             if created:
-                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
+                return True
 
         elif choice_roll < 0.31:
             created = create_tribal_policy_choice(world)
             if created:
-                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
+                return True
 
         elif choice_roll < 0.36:
             created = create_incoming_diplomacy_choice(world)
             if created:
-                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
+                return True
 
         elif choice_roll < 0.41:
             created = create_border_sighting_event(world)
             if created:
-                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
+                return True
 
         elif choice_roll < 0.46:
             created = create_border_violation_event(world)
             if created:
-                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
+                return True
 
         elif choice_roll < 0.51:
             created = create_aid_delivery_event(world)
             if created:
-                prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
+                return True
 
 
     run_event_phase(world)
@@ -1012,6 +730,6 @@ def advance_moon(world: World):
 
 
     world.event_log = world.event_log[-100:]
-    return finish_moon_advance(world, previous_event_ids)
+    return True
 
     

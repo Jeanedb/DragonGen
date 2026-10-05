@@ -78,3 +78,12 @@ class Dragon:
     cause_of_death: str = ""
     memories: list[Memory] = field(default_factory=list)
     relationships: list[Relationship] = field(default_factory=list)
+
+    # Tribe-identity fields.  Defaults keep saves from before the MudWing
+    # system compatible and allow non-MudWings to ignore these mechanics.
+    sib_group_id: Optional[str] = None
+    is_bigwings: bool = False
+    birth_order: Optional[int] = None
+    egg_type: str = "normal"
+    fire_resistant: bool = False
+    last_clutch_moon: int = -999

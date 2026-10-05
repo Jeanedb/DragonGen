@@ -57,33 +57,12 @@ def ensure_egg_hatchery_state(world, egg):
     egg.setdefault("incident_cooldown_until", -1)
     egg.setdefault("pending_incident", False)
     egg.setdefault("care_actions_received", 0)
-    egg.setdefault("parent_ids", [])
-    egg.setdefault("tribe", "Unknown")
-    egg.setdefault("clutch_id", None)
-    egg.setdefault("sib_group_id", None)
-    egg.setdefault("birth_order", 1)
-    egg.setdefault("egg_type", "normal")
-    egg.setdefault("fire_resistant", egg.get("egg_type") == "blood_red")
     egg["condition_score"] = int(clamp(egg["condition_score"], 0, 100))
     egg["condition"] = egg_condition_label(egg["condition_score"])
     return egg
 
 
 def get_egg_parents(world, egg):
-    parent_ids = {
-        parent_id
-        for parent_id in egg.get("parent_ids", [])
-        if parent_id is not None
-    }
-    if parent_ids:
-        parents = [
-            dragon
-            for dragon in getattr(world, "dragons", [])
-            if getattr(dragon, "id", None) in parent_ids
-        ]
-        if parents:
-            return parents
-
     parent_names = {egg.get("mother"), egg.get("father")}
     return [
         dragon
@@ -209,71 +188,6 @@ def create_hatchery_incident(world, egg, incident_type):
     return True
 
 
-def advance_border_pressure(world):
-    """Advance persistent border conditions once per moon, including old saves."""
-    if not hasattr(world, "world_flags") or world.world_flags is None:
-        world.world_flags = {}
-    flags = world.world_flags
-    flags.setdefault("border_security", 55)
-    flags.setdefault("border_intel", 25)
-    flags.setdefault("border_threat", 20)
-
-    moon = getattr(world, "moon", 0)
-    if flags.get("last_border_pressure_moon") == moon:
-        return
-
-    security = int(clamp(int(flags.get("border_security", 55)), 0, 100))
-    intel = int(clamp(int(flags.get("border_intel", 25)), 0, 100))
-    threat = int(clamp(int(flags.get("border_threat", 20)), 0, 100))
-
-    # Secure borders suppress some pressure, while neglected borders allow it
-    # to accumulate. Intelligence fades unless patrols keep refreshing it.
-    growth = random.randint(3, 7)
-    if security >= 75:
-        growth -= 2
-    elif security < 35:
-        growth += 3
-    threat = int(clamp(threat + max(1, growth), 0, 100))
-    intel = int(clamp(intel - 2, 0, 100))
-
-    if threat >= 70:
-        security = int(clamp(security - 4, 0, 100))
-    elif threat <= 25 and security < 80:
-        security = int(clamp(security + 1, 0, 100))
-
-    flags["border_security"] = security
-    flags["border_intel"] = intel
-    flags["border_threat"] = threat
-    flags["last_border_pressure_moon"] = moon
-
-    if (
-        threat >= 78
-        and getattr(world, "pending_choice", None) is None
-        and random.random() < 0.55
-    ):
-        world.pending_choice = {
-            "type": "border_crisis",
-            "location": "border",
-            "incident": "border_incursion",
-            "party_ids": [],
-            "text": (
-                "Reports from several routes describe coordinated movement near the territory. "
-                "The tribe must respond before the border is tested directly."
-            ),
-            "options": [
-                {"id": "fortify_border", "text": "Fortify the vulnerable crossings"},
-                {"id": "counter_patrol", "text": "Send a counter-patrol to find the source"},
-                {"id": "close_routes", "text": "Close the outer routes temporarily"},
-            ],
-        }
-        log_event(
-            world,
-            "Coordinated movement near the border requires the tribe's attention.",
-            event_type="border",
-            importance=5,
-        )
-
-
 def run_progression_phase(world, living):
 
     for dragon in living:
@@ -306,8 +220,6 @@ def run_progression_phase(world, living):
                 recovered[str(dragon_id)] = remaining
         world.world_flags["dragon_fatigue"] = recovered
         world.world_flags["last_fatigue_recovery_moon"] = fatigue_moon
-
-    advance_border_pressure(world)
 
     # ------------------------
     # Weekly Food Consumption
@@ -428,7 +340,10 @@ def run_progression_phase(world, living):
         existing_ids = [d.id for d in world.dragons]
         new_id = max(existing_ids) + 1 if existing_ids else 1
 
-        parents = get_egg_parents(world, egg)
+        parents = [
+            d for d in world.dragons
+            if d.name in {egg.get("mother"), egg.get("father")}
+        ]
 
         caretaker = next(
             (
@@ -439,74 +354,14 @@ def run_progression_phase(world, living):
             None
         )
 
-        tribe = egg.get("tribe")
-        if not tribe or tribe == "Unknown":
-            if parents:
-                tribe = random.choice(parents).tribe
-            else:
-                tribe = random.choice(world.dragons).tribe
+        if parents:
+            tribe = random.choice(parents).tribe
+        else:
+            tribe = random.choice(world.dragons).tribe
 
         dragonet = generate_dragonet(new_id, tribe, parents)
         dragonet.parents = [p.id for p in parents]
         dragonet.location = "hatchery"
-
-        dragonet.sib_group_id = egg.get("sib_group_id")
-        dragonet.egg_type = egg.get("egg_type", "normal")
-        dragonet.fire_resistant = bool(egg.get("fire_resistant", False))
-
-        existing_sibs = []
-        if dragonet.sib_group_id:
-            existing_sibs = [
-                sibling
-                for sibling in world.dragons
-                if getattr(sibling, "sib_group_id", None) == dragonet.sib_group_id
-            ]
-            dragonet.birth_order = len(existing_sibs) + 1
-            dragonet.is_bigwings = not any(
-                getattr(sibling, "is_bigwings", False)
-                for sibling in existing_sibs
-            )
-
-            for sibling in existing_sibs:
-                if sibling.id not in dragonet.friends:
-                    dragonet.friends.append(sibling.id)
-                if dragonet.id not in sibling.friends:
-                    sibling.friends.append(dragonet.id)
-
-                dragonet.trust[sibling.id] = max(
-                    dragonet.trust.get(sibling.id, 0),
-                    3.0,
-                )
-                sibling.trust[dragonet.id] = max(
-                    sibling.trust.get(dragonet.id, 0),
-                    3.0,
-                )
-
-                add_memory(
-                    dragonet,
-                    Memory(
-                        type="hatched_with_sib",
-                        moon=current_moon,
-                        other_id=sibling.id,
-                        importance=5,
-                        tags=["mudwing", "family", "sib"],
-                    ),
-                )
-                add_memory(
-                    sibling,
-                    Memory(
-                        type="welcomed_hatched_sib",
-                        moon=current_moon,
-                        other_id=dragonet.id,
-                        importance=5,
-                        tags=["mudwing", "family", "sib"],
-                    ),
-                )
-
-        if dragonet.fire_resistant:
-            trait = "Fire-resistant scales"
-            if trait not in dragonet.special_visual_traits:
-                dragonet.special_visual_traits.append(trait)
 
         if caretaker:
             suitability = get_caretaker_suitability(world, caretaker, egg)
@@ -560,12 +415,11 @@ def run_progression_phase(world, living):
 
         world.dragons.append(dragonet)
 
-        dragonet.age_moons = 0
+        dragonet.age = 0
         dragonet.life_stage = "Dragonet"
 
         for parent in parents:
-            if dragonet.id not in parent.dragonets:
-                parent.dragonets.append(dragonet.id)
+            parent.dragonets.append(dragonet.id)
 
         parent_names = " and ".join([p.name for p in parents]) if parents else "unknown parents"
 
@@ -575,14 +429,6 @@ def run_progression_phase(world, living):
             else ""
         )
 
-        identity_text = ""
-        if dragonet.is_bigwings:
-            identity_text += " As the first of the clutch to hatch, they became its bigwings."
-        elif dragonet.sib_group_id:
-            identity_text += " They joined the other hatchlings in their MudWing sib group."
-        if dragonet.fire_resistant:
-            identity_text += " Their blood-red egg left them with fire-resistant scales."
-
         reveal = {
             "name": dragonet.name,
             "tribe": getattr(dragonet, "tribe", tribe),
@@ -590,12 +436,6 @@ def run_progression_phase(world, living):
             "caretaker": caretaker.name if caretaker else None,
             "health": getattr(dragonet, "health", "Healthy"),
             "condition": egg.get("condition", "Stable"),
-            "clutch_id": egg.get("clutch_id"),
-            "sib_group_id": dragonet.sib_group_id,
-            "birth_order": dragonet.birth_order,
-            "is_bigwings": dragonet.is_bigwings,
-            "egg_type": dragonet.egg_type,
-            "fire_resistant": dragonet.fire_resistant,
             "moon": current_moon,
         }
         reveals = world.world_flags.setdefault("hatching_reveals", [])
@@ -604,18 +444,10 @@ def run_progression_phase(world, living):
 
         log_event(
             world,
-            (
-                f"The egg of {parent_names} hatched. The dragonet "
-                f"{dragonet.name} was born.{caretaker_text}{identity_text}"
-            ),
-            involved_ids=list(dict.fromkeys(
-                [dragonet.id]
-                + [p.id for p in parents]
-                + [sibling.id for sibling in existing_sibs]
-                + ([caretaker.id] if caretaker else [])
-            )),
+            f"The egg of {parent_names} hatched. The dragonet {dragonet.name} was born.{caretaker_text}",
+            involved_ids=[dragonet.id] + [p.id for p in parents] + ([caretaker.id] if caretaker else []),
             event_type="hatchery",
-            importance=6 if dragonet.fire_resistant or dragonet.is_bigwings else 5,
+            importance=5,
         )
 
     if random.random() < 0.15:
