@@ -458,50 +458,88 @@ def get_region_intensity(world, region):
         return 0.0
 
 
+def _format_choice_outcome(new_events, handler_result=None):
+    """Build the short player-facing consequence summary for a choice."""
+    texts = []
+
+    if isinstance(handler_result, str) and handler_result.strip():
+        texts.append(handler_result.strip())
+
+    for event in new_events:
+        if not isinstance(event, dict):
+            continue
+        text = str(event.get("text", "")).strip()
+        if text and text not in texts:
+            texts.append(text)
+
+    if not texts:
+        return "The decision was carried out. No immediate consequence was recorded."
+
+    # Most choices produce one to three events.  Keep an exceptional chain
+    # readable without allowing the popup to become an endless event log.
+    visible = texts[:4]
+    lines = [f"• {text}" for text in visible]
+    if len(texts) > len(visible):
+        lines.append(
+            f"• {len(texts) - len(visible)} additional effect(s) were recorded in the chronicle."
+        )
+    return "\n".join(lines)
+
+
 def resolve_choice(world, option_id):
     choice = world.pending_choice
     if not choice:
-        return
+        return "There is no longer a pending decision to resolve."
 
     choice_type = choice.get("type")
+    event_log = getattr(world, "event_log", None)
+    event_start = len(event_log) if isinstance(event_log, list) else 0
+    handler_result = None
 
     if choice_type == "leader_decision":
-        handle_leader_decision(world, option_id)
+        handler_result = handle_leader_decision(world, option_id)
 
     elif choice_type == "ai_conversation_choice":
-        handle_ai_conversation_choice(world, option_id)
+        handler_result = handle_ai_conversation_choice(world, option_id)
 
     elif choice_type == "diplomatic_choice":
-        handle_diplomatic_choice(world, option_id)
+        handler_result = handle_diplomatic_choice(world, option_id)
 
     elif choice_type == "tribal_policy_choice":
-        handle_tribal_policy_choice(world, option_id)
+        handler_result = handle_tribal_policy_choice(world, option_id)
 
     elif choice_type == "incoming_diplomacy_choice":
-        handle_incoming_diplomacy_choice(world, option_id)
+        handler_result = handle_incoming_diplomacy_choice(world, option_id)
 
     elif choice_type == "border_sighting":
-        handle_border_sighting(world, option_id)
+        handler_result = handle_border_sighting(world, option_id)
 
     elif choice_type == "border_violation":
-        handle_border_violation(world, option_id)
+        handler_result = handle_border_violation(world, option_id)
 
     elif choice_type == "aid_delivery":
-        handle_aid_delivery(world, option_id)
+        handler_result = handle_aid_delivery(world, option_id)
 
     elif choice_type in {
         "injured_patrol_choice",
         "rival_confrontation_choice",
     }:
-        handle_personal_choice(world, option_id)
+        handler_result = handle_personal_choice(world, option_id)
 
     elif choice_type == "hatchery_incident":
-        handle_hatchery_incident(world, option_id)
+        handler_result = handle_hatchery_incident(world, option_id)
 
     elif choice_type == "hunting_crisis":
-        handle_hunting_crisis(world, option_id)
+        handler_result = handle_hunting_crisis(world, option_id)
 
     elif choice_type == "border_crisis":
-        handle_border_crisis(world, option_id)
+        handler_result = handle_border_crisis(world, option_id)
+
+    else:
+        handler_result = "The decision type was not recognized. No consequence was applied."
 
     world.pending_choice = None
+
+    event_log = getattr(world, "event_log", None)
+    new_events = event_log[event_start:] if isinstance(event_log, list) else []
+    return _format_choice_outcome(new_events, handler_result)

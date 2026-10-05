@@ -111,6 +111,48 @@ def get_relation_status(score: int) -> str:
         return "Allied"
 
 
+def get_foreign_context(world, tribe, include_food=False):
+    """Return facts the player can reasonably know before a foreign decision."""
+    raw_score = getattr(world, "tribal_relations", {}).get(tribe, 0)
+    try:
+        score = int(raw_score)
+    except (TypeError, ValueError):
+        score = 0
+
+    context = [
+        {
+            "label": f"Relations with the {tribe}s",
+            "value": f"{get_relation_status(score)} ({score:+d})",
+        }
+    ]
+
+    incidents = getattr(world, "tribal_incidents", {}).get(tribe, []) or []
+    if incidents:
+        context.append(
+            {
+                "label": "Most recent contact",
+                "value": str(incidents[-1]),
+            }
+        )
+    else:
+        context.append(
+            {
+                "label": "Most recent contact",
+                "value": "No notable incident recorded",
+            }
+        )
+
+    if include_food:
+        context.append(
+            {
+                "label": "Food currently available",
+                "value": str(max(0, int(getattr(world, "food_stores", 0)))),
+            }
+        )
+
+    return context
+
+
 def clamp_relations(world):
     for tribe, score in world.tribal_relations.items():
         world.tribal_relations[tribe] = max(-100, min(100, score))

@@ -5,7 +5,7 @@ from core.dragon import Dragon
 from core.sim.memory import Memory
 from core.sim.relationships import Relationship
 
-SAVE_VERSION = 7
+SAVE_VERSION = 8
 
 
 def _keys_to_int(value):
@@ -80,6 +80,7 @@ def save_world(world: World, filename: str):
         "dragons": [asdict(dragon) for dragon in world.dragons],
         "event_log": world.event_log,
         "pending_choice": world.pending_choice,
+        "location_notices": getattr(world, "location_notices", {}),
         "tension": world.tension,
         "food_stores": world.food_stores,
 
@@ -120,6 +121,7 @@ def load_world(filename: str) -> World:
         dragons=[],
         event_log=data.get("event_log", []),
         pending_choice=data.get("pending_choice"),
+        location_notices=data.get("location_notices", {}),
         tension=data.get("tension", 0.0),
         food_stores=data.get("food_stores", 100),
 

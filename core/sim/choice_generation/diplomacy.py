@@ -5,7 +5,29 @@ from core.sim.regions import (
     get_random_landmark,
     record_region_activity,
 )
-from core.sim.politics import get_random_foreign_tribe
+from core.sim.politics import get_foreign_context, get_random_foreign_tribe
+
+
+def _diplomatic_context(
+    world,
+    tribe,
+    *,
+    region=None,
+    landmark=None,
+    include_food=False,
+    ruler=None,
+):
+    context = get_foreign_context(world, tribe, include_food=include_food)
+    if ruler:
+        context.insert(0, {"label": "Foreign ruler", "value": str(ruler)})
+    if region and landmark:
+        context.append(
+            {
+                "label": "Location",
+                "value": f"{landmark}, {region}",
+            }
+        )
+    return context
 
 
 def create_diplomatic_choice(world):
@@ -127,6 +149,13 @@ def create_diplomatic_choice(world):
         "region": region,
         "landmark": landmark,
         "text": prompt_text,
+        "context": _diplomatic_context(
+            world,
+            tribe,
+            region=region,
+            landmark=landmark,
+            include_food=scenario == "wounded_outsider",
+        ),
         "options": options,
     }
 
@@ -167,6 +196,11 @@ def create_tribal_policy_choice(world):
         "type": "tribal_policy_choice",
         "tribe": tribe,
         "text": prompt_text,
+        "context": _diplomatic_context(
+            world,
+            tribe,
+            include_food=True,
+        ),
         "options": [
             {"id": "peace_gesture", "text": "Send a peace gesture"},
             {"id": "border_patrol", "text": "Increase border patrols"},
@@ -285,6 +319,14 @@ def create_incoming_diplomacy_choice(world):
         "region": region,
         "landmark": landmark,
         "text": text,
+        "context": _diplomatic_context(
+            world,
+            tribe,
+            region=region,
+            landmark=landmark,
+            include_food=scenario == "aid_request",
+            ruler=queen,
+        ),
         "options": options,
     }
 

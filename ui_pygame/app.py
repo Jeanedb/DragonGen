@@ -75,6 +75,11 @@ class PygameApp:
         self.exit_button_font = pygame.font.SysFont("georgia", 14, bold=True)
 
     def check_pending_choice(self):
+        # A resolved choice deliberately remains visible until the player
+        # acknowledges its consequences.
+        if self.decision_popup and self.decision_popup.is_showing_result:
+            return
+
         choice = getattr(self.world, "pending_choice", None)
 
         if not choice:
@@ -107,11 +112,21 @@ class PygameApp:
                 title="Decision",
                 body=choice.get("text", "A choice must be made."),
                 options=choice.get("options", []),
-                on_choose=self.resolve_decision
+                on_choose=self.resolve_decision,
+                context=choice.get("context", []),
             )
 
     def resolve_decision(self, option_id):
-        resolve_choice(self.world, option_id)
+        outcome = resolve_choice(self.world, option_id)
+        if self.decision_popup is not None:
+            self.decision_popup.show_result(
+                outcome,
+                on_continue=self.close_decision_result,
+            )
+        else:
+            self.decision_popup = None
+
+    def close_decision_result(self):
         self.decision_popup = None
 
     def change_screen(self, screen_name):

@@ -2,6 +2,44 @@ import random
 
 from core.sim.logging import log_event
 from core.sim.leadership import get_leader_by_id
+from core.sim.world_state import get_world_mood
+
+
+def _leadership_pressure_label(value):
+    if value >= 10:
+        return "Severe"
+    if value >= 8:
+        return "High"
+    if value >= 4:
+        return "Moderate"
+    return "Low"
+
+
+def _leader_context(world, leader):
+    traits = list(getattr(leader, "personality_traits", []) or [])
+    if not traits and getattr(leader, "personality", None):
+        traits = [str(leader.personality)]
+
+    return [
+        {
+            "label": "Leader's known nature",
+            "value": ", ".join(traits) if traits else "No dominant trait recorded",
+        },
+        {
+            "label": "Tribal mood",
+            "value": str(get_world_mood(world)),
+        },
+        {
+            "label": "Leadership strain",
+            "value": _leadership_pressure_label(
+                int(getattr(leader, "leadership_pressure", 0))
+            ),
+        },
+        {
+            "label": "Food stores",
+            "value": str(max(0, int(getattr(world, "food_stores", 0)))),
+        },
+    ]
 
 
 def try_leader_event(world):
@@ -103,6 +141,7 @@ def create_leader_decision(world):
         "type": "leader_decision",
         "text": f"As leader, {leader.name} must decide how to guide the tribe this moon.",
         "involved_ids": [leader.id],
+        "context": _leader_context(world, leader),
         "options": [
             {"id": "stabilize", "text": "Focus on unity and stability"},
             {"id": "push_strength", "text": "Push the tribe to become stronger"},

@@ -4,7 +4,18 @@ from core.sim.regions import (
     record_region_activity,
 )
 
-from core.sim.politics import get_random_foreign_tribe
+from core.sim.politics import get_foreign_context, get_random_foreign_tribe
+
+
+def _border_context(world, tribe, region, landmark):
+    context = get_foreign_context(world, tribe)
+    context.append(
+        {
+            "label": "Reported location",
+            "value": f"{landmark}, {region}",
+        }
+    )
+    return context
 
 def create_border_sighting_event(world):
     tribe = get_random_foreign_tribe(world)
@@ -33,6 +44,7 @@ def create_border_sighting_event(world):
         "region": region,
         "landmark": landmark,
         "text": prompt_text,
+        "context": _border_context(world, tribe, region, landmark),
         "options": options,
     }
     return True
@@ -64,6 +76,7 @@ def create_border_violation_event(world):
         "region": region,
         "landmark": landmark,
         "text": prompt_text,
+        "context": _border_context(world, tribe, region, landmark),
         "options": options,
     }
 
@@ -96,6 +109,7 @@ def create_aid_delivery_event(world):
         "region": region,
         "landmark": landmark,
         "text": prompt_text,
+        "context": _border_context(world, tribe, region, landmark),
         "options": options,
     }
 

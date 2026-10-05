@@ -68,6 +68,106 @@ CHOICE_LOCATIONS = {
 }
 
 
+# Informational events are deliberately narrower than the complete chronicle.
+# The map should point players toward meaningful changes, not light up for every
+# line of flavour text written to the event log.
+NOTICE_EVENT_LOCATIONS = {
+    "hatchery": "hatchery",
+    "egg": "hatchery",
+    "hatching": "hatchery",
+    "injury": "healer_den",
+    "rivalry_injury": "healer_den",
+    "recovery": "healer_den",
+    "healing": "healer_den",
+    "recovery_visit": "healer_den",
+    "recovery_neglect": "healer_den",
+    "healed": "healer_den",
+    "natural_healing": "healer_den",
+    "injury_strain": "healer_den",
+    "death": "library",
+    "obituary": "library",
+    "friend_event": "village",
+    "rival_event": "village",
+    "rivalry_escalation": "village",
+    "rivalry_crisis": "village",
+    "rivalry_break": "village",
+    "grief_event": "village",
+    "social": "village",
+    "relationship_shift": "village",
+    "rumor": "village",
+    "leader": "relations",
+    "leadership": "relations",
+    "leader_event": "relations",
+    "leadership_failure": "relations",
+    "politics": "relations",
+    "diplomacy": "relations",
+    "relations": "relations",
+    "border": "border",
+    "patrol": "border",
+    "training": "training",
+    "hunt": "hunting",
+}
+
+
+def get_notice_location(event):
+    """Return the map destination for a player-worthy event, if any."""
+    if not isinstance(event, dict):
+        return None
+
+    event_type = str(event.get("type", "")).strip().lower()
+    if event_type in NOTICE_EVENT_LOCATIONS:
+        return NOTICE_EVENT_LOCATIONS[event_type]
+
+    # Older systems and saves sometimes use a generic event type.  Keep a
+    # conservative text fallback for the three critical life events.
+    text = str(event.get("text", "")).lower()
+    if any(word in text for word in ("laid an egg", "produced an egg", "egg hatched")):
+        return "hatchery"
+    if any(word in text for word in ("was injured", "became injured", "has recovered", "fully recovered")):
+        return "healer_den"
+    if any(word in text for word in ("has died", " died", "was killed", "passed away")):
+        return "library"
+
+    return None
+
+
+def record_location_notices(world, events):
+    """Store new informational events until their destination is visited."""
+    notices = getattr(world, "location_notices", None)
+    if not isinstance(notices, dict):
+        notices = {}
+        world.location_notices = notices
+
+    for event in events:
+        location = get_notice_location(event)
+        if not location:
+            continue
+
+        bucket = notices.setdefault(location, [])
+        bucket.append(
+            {
+                "moon": event.get("moon", getattr(world, "moon", 0)),
+                "type": event.get("type", "general"),
+                "text": event.get("text", "New activity was recorded."),
+            }
+        )
+
+        # Prevent forgotten notices from growing save files forever while still
+        # preserving enough history for a future in-location "NEW" panel.
+        notices[location] = bucket[-50:]
+
+
+def finish_moon_advance(world, previous_event_ids):
+    """Finalize a successful advance and collect only newly logged events."""
+    new_events = [
+        event
+        for event in getattr(world, "event_log", [])
+        if isinstance(event, dict) and id(event) not in previous_event_ids
+    ]
+    record_location_notices(world, new_events)
+    return True
+
+
 def prepare_pending_choice(world):
     """Attach map-routing information to a newly generated choice."""
     choice = getattr(world, "pending_choice", None)
@@ -638,6 +738,12 @@ def apply_world_drift(world: World):
                 
 def advance_moon(world: World):
 
+    previous_event_ids = {
+        id(event)
+        for event in getattr(world, "event_log", [])
+        if isinstance(event, dict)
+    }
+
     living = get_living_dragons(world)
 
     if world.pending_choice is not None:
@@ -684,7 +790,7 @@ def advance_moon(world: World):
             if created:
                 prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return True
+                return finish_moon_advance(world, previous_event_ids)
 
         choice_roll = random.random()
 
@@ -693,63 +799,63 @@ def advance_moon(world: World):
             if created:
                 prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return True
+                return finish_moon_advance(world, previous_event_ids)
 
         elif choice_roll < 0.14:
             created = create_injured_patrol_choice(world)
             if created:
                 prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return True
+                return finish_moon_advance(world, previous_event_ids)
 
         elif choice_roll < 0.20:
             created = create_rival_confrontation_choice(world)
             if created:
                 prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return True
+                return finish_moon_advance(world, previous_event_ids)
 
         elif choice_roll < 0.25:
             created = create_diplomatic_choice(world)
             if created:
                 prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return True
+                return finish_moon_advance(world, previous_event_ids)
 
         elif choice_roll < 0.31:
             created = create_tribal_policy_choice(world)
             if created:
                 prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return True
+                return finish_moon_advance(world, previous_event_ids)
 
         elif choice_roll < 0.36:
             created = create_incoming_diplomacy_choice(world)
             if created:
                 prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return True
+                return finish_moon_advance(world, previous_event_ids)
 
         elif choice_roll < 0.41:
             created = create_border_sighting_event(world)
             if created:
                 prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return True
+                return finish_moon_advance(world, previous_event_ids)
 
         elif choice_roll < 0.46:
             created = create_border_violation_event(world)
             if created:
                 prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return True
+                return finish_moon_advance(world, previous_event_ids)
 
         elif choice_roll < 0.51:
             created = create_aid_delivery_event(world)
             if created:
                 prepare_pending_choice(world)
                 world.event_log = world.event_log[-100:]
-                return True
+                return finish_moon_advance(world, previous_event_ids)
 
 
     run_event_phase(world)
@@ -767,6 +873,6 @@ def advance_moon(world: World):
 
 
     world.event_log = world.event_log[-100:]
-    return True
+    return finish_moon_advance(world, previous_event_ids)
 
     

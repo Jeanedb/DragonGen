@@ -3,7 +3,7 @@
 This is a drop-in replacement for ui_pygame/widgets/decision_popup.py.
 It deliberately keeps the original public interface used by app.py:
 
-    DecisionPopup(title, body, options, on_choose)
+    DecisionPopup(title, body, options, on_choose, context=None)
     popup.handle_event(event)
     popup.draw(surface)
 
@@ -81,6 +81,16 @@ def _fit_text(text: str, preferred_size: int, minimum_size: int, max_width: int)
     return pygame.font.SysFont("georgia", minimum_size, bold=True)
 
 
+def _context_text(item):
+    if isinstance(item, dict):
+        label = str(item.get("label", "")).strip()
+        value = str(item.get("value", "")).strip()
+        if label and value:
+            return f"{label}: {value}"
+        return label or value
+    return str(item).strip()
+
+
 class DecisionPopup:
     """Modal presentation layer for a pending choice.
 
@@ -89,11 +99,14 @@ class DecisionPopup:
         [{"id": "call_healer", "text": "Call a healer"}, ...]
     """
 
-    def __init__(self, title, body, options, on_choose):
+    def __init__(self, title, body, options, on_choose, context=None):
         self.title = str(title or "Decision")
         self.body = str(body or "A choice must be made.")
         self.options = list(options or [])
+        self.context = list(context or [])
         self.on_choose = on_choose
+        self.on_continue = None
+        self.mode = "choice"
 
         self.hovered_index = None
         self.button_rects = []
@@ -102,7 +115,23 @@ class DecisionPopup:
         self.title_font = pygame.font.SysFont("georgia", 31, bold=True)
         self.kicker_font = pygame.font.SysFont("georgia", 13, bold=True)
         self.body_font = pygame.font.SysFont("georgia", 19)
+        self.context_font = pygame.font.SysFont("georgia", 15)
         self.hint_font = pygame.font.SysFont("georgia", 13)
+
+    @property
+    def is_showing_result(self):
+        return self.mode == "result"
+
+    def show_result(self, body, on_continue=None):
+        """Reuse the same modal to show the consequence of the decision."""
+        self.mode = "result"
+        self.title = "Decision Resolved"
+        self.body = str(body or "The decision was carried out.")
+        self.context = []
+        self.options = [{"id": "continue", "text": "Continue"}]
+        self.on_continue = on_continue
+        self.hovered_index = None
+        self.button_rects = []
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEMOTION:
@@ -123,7 +152,9 @@ class DecisionPopup:
                 if index < len(self.options):
                     self._choose(index)
             elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
-                if self.hovered_index is not None:
+                if self.mode == "result":
+                    self._choose(0)
+                elif self.hovered_index is not None:
                     self._choose(self.hovered_index)
 
     def _update_hover(self, mouse_pos):
@@ -137,7 +168,10 @@ class DecisionPopup:
             return
         option = self.options[index]
         option_id = option.get("id") if isinstance(option, dict) else option
-        if option_id is not None:
+        if self.mode == "result":
+            if callable(self.on_continue):
+                self.on_continue()
+        elif option_id is not None:
             self.on_choose(option_id)
 
     def draw(self, surface):
@@ -151,7 +185,46 @@ class DecisionPopup:
 
         option_count = max(1, len(self.options))
         panel_w = min(720, width - 70)
-        panel_h = min(height - 54, 302 + option_count * 62)
+
+        body_width = panel_w - 116
+        body_lines = _wrap_text(self.body, self.body_font, body_width)
+        max_body_lines = 9 if self.mode == "result" else 5
+        if len(body_lines) > max_body_lines:
+            body_lines = body_lines[:max_body_lines]
+            last = body_lines[-1]
+            while last and self.body_font.size(last + "...")[0] > body_width:
+                last = last[:-1]
+            body_lines[-1] = last.rstrip() + "..."
+
+        body_height = max(1, len(body_lines)) * 27
+
+        context_lines = []
+        if self.mode == "choice":
+            for item in self.context:
+                text = _context_text(item)
+                if text:
+                    context_lines.extend(
+                        _wrap_text(text, self.context_font, body_width - 28)
+                    )
+        max_context_lines = 5
+        if len(context_lines) > max_context_lines:
+            context_lines = context_lines[:max_context_lines]
+            last = context_lines[-1]
+            while last and self.context_font.size(last + "...")[0] > body_width - 28:
+                last = last[:-1]
+            context_lines[-1] = last.rstrip() + "..."
+
+        context_height = 0
+        if context_lines:
+            context_height = 52 + len(context_lines) * 21
+
+        button_h = 48
+        gap = 12
+        total_buttons_h = option_count * button_h + (option_count - 1) * gap
+        panel_h = min(
+            height - 54,
+            max(360, 210 + body_height + context_height + total_buttons_h),
+        )
         panel = pygame.Rect(0, 0, panel_w, panel_h)
         panel.center = (width // 2, height // 2)
 
@@ -175,7 +248,12 @@ class DecisionPopup:
             1,
         )
 
-        kicker = self.kicker_font.render("A MATTER REQUIRES YOUR JUDGMENT", True, MUTED_TEXT)
+        kicker_text = (
+            "THE CONSEQUENCES ARE NOW KNOWN"
+            if self.mode == "result"
+            else "A MATTER REQUIRES YOUR JUDGMENT"
+        )
+        kicker = self.kicker_font.render(kicker_text, True, MUTED_TEXT)
         surface.blit(kicker, kicker.get_rect(center=(header.centerx, header.top + 27)))
 
         title = self.title_font.render(self.title.upper(), True, PALE_GOLD)
@@ -206,26 +284,36 @@ class DecisionPopup:
 
         body_left = panel.left + 58
         body_top = diamond_y + 24
-        body_width = panel.width - 116
-        body_lines = _wrap_text(self.body, self.body_font, body_width)
-        max_body_lines = 4
-        if len(body_lines) > max_body_lines:
-            body_lines = body_lines[:max_body_lines]
-            last = body_lines[-1]
-            while last and self.body_font.size(last + "...")[0] > body_width:
-                last = last[:-1]
-            body_lines[-1] = last.rstrip() + "..."
 
         for line_number, line in enumerate(body_lines):
             rendered = self.body_font.render(line, True, TEXT)
             surface.blit(rendered, (body_left, body_top + line_number * 27))
 
+        if context_lines:
+            context_rect = pygame.Rect(
+                panel.left + 50,
+                body_top + body_height + 10,
+                panel.width - 100,
+                context_height - 10,
+            )
+            _draw_panel(surface, context_rect, INK, DEEP_BRONZE, 2, 8)
+
+            heading = self.kicker_font.render("KNOWN SITUATION", True, GOLD)
+            surface.blit(heading, (context_rect.left + 14, context_rect.top + 10))
+
+            for line_number, line in enumerate(context_lines):
+                rendered = self.context_font.render(line, True, MUTED_TEXT)
+                surface.blit(
+                    rendered,
+                    (
+                        context_rect.left + 14,
+                        context_rect.top + 31 + line_number * 21,
+                    ),
+                )
+
         # Choices occupy the lower portion of the plaque.  Keeping all buttons
         # the same width makes them read as deliberate actions instead of OS
         # dialogue controls.
-        button_h = 48
-        gap = 12
-        total_buttons_h = option_count * button_h + (option_count - 1) * gap
         buttons_bottom = panel.bottom - 38
         buttons_top = buttons_bottom - total_buttons_h
 
@@ -257,18 +345,21 @@ class DecisionPopup:
             border = GOLD if hovered else BRONZE
             _draw_panel(surface, button, fill, border, 3 if hovered else 2, 9)
 
-            # Choice number medallion.
-            medallion_center = (button.left + 25, button.centery)
-            pygame.draw.circle(surface, INK, medallion_center, 15)
-            pygame.draw.circle(surface, border, medallion_center, 15, 2)
-            number = self.kicker_font.render(str(index + 1), True, PALE_GOLD)
-            surface.blit(number, number.get_rect(center=medallion_center))
+            # Choice number medallions are useful while deciding, but the
+            # single Continue action on an outcome needs no numerical label.
+            if self.mode == "choice":
+                medallion_center = (button.left + 25, button.centery)
+                pygame.draw.circle(surface, INK, medallion_center, 15)
+                pygame.draw.circle(surface, border, medallion_center, 15, 2)
+                number = self.kicker_font.render(str(index + 1), True, PALE_GOLD)
+                surface.blit(number, number.get_rect(center=medallion_center))
 
             label = option.get("text", option.get("label", "Choose")) if isinstance(option, dict) else str(option)
             font = _fit_text(label, 17, 13, button.width - 92)
             color = PALE_GOLD if hovered else TEXT
             rendered = font.render(label, True, color)
-            surface.blit(rendered, rendered.get_rect(center=(button.centerx + 8, button.centery)))
+            label_offset = 8 if self.mode == "choice" else 0
+            surface.blit(rendered, rendered.get_rect(center=(button.centerx + label_offset, button.centery)))
 
             if hovered:
                 arrow_x = button.right - 25
@@ -281,4 +372,3 @@ class DecisionPopup:
                         (arrow_x - 4, button.centery + 6),
                     ],
                 )
-

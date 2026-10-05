@@ -26,6 +26,53 @@ def get_relationship_state(trust, resentment, perception):
         return "deteriorating"
     else:
         return "uncertain"
+
+
+def _has_memory(dragon, memory_type, other_id):
+    return any(
+        isinstance(memory, (tuple, list))
+        and len(memory) >= 2
+        and memory[0] == memory_type
+        and memory[1] == other_id
+        for memory in getattr(dragon, "memory_flags", [])
+    )
+
+
+def _conversation_context(initiator, target, state):
+    state_labels = {
+        "bonding": "A strong or growing bond",
+        "stable": "Generally steady",
+        "hostile": "Openly hostile",
+        "deteriorating": "Growing strained",
+        "uncertain": "Uncertain",
+    }
+    known_history = []
+
+    if getattr(initiator, "mate_id", None) == target.id or getattr(target, "mate_id", None) == initiator.id:
+        known_history.append("mates")
+    if target.id in getattr(initiator, "friends", []) or initiator.id in getattr(target, "friends", []):
+        known_history.append("friends")
+    if target.id in getattr(initiator, "rivals", []) or initiator.id in getattr(target, "rivals", []):
+        known_history.append("rivals")
+    if _has_memory(initiator, "saved_by", target.id):
+        known_history.append(f"{target.name} previously stayed to help {initiator.name}")
+    if _has_memory(initiator, "abandoned_by", target.id):
+        known_history.append(f"{initiator.name} remembers being left by {target.name}")
+
+    return [
+        {
+            "label": "Dragons involved",
+            "value": f"{initiator.name} and {target.name}",
+        },
+        {
+            "label": "Current dynamic",
+            "value": state_labels.get(state, "Uncertain"),
+        },
+        {
+            "label": "Known history",
+            "value": ", ".join(known_history) if known_history else "No defining history recorded",
+        },
+    ]
     
 
 
@@ -120,6 +167,11 @@ def create_ai_conversation_choice(world):
         "conversation_mood": mood,
         "involved_ids": [initiator.id, target.id],
         "text": text,
+        "context": _conversation_context(initiator, target, get_relationship_state(
+            initiator.trust.get(target.id, 0),
+            initiator.resentment.get(target.id, 0),
+            initiator.perceived_reputation.get(target.id, 0),
+        )),
         "options": [
             {
                 "id": "hear_them_out",

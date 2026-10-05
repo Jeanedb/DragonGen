@@ -76,6 +76,7 @@ class LocationsScreen(BaseScreen):
         self.change_screen = change_screen
 
         self.show_advance_confirmation = False
+        self.notice_popup_location = None
 
         self.hovered_card = None
 
@@ -84,6 +85,8 @@ class LocationsScreen(BaseScreen):
         self.fantasy_body = pygame.font.SysFont("georgia", 15)
         self.marker_font = pygame.font.SysFont("georgia", 14, bold=True)
         self.marker_icon_font = pygame.font.SysFont("georgia", 12, bold=True)
+        self.notice_font = pygame.font.SysFont("georgia", 12, bold=True)
+        self._fitted_font_cache = {}
 
         self.locations = [
             {
@@ -213,6 +216,167 @@ class LocationsScreen(BaseScreen):
         # Older saves may contain choices created before locations were added.
         return choice.get("location", "relations")
 
+    def get_location_notices(self, loc_id):
+        notices = getattr(self.world, "location_notices", {})
+        if not isinstance(notices, dict):
+            return []
+
+        location_notices = notices.get(loc_id, [])
+        return location_notices if isinstance(location_notices, list) else []
+
+    def get_location_notice_count(self, loc_id):
+        return len(self.get_location_notices(loc_id))
+
+    def clear_location_notices(self, loc_id):
+        notices = getattr(self.world, "location_notices", None)
+        if isinstance(notices, dict):
+            notices.pop(loc_id, None)
+
+    def get_location_name(self, loc_id):
+        for location in self.locations:
+            if location["id"] == loc_id:
+                return location["name"]
+        return "Location"
+
+    def wrap_notice_text(self, text, font, max_width):
+        words = str(text).split()
+        if not words:
+            return [""]
+
+        lines = []
+        current = words[0]
+
+        for word in words[1:]:
+            candidate = f"{current} {word}"
+            if font.size(candidate)[0] <= max_width:
+                current = candidate
+            else:
+                lines.append(current)
+                current = word
+
+        lines.append(current)
+        return lines
+
+    def dismiss_notice_popup(self):
+        # Closing the report leaves the updates unread and the gold badge intact.
+        self.notice_popup_location = None
+
+    def enter_notice_location(self):
+        loc_id = self.notice_popup_location
+        if not loc_id:
+            return
+
+        self.clear_location_notices(loc_id)
+        self.notice_popup_location = None
+        self.change_to_location(loc_id)
+
+    def draw_notice_popup(self, screen, mouse_pos):
+        loc_id = self.notice_popup_location
+        notices = self.get_location_notices(loc_id)
+
+        # If another system cleared the notices while the popup was open,
+        # continue into the destination rather than showing an empty report.
+        if not notices:
+            self.notice_popup_location = None
+            self.change_to_location(loc_id)
+            return
+
+        darkness = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        darkness.fill((5, 3, 2, 195))
+        screen.blit(darkness, (0, 0))
+
+        panel_rect = pygame.Rect(170, 105, 660, 490)
+        self.draw_beveled_panel(
+            screen,
+            panel_rect,
+            fill=(31, 24, 20),
+            edge=(176, 124, 55),
+        )
+
+        location_name = self.get_location_name(loc_id).upper()
+        title = self.fantasy_title.render(
+            f"NEW AT {location_name}",
+            True,
+            (246, 216, 158),
+        )
+        screen.blit(title, title.get_rect(center=(WIDTH // 2, 148)))
+
+        count = len(notices)
+        noun = "update" if count == 1 else "updates"
+        subtitle = self.fantasy_body.render(
+            f"{count} unread {noun} from the tribe chronicle",
+            True,
+            (190, 170, 139),
+        )
+        screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 181)))
+
+        pygame.draw.line(screen, (137, 96, 52), (215, 205), (785, 205), 1)
+
+        # The newest five entries fit comfortably without creating another
+        # scrolling screen.  Older unread entries remain available in Overview.
+        visible_notices = notices[-5:]
+        hidden_count = max(0, count - len(visible_notices))
+        y = 224
+
+        if hidden_count:
+            hidden = self.small.render(
+                f"+ {hidden_count} earlier unread updates remain in Overview",
+                True,
+                (181, 147, 91),
+            )
+            screen.blit(hidden, (225, y))
+            y += 29
+
+        for notice in visible_notices:
+            if isinstance(notice, dict):
+                moon = notice.get("moon", getattr(self.world, "moon", 0))
+                text = notice.get("text", "New activity was recorded.")
+            else:
+                moon = getattr(self.world, "moon", 0)
+                text = str(notice)
+
+            lines = self.wrap_notice_text(text, self.fantasy_body, 445)
+
+            pygame.draw.circle(screen, GOLD, (228, y + 8), 4)
+            moon_image = self.small.render(
+                f"MOON {moon}",
+                True,
+                (207, 158, 79),
+            )
+            screen.blit(moon_image, (244, y))
+
+            text_y = y
+            for line in lines[:2]:
+                line_image = self.fantasy_body.render(
+                    line,
+                    True,
+                    (228, 215, 191),
+                )
+                screen.blit(line_image, (330, text_y))
+                text_y += 21
+
+            y += max(31, 21 * min(2, len(lines)) + 8)
+            if y > 455:
+                break
+
+        pygame.draw.line(screen, (137, 96, 52), (215, 495), (785, 495), 1)
+
+        enter_btn = FantasyButton(
+            (500, 520, 260, 48),
+            "ENTER LOCATION",
+            self.enter_notice_location,
+        )
+        later_btn = FantasyButton(
+            (240, 520, 230, 48),
+            "KEEP UNREAD",
+            self.dismiss_notice_popup,
+        )
+
+        self.buttons.clear()
+        for button in (later_btn, enter_btn):
+            self.buttons.append(button)
+            button.draw(screen, self.fantasy_body, mouse_pos)
+
     def open_pending_choice(self):
         location = self.get_pending_choice_location()
         if location:
@@ -319,6 +483,30 @@ class LocationsScreen(BaseScreen):
 
         return " • ".join(names)
 
+    def get_fitted_font(self, text, max_width, start_size, minimum_size=10, bold=False):
+        text = str(text)
+        for size in range(start_size, minimum_size - 1, -1):
+            key = (size, bold)
+            font = self._fitted_font_cache.get(key)
+            if font is None:
+                font = pygame.font.SysFont("georgia", size, bold=bold)
+                self._fitted_font_cache[key] = font
+            if font.size(text)[0] <= max_width:
+                return font
+        return self._fitted_font_cache[(minimum_size, bold)]
+
+    def truncate_to_width(self, text, font, max_width):
+        """Shorten a single-line label without allowing it past its panel."""
+        text = str(text)
+        if font.size(text)[0] <= max_width:
+            return text
+
+        suffix = "…"
+        shortened = text
+        while shortened and font.size(shortened.rstrip() + suffix)[0] > max_width:
+            shortened = shortened[:-1]
+        return shortened.rstrip() + suffix
+
     def draw_beveled_panel(self, screen, rect, fill=PANEL_DARK, edge=BRONZE, cut=12):
         x, y, w, h = rect
         points = [
@@ -373,6 +561,7 @@ class LocationsScreen(BaseScreen):
         hit_rect = plaque.union(icon_rect)
         hovered = hit_rect.collidepoint(mouse_pos)
         needs_attention = self.get_pending_choice_location() == loc_id
+        notice_count = self.get_location_notice_count(loc_id)
 
         if hovered:
             glow = pygame.Surface((hit_rect.width + 28, hit_rect.height + 28), pygame.SRCALPHA)
@@ -404,7 +593,7 @@ class LocationsScreen(BaseScreen):
         if needs_attention:
             # A gentle pulse keeps the indicator visible without obscuring the map.
             pulse = (math.sin(pygame.time.get_ticks() / 220.0) + 1.0) / 2.0
-            badge_x = anchor_x
+            badge_x = anchor_x - 14 if notice_count else anchor_x
             badge_y = anchor_y - 38
             glow_radius = 15 + int(pulse * 4)
 
@@ -419,6 +608,25 @@ class LocationsScreen(BaseScreen):
             alert_image = self.fantasy_heading.render("!", True, (255, 235, 184))
             screen.blit(alert_image, alert_image.get_rect(center=(badge_x, badge_y - 1)))
 
+        if notice_count:
+            # Gold numbers are informational.  They remain until the player
+            # enters this location, while red decisions remain until resolved.
+            badge_x = anchor_x + 14 if needs_attention else anchor_x
+            badge_y = anchor_y - 38
+            count_text = "99+" if notice_count > 99 else str(notice_count)
+            radius = 14 if notice_count > 9 else 13
+
+            glow = pygame.Surface((44, 44), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (242, 201, 76, 42), (22, 22), radius + 5)
+            screen.blit(glow, glow.get_rect(center=(badge_x, badge_y)))
+
+            pygame.draw.circle(screen, (50, 34, 18), (badge_x, badge_y), radius)
+            pygame.draw.circle(screen, GOLD, (badge_x, badge_y), radius, 3)
+            pygame.draw.circle(screen, (150, 101, 32), (badge_x, badge_y), radius - 5)
+
+            count_image = self.notice_font.render(count_text, True, (255, 239, 197))
+            screen.blit(count_image, count_image.get_rect(center=(badge_x, badge_y)))
+
         target = ClickTarget(hit_rect, lambda lid=loc_id: self.open_location(lid))
         self.buttons.append(target)
 
@@ -429,7 +637,12 @@ class LocationsScreen(BaseScreen):
 
         card_w = 350
         needs_attention = self.get_pending_choice_location() == location["id"]
-        card_h = 120 if needs_attention else 96
+        notice_count = self.get_location_notice_count(location["id"])
+        card_h = 96
+        if needs_attention:
+            card_h += 24
+        if notice_count:
+            card_h += 24
         gap = 18
 
         # Initially place the tooltip below and right of the cursor.
@@ -457,8 +670,17 @@ class LocationsScreen(BaseScreen):
 
         count = len(self.get_dragons_at_location(location["id"]))
 
-        heading = self.fantasy_heading.render(
-            f"{location['name'].upper()}  •  {count} DRAGONS",
+        dragon_word = "DRAGON" if count == 1 else "DRAGONS"
+        heading_text = f"{location['name'].upper()}  •  {count} {dragon_word}"
+        heading_font = self.get_fitted_font(
+            heading_text,
+            card_w - 36,
+            start_size=18,
+            minimum_size=13,
+            bold=True,
+        )
+        heading = heading_font.render(
+            heading_text,
             True,
             (246, 216, 158),
         )
@@ -471,12 +693,19 @@ class LocationsScreen(BaseScreen):
         )
         screen.blit(description, (x + 18, y + 43))
 
-        residents = self.small.render(
+        residents_text = self.truncate_to_width(
             self.get_location_dragons_text(location["id"]),
+            self.small,
+            card_w - 36,
+        )
+        residents = self.small.render(
+            residents_text,
             True,
             (168, 155, 134),
         )
         screen.blit(residents, (x + 18, y + 68))
+
+        message_y = y + 91
 
         if needs_attention:
             attention = self.small.render(
@@ -484,7 +713,17 @@ class LocationsScreen(BaseScreen):
                 True,
                 (242, 201, 76),
             )
-            screen.blit(attention, (x + 18, y + 91))
+            screen.blit(attention, (x + 18, message_y))
+            message_y += 24
+
+        if notice_count:
+            noun = "update" if notice_count == 1 else "updates"
+            update = self.small.render(
+                f"{notice_count} new {noun} recorded here.",
+                True,
+                (230, 185, 91),
+            )
+            screen.blit(update, (x + 18, message_y))
 
     def draw(self, screen):
         mouse_pos = scale_mouse_pos(
@@ -595,8 +834,18 @@ class LocationsScreen(BaseScreen):
 
         if self.show_advance_confirmation:
             self.draw_advance_confirmation(screen, mouse_pos)
+        elif self.notice_popup_location:
+            self.draw_notice_popup(screen, mouse_pos)
 
     def open_location(self, loc_id):
+        if self.get_location_notice_count(loc_id):
+            self.notice_popup_location = loc_id
+            return
+
+        self.change_to_location(loc_id)
+
+    def change_to_location(self, loc_id):
+
         if loc_id == "healer_den":
             self.change_screen("healer_den")
         elif loc_id == "relations":
@@ -621,6 +870,15 @@ class LocationsScreen(BaseScreen):
             print(f"{loc_id} not built yet.")
 
     def handle_event(self, event):
+
+        if self.notice_popup_location and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.dismiss_notice_popup()
+                return
+
+            if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                self.enter_notice_location()
+                return
 
         if self.show_advance_confirmation and event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:

@@ -14,6 +14,17 @@ from core.sim.world_state import (
 )
 
 
+def _relationship_context(a, b):
+    details = []
+    if getattr(a, "mate_id", None) == b.id or getattr(b, "mate_id", None) == a.id:
+        details.append("mates")
+    if b.id in getattr(a, "friends", []) or a.id in getattr(b, "friends", []):
+        details.append("friends")
+    if b.id in getattr(a, "rivals", []) or a.id in getattr(b, "rivals", []):
+        details.append("rivals")
+    return ", ".join(details) if details else "No formal bond recorded"
+
+
 
 def create_injured_patrol_choice(world):
     climate = get_tribe_climate(world)
@@ -27,7 +38,17 @@ def create_injured_patrol_choice(world):
         landmark = get_random_landmark(world, region)
         record_region_activity(world, region)
 
-    candidates = get_eligible_non_dragonets(world)
+    # A dragon ID is the persistent identity used by choices and save files.
+    # De-duplicate here as a defensive measure: two different objects carrying
+    # the same ID must never be allowed to become both sides of one choice.
+    candidates = []
+    seen_ids = set()
+    for dragon in get_eligible_non_dragonets(world):
+        dragon_id = getattr(dragon, "id", None)
+        if dragon_id is None or dragon_id in seen_ids:
+            continue
+        seen_ids.add(dragon_id)
+        candidates.append(dragon)
 
     if len(candidates) < 2:
         return False
@@ -36,11 +57,11 @@ def create_injured_patrol_choice(world):
 
     for i in range(len(candidates)):
         for j in range(len(candidates)):
-            if i == j:
-                continue
-
             a = candidates[i]  # injured dragon
             b = candidates[j]  # helper dragon
+
+            if i == j or a is b or a.id == b.id:
+                continue
 
             weight = 1.0
 
@@ -87,6 +108,11 @@ def create_injured_patrol_choice(world):
     pairs = [(a, b) for a, b, _ in possible_pairs]
     weights = [w for _, _, w in possible_pairs]
     a, b = random.choices(pairs, weights=weights, k=1)[0]
+
+    # Never create a choice whose two roles resolve to the same persistent
+    # dragon, even if malformed world data somehow bypassed the checks above.
+    if a is b or a.id == b.id:
+        return False
 
     if a.health != "Injured":
         a.health = "Injured"
@@ -158,6 +184,14 @@ def create_injured_patrol_choice(world):
         "type": "injured_patrol_choice",
         "text": prompt_text,
         "involved_ids": [a.id, b.id],
+        "injured_id": a.id,
+        "helper_id": b.id,
+        "context": [
+            {"label": "Injured dragon", "value": a.name},
+            {"label": "Companion", "value": b.name},
+            {"label": "Known relationship", "value": _relationship_context(a, b)},
+            {"label": "Tribal mood", "value": str(mood)},
+        ],
         "options": [
             {"id": "stay_and_help", "text": f"Stay and help {a.name}"},
             {"id": "run_for_help", "text": "Return to camp for help"}
@@ -259,10 +293,14 @@ def create_rival_confrontation_choice(world):
         "type": "rival_confrontation_choice",
         "text": prompt_text,
         "involved_ids": [a.id, b.id],
+        "context": [
+            {"label": "Dragons involved", "value": f"{a.name} and {b.name}"},
+            {"label": "Known relationship", "value": _relationship_context(a, b)},
+            {"label": "Tribal mood", "value": str(mood)},
+        ],
         "options": [
             {"id": "back_down", "text": f"Have {a.name} back down and avoid a fight"},
             {"id": "confront", "text": f"Have {a.name} confront {b.name} directly"}
         ]
     }
     return True
-

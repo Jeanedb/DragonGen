@@ -3,20 +3,49 @@ from core.sim.logging import log_event
 from core.sim.consequences import schedule_consequence
 
 
+def _dragon_by_id(world, dragon_id):
+    return next(
+        (
+            dragon
+            for dragon in getattr(world, "dragons", [])
+            if getattr(dragon, "id", None) == dragon_id
+        ),
+        None,
+    )
+
+
 def handle_personal_choice(world, option_id):
-    choice = world.pending_choice
+    choice = getattr(world, "pending_choice", None) or {}
+    choice_type = choice.get("type")
+    involved_ids = list(choice.get("involved_ids", []))
 
-    involved_ids = choice.get("involved_ids", [])
-    involved_dragons = [d for d in world.dragons if d.id in involved_ids]
+    # Preserve the roles assigned by the generator.  Older saves will not
+    # have the explicit role IDs, so their involved_ids remain a safe fallback.
+    if choice_type == "injured_patrol_choice":
+        injured_id = choice.get(
+            "injured_id",
+            involved_ids[0] if len(involved_ids) > 0 else None,
+        )
+        helper_id = choice.get(
+            "helper_id",
+            involved_ids[1] if len(involved_ids) > 1 else None,
+        )
+        a = _dragon_by_id(world, injured_id)
+        b = _dragon_by_id(world, helper_id)
+    else:
+        first_id = involved_ids[0] if len(involved_ids) > 0 else None
+        second_id = involved_ids[1] if len(involved_ids) > 1 else None
+        a = _dragon_by_id(world, first_id)
+        b = _dragon_by_id(world, second_id)
 
-    if len(involved_dragons) < 2:
-        world.pending_choice = None
-        return
+    # The resolver owns pending_choice cleanup.  Returning a readable result
+    # here lets the UI explain why a malformed old choice was safely ignored.
+    if a is None or b is None:
+        return "The patrol report could not be resolved because one of its dragons is no longer available. No consequence was applied."
+    if a is b or a.id == b.id:
+        return "The patrol report incorrectly assigned the same dragon to both roles. No consequence was applied."
 
-    a = involved_dragons[0]
-    b = involved_dragons[1]
-
-    if choice["type"] == "injured_patrol_choice":
+    if choice_type == "injured_patrol_choice":
         if option_id == "stay_and_help":
             if b.id not in a.friends:
                 a.friends.append(b.id)
@@ -151,7 +180,7 @@ def handle_personal_choice(world, option_id):
                     "caused_by": b.id
                 })
 
-    elif choice["type"] == "rival_confrontation_choice":
+    elif choice_type == "rival_confrontation_choice":
         if option_id == "back_down":
 
             a.trust[b.id] = a.trust.get(b.id, 0) + 1

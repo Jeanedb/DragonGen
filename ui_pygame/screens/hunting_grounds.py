@@ -124,6 +124,7 @@ class HuntingGroundsScreen(BaseScreen):
         self.fantasy_small = pygame.font.SysFont("georgia", 12)
         self.fantasy_tiny = pygame.font.SysFont("georgia", 11)
         self.medallion_font = pygame.font.SysFont("georgia", 15, bold=True)
+        self._fitted_font_cache = {}
 
         self._list_content_height = 0
         self._log_content_height = 0
@@ -714,6 +715,48 @@ class HuntingGroundsScreen(BaseScreen):
         screen.blit(image, (x, y))
         return image
 
+    def get_fitted_font(
+        self,
+        text,
+        max_width,
+        start_size,
+        minimum_size=9,
+        bold=False,
+    ):
+        """Return the largest Georgia font that keeps text inside max_width."""
+        text = str(text)
+        for size in range(start_size, minimum_size - 1, -1):
+            key = (size, bold)
+            font = self._fitted_font_cache.get(key)
+            if font is None:
+                font = pygame.font.SysFont("georgia", size, bold=bold)
+                self._fitted_font_cache[key] = font
+            if font.size(text)[0] <= max_width:
+                return font
+
+        return self._fitted_font_cache[(minimum_size, bold)]
+
+    def draw_fitted_text_line(
+        self,
+        screen,
+        text,
+        x,
+        y,
+        max_width,
+        color,
+        start_size=14,
+        minimum_size=9,
+        bold=False,
+    ):
+        font = self.get_fitted_font(
+            text,
+            max_width,
+            start_size,
+            minimum_size,
+            bold,
+        )
+        return self.draw_text_line(screen, text, x, y, font, color)
+
     def draw_beveled_panel(self, screen, rect, alpha=225, title=None):
         shadow = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
         pygame.draw.rect(shadow, (5, 3, 2, 190), shadow.get_rect(), border_radius=12)
@@ -1251,21 +1294,26 @@ class HuntingGroundsScreen(BaseScreen):
                     selected=selected,
                     radius=16,
                 )
-                self.draw_text_line(
+                self.draw_fitted_text_line(
                     screen,
                     dragon.name,
                     row.x + 47,
                     row.y + 6,
-                    self.fantasy_body_bold,
+                    row.right - (row.x + 47) - 8,
                     CREAM if selected else TEXT,
+                    start_size=14,
+                    minimum_size=10,
+                    bold=True,
                 )
-                self.draw_text_line(
+                self.draw_fitted_text_line(
                     screen,
                     f"{dragon.role}  •  {readiness}  •  Fatigue {self.get_dragon_fatigue(dragon)}",
                     row.x + 47,
                     row.y + 24,
-                    self.fantasy_tiny,
+                    row.right - (row.x + 47) - 8,
                     readiness_color,
+                    start_size=11,
+                    minimum_size=8,
                 )
                 self.buttons.append(ClickTarget(row, lambda d=dragon: self.select_dragon(d)))
             y += row_h
@@ -1434,13 +1482,24 @@ class HuntingGroundsScreen(BaseScreen):
 
         title_panel = pygame.Rect(306, 34, 388, 94)
         self.draw_beveled_panel(screen, title_panel, alpha=242)
-        title = self.fantasy_title.render("THE HUNTING GROUNDS", True, CREAM)
-        screen.blit(title, title.get_rect(center=(title_panel.centerx, title_panel.y + 35)))
-        subtitle = self.fantasy_small.render(
-            "Gather the tribe's hunters. Choose the risk. Bring home prey.",
-            True,
-            MUTED,
+        title_text = "THE HUNTING GROUNDS"
+        title_font = self.get_fitted_font(
+            title_text,
+            title_panel.width - 36,
+            start_size=30,
+            minimum_size=20,
+            bold=True,
         )
+        title = title_font.render(title_text, True, CREAM)
+        screen.blit(title, title.get_rect(center=(title_panel.centerx, title_panel.y + 35)))
+        subtitle_text = "Gather the tribe's hunters. Choose the risk. Bring home prey."
+        subtitle_font = self.get_fitted_font(
+            subtitle_text,
+            title_panel.width - 36,
+            start_size=12,
+            minimum_size=9,
+        )
+        subtitle = subtitle_font.render(subtitle_text, True, MUTED)
         screen.blit(subtitle, subtitle.get_rect(center=(title_panel.centerx, title_panel.y + 66)))
 
         for badge, heading, value in (
@@ -1452,7 +1511,14 @@ class HuntingGroundsScreen(BaseScreen):
             value_image = self.fantasy_heading.render(value, True, GOLD)
             screen.blit(value_image, (badge.x + 15, badge.y + 27))
             if heading == "FOOD STORES":
-                supply = self.fantasy_tiny.render(self.get_food_supply_text(), True, MUTED)
+                supply_text = self.get_food_supply_text()
+                supply_font = self.get_fitted_font(
+                    supply_text,
+                    badge.right - (badge.x + 54) - 12,
+                    start_size=11,
+                    minimum_size=8,
+                )
+                supply = supply_font.render(supply_text, True, MUTED)
                 screen.blit(supply, (badge.x + 54, badge.y + 32))
 
         left = pygame.Rect(40, 145, 250, 475)
