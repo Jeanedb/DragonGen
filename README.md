@@ -96,6 +96,21 @@ sim/ → modular systems (events, injuries, leadership, etc.)
 Full structure available in the repository.
 
 
+## Play on Windows
+
+On the GitHub repository page, select **Code → Download ZIP**. Right-click the downloaded ZIP and choose **Extract All**, then open the extracted `DragonGen-main` folder and double-click **DragonGen.exe**. If Windows hides file extensions, it appears as **DragonGen** with the type **Application**.
+
+The executable includes the game's assets, Python, and Pygame. It runs on 64-bit Windows and opens without a command window.
+
+The game creates a `saves` folder beside `DragonGen.exe`. To keep your progress when upgrading or moving the game, copy that folder to the new game folder. If you previously played from source, you can copy its `saves` folder there too.
+
+To rebuild the checked-in executable on 64-bit Windows with Python 3.12, run these commands from the repository root, then replace the root `DragonGen.exe` with the tested build in `dist`.
+
+```powershell
+python -m pip install -r requirements.txt pyinstaller==6.19.0
+python -m PyInstaller --noconfirm --clean --onefile --windowed --name DragonGen --add-data "assets:assets" main.py
+```
+
 ## 🚀 Getting Started
 
 ```bash

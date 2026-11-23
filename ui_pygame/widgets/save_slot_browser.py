@@ -1,6 +1,7 @@
 """Native DragonGen save-slot browser used by saving and loading screens."""
 
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -28,7 +29,9 @@ class SaveSlotBrowser:
         self.on_slot = on_slot
         self.on_cancel = on_cancel
 
-        self.saves_dir = Path(project_root) / "saves"
+        # A frozen build keeps bundled assets in _internal and saves beside the executable.
+        save_root = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(project_root)
+        self.saves_dir = save_root / "saves"
         self.saves_dir.mkdir(parents=True, exist_ok=True)
 
         self.title_font = pygame.font.SysFont("georgia", 30, bold=True)
