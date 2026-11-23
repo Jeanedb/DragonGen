@@ -100,15 +100,22 @@ Full structure available in the repository.
 
 On the GitHub repository page, select **Code → Download ZIP**. Right-click the downloaded ZIP and choose **Extract All**, then open the extracted `DragonGen-main` folder and double-click **DragonGen.exe**. If Windows hides file extensions, it appears as **DragonGen** with the type **Application**.
 
-The executable includes the game's assets, Python, and Pygame. It runs on 64-bit Windows and opens without a command window.
+On 64-bit Windows, `DragonGen.exe` starts the `main.py` in the extracted folder without opening a command window. It uses the files in that folder, so changes to the game's Python code or assets take effect the next time you launch it.
 
-The game creates a `saves` folder beside `DragonGen.exe`. To keep your progress when upgrading or moving the game, copy that folder to the new game folder. If you previously played from source, you can copy its `saves` folder there too.
-
-To rebuild the checked-in executable on 64-bit Windows with Python 3.12, run these commands from the repository root, then replace the root `DragonGen.exe` with the tested build in `dist`.
+Install Python 3 and the game's dependencies once before using the launcher. Enable **Add Python to PATH** in the Python installer, then run this command from the extracted folder:
 
 ```powershell
-python -m pip install -r requirements.txt pyinstaller==6.19.0
-python -m PyInstaller --noconfirm --clean --onefile --windowed --name DragonGen --add-data "assets:assets" main.py
+python -m pip install -r requirements.txt
+```
+
+The launcher also supports a local `.venv` or `venv`. Saves go into the `saves` folder beside `main.py`.
+
+### Rebuild the launcher
+
+The launcher only needs rebuilding if its own source changes. With Go installed on 64-bit Windows, run this from the repository root:
+
+```powershell
+go build -trimpath -ldflags="-H windowsgui -s -w" -o DragonGen.exe tools/windows-launcher/main.go
 ```
 
 ## 🚀 Getting Started
