@@ -9,6 +9,7 @@ from core.sim.mudwing import (
     maintain_bigwings, try_marsh_fire, try_mudwing_sib_decision, try_sib_adoption,
 )
 from core.sim.family import are_family
+from core.sim.seawing import try_reef_storm
 from core.sim.progression import tick_dragon_progression
 from core.sim.events import run_event_phase
 from core.sim.titles import evaluate_world_titles
@@ -871,6 +872,8 @@ def offer_moon_choice(world):
     if world.pending_choice is not None:
         return
     if try_sib_adoption(world) or try_marsh_fire(world) or try_mudwing_sib_decision(world):
+        return
+    if try_reef_storm(world):
         return
     if random.random() < 0.10 and create_ai_conversation_choice(world):
         prepare_pending_choice(world)

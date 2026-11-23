@@ -3,6 +3,7 @@
 import random
 
 from core.sim.family import birth_sib_group
+from core.sim.fatigue import change_fatigue
 from core.sim.injury import add_injury
 from core.sim.logging import log_event
 from core.sim.memory import Memory, add_memory
@@ -182,16 +183,6 @@ def wallow_reopens_moon(world):
     return world.world_flags.get("wallow_reopens_moon", 0)
 
 
-def change_sib_fatigue(world, dragon, amount):
-    fatigue = world.world_flags.get("dragon_fatigue")
-    if not isinstance(fatigue, dict):
-        fatigue = {}
-        world.world_flags["dragon_fatigue"] = fatigue
-    key = str(dragon.id)
-    legacy_amount = fatigue.pop(dragon.id, 0)
-    fatigue[key] = max(0, min(6, int(fatigue.get(key, legacy_amount)) + amount))
-
-
 def rest_sibs_at_wallow(world, group_id):
     if (
         not has_mud_wallow(world)
@@ -204,7 +195,7 @@ def rest_sibs_at_wallow(world, group_id):
         return False
 
     for dragon in party:
-        change_sib_fatigue(world, dragon, -2)
+        change_fatigue(world, dragon, -2)
         dragon.location = "mud_wallow"
         for sib in party:
             if sib.id != dragon.id:
@@ -313,7 +304,7 @@ def resolve_wallow_flood(world, option_id):
     ]
     if option_id == "clear" and len(crew) == len(crew_ids):
         for dragon in crew:
-            change_sib_fatigue(world, dragon, 2)
+            change_fatigue(world, dragon, 2)
         result = f"{crew[0].name} and {crew[1].name} cleared the channels. The wallow stays open."
     elif option_id in {"clear", "close"}:
         world.world_flags["wallow_reopens_moon"] = world.moon + 2

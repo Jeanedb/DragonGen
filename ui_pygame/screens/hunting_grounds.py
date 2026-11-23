@@ -7,8 +7,10 @@ from pathlib import Path
 from ui_pygame.core.base_screen import BaseScreen
 from ui_pygame.widgets.button import Button
 from core.sim.behavior import get_behavior_score
+from core.sim.fatigue import change_fatigue
 from core.sim.memory import Memory, add_memory, current_moon
 from core.sim.logging import log_event
+from core.sim.seawing import REEF_REWARDS, forage_reef, has_reef_routes, reef_food_range, reef_party
 
 WIDTH, HEIGHT = 1000, 700
 
@@ -244,10 +246,17 @@ class HuntingGroundsScreen(BaseScreen):
 
     def add_hunt_fatigue(self, party, hunt_type):
         fatigue_cost = {"small": 1, "large": 2, "dangerous": 3}.get(hunt_type, 1)
-        fatigue = self.get_fatigue_map()
         for dragon in party:
-            key = str(dragon.id)
-            fatigue[key] = min(6, self.get_dragon_fatigue(dragon) + fatigue_cost)
+            change_fatigue(self.world, dragon, fatigue_cost)
+
+    def use_hunt(self):
+        self.world.world_flags["hunts_used"] += 1
+
+    def get_reef_profile(self, party, route):
+        divers, shore_party = reef_party(party, route)
+        size = "large" if route == "deep_reef" else "small"
+        profile = self.get_party_profile(divers, size)
+        return profile, len(shore_party)
 
     def get_party_profile(self, party, hunt_type):
         """Return success, yield bonus and injury protection for this party."""
@@ -328,6 +337,15 @@ class HuntingGroundsScreen(BaseScreen):
             self.add_hunting_event(
                 "No hunting expeditions remain this moon."
             )
+            return
+
+        if hunt_type in REEF_REWARDS:
+            party = self.get_active_party()
+            profile, _ = self.get_reef_profile(party, hunt_type)
+            if forage_reef(
+                self.world, hunt_type, party, profile["success"], profile["yield_multiplier"]
+            ):
+                self.use_hunt()
             return
 
         if self.hunt_party_mode == "single":
@@ -513,9 +531,7 @@ class HuntingGroundsScreen(BaseScreen):
                 injured_dragon = random.choice(party)
                 self.create_hunting_crisis(party, injured_dragon, hunt_type)
 
-        self.world.world_flags["hunts_used"] = (
-            self.world.world_flags.get("hunts_used", 0) + 1
-        )
+        self.use_hunt()
 
     def get_hunting_effect_text(self, a, b, outcome_type):
         if outcome_type == "bond":
@@ -1298,7 +1314,7 @@ class HuntingGroundsScreen(BaseScreen):
                 )
                 self.draw_fitted_text_line(
                     screen,
-                    dragon.name,
+                    f"{dragon.name} · {dragon.tribe}" if has_reef_routes(self.world) else dragon.name,
                     row.x + 47,
                     row.y + 6,
                     row.right - (row.x + 47) - 8,
@@ -1325,10 +1341,12 @@ class HuntingGroundsScreen(BaseScreen):
     def draw_expedition(self, screen, rect, mouse_pos):
         self.draw_beveled_panel(screen, rect, title="Choose an Expedition")
 
-        art_rect = pygame.Rect(rect.x + 18, rect.y + 55, rect.width - 36, 145)
-        if self.forest_image:
-            forest = pygame.transform.smoothscale(self.forest_image, art_rect.size)
-            screen.blit(forest, art_rect)
+        reef_access = has_reef_routes(self.world)
+        art_rect = pygame.Rect(rect.x + 18, rect.y + 55, rect.width - 36, 71 if reef_access else 145)
+        expedition_art = self.bg_image if reef_access else self.forest_image
+        if expedition_art:
+            art = pygame.transform.smoothscale(expedition_art, art_rect.size)
+            screen.blit(art, art_rect)
         else:
             pygame.draw.rect(screen, (37, 62, 39), art_rect, border_radius=9)
         pygame.draw.rect(screen, BRONZE, art_rect, 2, 9)
@@ -1356,33 +1374,49 @@ class HuntingGroundsScreen(BaseScreen):
             ("LARGE HUNT", "large", "MEDIUM RISK", 18, 30, GOLD),
             ("DANGEROUS HUNT", "dangerous", "HIGH RISK", 30, 50, RED),
         ]
+        if reef_access:
+            hunt_definitions.extend([
+                ("SHALLOW REEF", "shallow_reef", "ALL TRIBES", *REEF_REWARDS["shallow_reef"], GREEN),
+                ("DEEP REEF", "deep_reef", "SEAWING DIVERS", *REEF_REWARDS["deep_reef"], GOLD),
+            ])
         active_party = self.get_active_party()
-        enabled = bool(active_party) and self.get_hunts_remaining() > 0
+        hunts_remaining = self.get_hunts_remaining()
         card_y = art_rect.bottom + 14
 
         for title, hunt_type, risk, minimum_food, maximum_food, risk_color in hunt_definitions:
-            card = pygame.Rect(rect.x + 14, card_y, rect.width - 28, 70)
+            card = pygame.Rect(rect.x + 14, card_y, rect.width - 28, 54 if reef_access else 70)
             pygame.draw.rect(screen, (38, 30, 25), card, border_radius=9)
             pygame.draw.rect(screen, (82, 59, 41), card, 1, 9)
             pygame.draw.rect(screen, risk_color, (card.x, card.y, 5, card.height), border_radius=3)
 
-            yield_multiplier = self.get_party_profile(active_party, hunt_type)["yield_multiplier"]
-            reward = (
-                f"{round(minimum_food * yield_multiplier)}–"
-                f"{round(maximum_food * yield_multiplier)} food"
-            )
-            self.draw_text_line(screen, title, card.x + 16, card.y + 10, self.fantasy_body_bold, CREAM)
-            self.draw_text_line(
+            is_reef = hunt_type in REEF_REWARDS
+            if is_reef:
+                profile, shore_count = self.get_reef_profile(active_party, hunt_type)
+                low, high = reef_food_range(hunt_type, profile["yield_multiplier"], shore_count)
+            else:
+                profile = self.get_party_profile(active_party, hunt_type)
+                low = round(minimum_food * profile["yield_multiplier"])
+                high = round(maximum_food * profile["yield_multiplier"])
+            ready = profile["success"] > 0
+            enabled = ready and hunts_remaining > 0 and (not is_reef or self.world.pending_choice is None)
+            chance = round(profile["success"] * 100)
+            detail = f"{risk}  •  {low}–{high} food  •  {chance}% success"
+            if is_reef and not ready:
+                detail = "Needs a healthy adult SeaWing" if hunt_type == "deep_reef" else "Needs a healthy adult"
+            self.draw_text_line(screen, title, card.x + 16, card.y + 7, self.fantasy_body_bold, CREAM)
+            self.draw_fitted_text_line(
                 screen,
-                f"{risk}  •  {reward}  •  {self.estimate_party_success(hunt_type)}% success",
+                detail,
                 card.x + 16,
-                card.y + 36,
-                self.fantasy_tiny,
+                card.y + (29 if reef_access else 36),
+                card.width - 110,
                 MUTED if enabled else (106, 98, 89),
+                start_size=11,
+                minimum_size=8,
             )
 
             button = HuntButton(
-                (card.right - 88, card.y + 15, 74, 39),
+                (card.right - 88, card.centery - 19, 74, 39),
                 "BEGIN",
                 lambda t=hunt_type: self.run_hunt(t),
                 enabled=enabled,
@@ -1390,7 +1424,7 @@ class HuntingGroundsScreen(BaseScreen):
             )
             self.buttons.append(button)
             button.draw(screen, self.fantasy_tiny, mouse_pos)
-            card_y += 78
+            card_y += card.height + 8
 
     def draw_hunting_log(self, screen, rect):
         self.draw_beveled_panel(screen, rect, title="Hunting Journal")
@@ -1494,7 +1528,10 @@ class HuntingGroundsScreen(BaseScreen):
         )
         title = title_font.render(title_text, True, CREAM)
         screen.blit(title, title.get_rect(center=(title_panel.centerx, title_panel.y + 35)))
-        subtitle_text = "Gather the tribe's hunters. Choose the risk. Bring home prey."
+        if has_reef_routes(self.world):
+            subtitle_text = "SeaWings dive deep. Other tribes forage in the shallows."
+        else:
+            subtitle_text = "Gather the tribe's hunters. Choose the risk. Bring home prey."
         subtitle_font = self.get_fitted_font(
             subtitle_text,
             title_panel.width - 36,

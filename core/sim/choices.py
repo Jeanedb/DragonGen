@@ -14,6 +14,7 @@ from core.sim.choice_handlers.border import (
 )
 from core.sim.choice_handlers.personal import handle_personal_choice
 from core.sim.injury import add_injury
+from core.sim.seawing import resolve_aquatic_warning, resolve_reef_storm
 from core.sim.logging import log_event
 from core.sim.mudwing import (
     maintain_bigwings, resolve_marsh_fire, resolve_sib_adoption, resolve_sib_rations,
@@ -545,6 +546,12 @@ def resolve_choice(world, option_id):
 
     elif choice_type == "hatchery_incident":
         handler_result = handle_hatchery_incident(world, option_id)
+
+    elif choice_type == "seawing_aquatic_warning":
+        handler_result = resolve_aquatic_warning(world, option_id)
+
+    elif choice_type == "seawing_reef_storm":
+        handler_result = resolve_reef_storm(world, option_id)
 
     elif choice_type == "hunting_crisis":
         handler_result = handle_hunting_crisis(world, option_id)
