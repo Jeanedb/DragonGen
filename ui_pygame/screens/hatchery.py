@@ -157,6 +157,41 @@ class HatcheryScreen(BaseScreen):
             self.ensure_egg_state(egg)
         return eggs
 
+    def egg_group_key(self, egg):
+        """Return the shared nest key for a clutch or a stable key for one egg."""
+        clutch_id = egg.get("clutch_id")
+        if clutch_id:
+            return f"clutch:{clutch_id}"
+        return f"egg:{egg.get('egg_id', id(egg))}"
+
+    def get_clutches(self):
+        """Group clutch-mates into one visible nest without hiding legacy eggs."""
+        groups = []
+        group_lookup = {}
+        for index, egg in enumerate(self.get_eggs()):
+            key = self.egg_group_key(egg)
+            if key not in group_lookup:
+                group = {"key": key, "eggs": [], "indices": []}
+                group_lookup[key] = group
+                groups.append(group)
+            group_lookup[key]["eggs"].append(egg)
+            group_lookup[key]["indices"].append(index)
+        return groups
+
+    def get_selected_clutch(self):
+        selected = self.get_selected_egg()
+        if selected is None:
+            return []
+        selected_key = self.egg_group_key(selected)
+        for group in self.get_clutches():
+            if group["key"] == selected_key:
+                return group["eggs"]
+        return [selected]
+
+    def select_clutch(self, group):
+        if group.get("indices"):
+            self.select_egg(group["indices"][0])
+
     def ensure_egg_state(self, egg):
         if not hasattr(self.world, "world_flags") or self.world.world_flags is None:
             self.world.world_flags = {}
@@ -191,6 +226,18 @@ class HatcheryScreen(BaseScreen):
         egg.setdefault("incident_cooldown_until", -1)
         egg.setdefault("pending_incident", False)
         egg.setdefault("care_actions_received", 0)
+        egg.setdefault("clutch_id", None)
+        egg.setdefault(
+            "sib_group_id",
+            egg.get("clutch_id") if egg.get("tribe") == "MudWing" else None,
+        )
+        egg.setdefault("birth_order", 1)
+        is_blood_red = (
+            str(egg.get("tribe", "")).lower() == "mudwing"
+            and str(egg.get("shell_color", "")).lower() == "blood-red"
+        )
+        egg.setdefault("egg_type", "blood_red" if is_blood_red else "normal")
+        egg.setdefault("fire_resistant", egg.get("egg_type") == "blood_red")
         egg["condition_score"] = max(0, min(100, int(egg["condition_score"])))
         egg["condition"] = self.condition_label(egg["condition_score"])
         return egg
@@ -287,10 +334,12 @@ class HatcheryScreen(BaseScreen):
             parent_trust = sum(float(trust.get(parent.id, 0)) for parent in parents) / len(parents)
             score += int(max(-10, min(10, parent_trust * 3)))
 
-        workload = sum(
-            1
-            for candidate in self.get_eggs()
-            if candidate.get("caretaker") == getattr(dragon, "name", None)
+        workload = len(
+            {
+                self.egg_group_key(candidate)
+                for candidate in self.get_eggs()
+                if candidate.get("caretaker") == getattr(dragon, "name", None)
+            }
         )
         score -= max(0, workload - 1) * 13
         return max(10, min(95, int(score)))
@@ -374,35 +423,56 @@ class HatcheryScreen(BaseScreen):
             self.add_hatchery_event("There are no eggs in the hatchery.")
             return
 
+        clutch = self.get_selected_clutch() or [egg]
+        clutch_size = len(clutch)
+        parent_text = (
+            f"{egg.get('mother', 'Unknown')} and {egg.get('father', 'Unknown')}"
+        )
+        nest_text = "clutch" if clutch_size > 1 else "egg"
+
         if action == "inspect":
             current_moon = getattr(self.world, "moon", 0)
-            if egg.get("last_inspected_moon") == current_moon:
+            if all(candidate.get("last_inspected_moon") == current_moon for candidate in clutch):
                 return
-            egg["last_inspected_moon"] = current_moon
+            for candidate in clutch:
+                candidate["last_inspected_moon"] = current_moon
+
+            blood_red_count = sum(
+                1 for candidate in clutch if candidate.get("egg_type") == "blood_red"
+            )
+            special_text = (
+                " One is the unmistakable blood-red egg of MudWing legend."
+                if blood_red_count
+                else ""
+            )
             self.add_hatchery_event(
-                f"The egg of {egg.get('mother', 'Unknown')} and "
-                f"{egg.get('father', 'Unknown')} was inspected. It appears "
-                f"{egg.get('size', 'ordinary')} with a "
-                f"{egg.get('shell_color', 'plain')} shell. It "
-                f"{egg.get('movement', 'rests quietly')}.",
+                f"The {nest_text} of {parent_text} was inspected. "
+                f"{clutch_size if clutch_size > 1 else 'The'} "
+                f"{'eggs appear' if clutch_size > 1 else 'egg appears'} stable and "
+                f"{egg.get('movement', 'rests quietly')}.{special_text}",
                 egg=egg,
             )
             self.log_scroll = 0
 
         elif action == "tend":
             current_moon = getattr(self.world, "moon", 0)
-            if egg.get("last_tended_moon") == current_moon:
+            if all(candidate.get("last_tended_moon") == current_moon for candidate in clutch):
                 return
             if not self.spend_hatchery_action():
                 return
-            egg["condition_score"] = min(100, egg.get("condition_score", 70) + 10)
-            egg["condition"] = self.condition_label(egg["condition_score"])
-            egg["last_tended_moon"] = current_moon
-            egg["reinforced_until_moon"] = current_moon + 1
-            egg["care_actions_received"] = egg.get("care_actions_received", 0) + 1
+            for candidate in clutch:
+                if candidate.get("last_tended_moon") == current_moon:
+                    continue
+                candidate["condition_score"] = min(
+                    100,
+                    candidate.get("condition_score", 70) + 10,
+                )
+                candidate["condition"] = self.condition_label(candidate["condition_score"])
+                candidate["last_tended_moon"] = current_moon
+                candidate["reinforced_until_moon"] = current_moon + 1
+                candidate["care_actions_received"] = candidate.get("care_actions_received", 0) + 1
             self.add_hatchery_event(
-                f"The nest holding the egg of {egg.get('mother', 'Unknown')} and "
-                f"{egg.get('father', 'Unknown')} was warmed and reinforced.",
+                f"The nest holding the {nest_text} of {parent_text} was warmed and reinforced.",
                 egg=egg,
                 importance=2,
             )
@@ -411,7 +481,10 @@ class HatcheryScreen(BaseScreen):
         elif action == "healer":
             current_moon = getattr(self.world, "moon", 0)
             healers = self.get_healers()
-            if not healers or egg.get("last_healer_check_moon") == current_moon:
+            if not healers or all(
+                candidate.get("last_healer_check_moon") == current_moon
+                for candidate in clutch
+            ):
                 return
             if not self.spend_hatchery_action():
                 return
@@ -420,13 +493,19 @@ class HatcheryScreen(BaseScreen):
                 key=lambda dragon: float(getattr(dragon, "healer_skill", 1.0)),
             )
             improvement = 14 + int(max(0, float(getattr(healer, "healer_skill", 1.0)) - 1.0) * 3)
-            egg["condition_score"] = min(100, egg.get("condition_score", 70) + improvement)
-            egg["condition"] = self.condition_label(egg["condition_score"])
-            egg["last_healer_check_moon"] = current_moon
-            egg["care_actions_received"] = egg.get("care_actions_received", 0) + 1
+            for candidate in clutch:
+                if candidate.get("last_healer_check_moon") == current_moon:
+                    continue
+                candidate["condition_score"] = min(
+                    100,
+                    candidate.get("condition_score", 70) + improvement,
+                )
+                candidate["condition"] = self.condition_label(candidate["condition_score"])
+                candidate["last_healer_check_moon"] = current_moon
+                candidate["care_actions_received"] = candidate.get("care_actions_received", 0) + 1
             self.add_hatchery_event(
-                f"{healer.name} examined the egg of {egg.get('mother', 'Unknown')} and "
-                f"{egg.get('father', 'Unknown')}; its condition improved.",
+                f"{healer.name} examined the {nest_text} of {parent_text}; "
+                f"its condition improved.",
                 egg=egg,
                 extra_dragon=healer,
                 importance=3,
@@ -437,16 +516,17 @@ class HatcheryScreen(BaseScreen):
             selected = self.get_selected_dragon()
             if selected is None:
                 return
-            if egg.get("caretaker") == selected.name:
+            if all(candidate.get("caretaker") == selected.name for candidate in clutch):
                 return
 
-            egg["caretaker"] = selected.name
             suitability = self.caretaker_suitability(selected, egg)
-            egg["caretaker_suitability"] = suitability
+            for candidate in clutch:
+                candidate["caretaker"] = selected.name
+                candidate["caretaker_suitability"] = suitability
             rating, _ = self.suitability_label(suitability)
             self.add_hatchery_event(
-                f"{selected.name} was assigned to care for the egg of "
-                f"{egg.get('mother', 'Unknown')} and {egg.get('father', 'Unknown')}. "
+                f"{selected.name} was assigned to care for the {nest_text} of "
+                f"{parent_text}. "
                 f"They appear to be a {rating.lower()} match for the nest.",
                 egg=egg,
                 extra_dragon=selected,
@@ -554,7 +634,7 @@ class HatcheryScreen(BaseScreen):
             return "Developing", GREEN
         return condition.title(), MUTED
 
-    def draw_egg_icon(self, screen, center, scale=1.0, selected=False):
+    def draw_egg_icon(self, screen, center, scale=1.0, selected=False, egg=None):
         width = int(38 * scale)
         height = int(50 * scale)
         shadow = pygame.Rect(0, 0, int(width * 1.15), int(height * 0.28))
@@ -562,28 +642,39 @@ class HatcheryScreen(BaseScreen):
         pygame.draw.ellipse(screen, (12, 8, 5), shadow)
         egg_rect = pygame.Rect(0, 0, width, height)
         egg_rect.center = center
-        pygame.draw.ellipse(screen, GOLD if selected else (119, 86, 57), egg_rect.inflate(6, 6))
-        pygame.draw.ellipse(screen, (213, 192, 151), egg_rect)
+        blood_red = bool(egg and egg.get("egg_type") == "blood_red")
+        edge_color = (242, 134, 88) if blood_red else (GOLD if selected else (119, 86, 57))
+        shell_color = (139, 37, 30) if blood_red else (213, 192, 151)
+        shine_color = (239, 128, 94) if blood_red else (244, 229, 193)
+        pygame.draw.ellipse(screen, edge_color, egg_rect.inflate(6, 6))
+        pygame.draw.ellipse(screen, shell_color, egg_rect)
         shine = pygame.Rect(
             egg_rect.x + int(width * 0.20),
             egg_rect.y + int(height * 0.16),
             max(3, int(width * 0.16)),
             max(6, int(height * 0.28)),
         )
-        pygame.draw.ellipse(screen, (244, 229, 193), shine)
+        pygame.draw.ellipse(screen, shine_color, shine)
 
     def draw_egg_roster(self, screen, rect, mouse_pos):
         self.draw_beveled_panel(screen, rect, fill=(27, 23, 20, 220), edge=(111, 76, 50))
         title = self.fantasy_heading.render("INCUBATING EGGS", True, CREAM)
         screen.blit(title, (rect.x + 18, rect.y + 17))
-        count = self.fantasy_small.render(f"{len(self.get_eggs())} nests under watch", True, GOLD)
+        eggs = self.get_eggs()
+        clutches = self.get_clutches()
+        nest_word = "nest" if len(clutches) == 1 else "nests"
+        egg_word = "egg" if len(eggs) == 1 else "eggs"
+        count = self.fantasy_small.render(
+            f"{len(eggs)} {egg_word} in {len(clutches)} {nest_word}",
+            True,
+            GOLD,
+        )
         screen.blit(count, (rect.x + 18, rect.y + 44))
         self.draw_divider(screen, rect.x + 17, rect.right - 17, rect.y + 68)
 
         list_rect = pygame.Rect(rect.x + 10, rect.y + 78, rect.width - 20, rect.height - 91)
-        eggs = self.get_eggs()
-        row_height = 78
-        content_height = len(eggs) * row_height
+        row_height = 86
+        content_height = len(clutches) * row_height
         visible_height = list_rect.height
         max_scroll = max(0, content_height - visible_height)
         self.egg_scroll = max(-max_scroll, min(0, self.egg_scroll))
@@ -603,34 +694,54 @@ class HatcheryScreen(BaseScreen):
                 image = self.fantasy_small.render(line, True, MUTED)
                 screen.blit(image, image.get_rect(center=(list_rect.centerx, list_rect.y + 94 + index * 16)))
 
-        for index, egg in enumerate(eggs):
-            row = pygame.Rect(list_rect.x + 4, list_rect.y + index * row_height + self.egg_scroll, list_rect.width - 12, 68)
+        selected_egg = self.get_selected_egg()
+        selected_key = self.egg_group_key(selected_egg) if selected_egg else None
+        for index, group in enumerate(clutches):
+            clutch = group["eggs"]
+            egg = clutch[0]
+            row = pygame.Rect(
+                list_rect.x + 4,
+                list_rect.y + index * row_height + self.egg_scroll,
+                list_rect.width - 12,
+                76,
+            )
             if row.bottom < list_rect.top or row.top > list_rect.bottom:
                 continue
 
-            selected = index == self.selected_egg_index
+            selected = group["key"] == selected_key
             hovered = row.collidepoint(mouse_pos)
             fill = (77, 52, 31) if selected else ((54, 43, 34) if hovered else (39, 33, 29))
             edge = GOLD if selected else ((137, 94, 55) if hovered else (73, 57, 45))
             pygame.draw.rect(screen, fill, row, border_radius=8)
             pygame.draw.rect(screen, edge, row, width=2 if selected else 1, border_radius=8)
-            self.draw_egg_icon(screen, (row.x + 30, row.centery), 0.72, selected)
+            icon_egg = next(
+                (candidate for candidate in clutch if candidate.get("egg_type") == "blood_red"),
+                egg,
+            )
+            self.draw_egg_icon(screen, (row.x + 28, row.centery), 0.70, selected, icon_egg)
 
             mother = egg.get("mother", "Unknown")
             father = egg.get("father", "Unknown")
+            title_label = f"CLUTCH OF {len(clutch)} EGGS" if len(clutch) > 1 else "SINGLE EGG"
+            title_text = self.fantasy_tiny.render(title_label, True, GOLD)
+            screen.blit(title_text, (row.x + 53, row.y + 7))
             parent_label = self.fit_text(
                 f"{mother} & {father}",
                 self.fantasy_body_bold,
-                row.width - 68,
+                row.width - 65,
             )
             parent_text = self.fantasy_body_bold.render(parent_label, True, CREAM)
-            screen.blit(parent_text, (row.x + 58, row.y + 10))
+            screen.blit(parent_text, (row.x + 53, row.y + 23))
             status, status_color = self.egg_status(egg)
+            if any(candidate.get("egg_type") == "blood_red" for candidate in clutch):
+                status = f"Blood-red · {status}"
+                status_color = RED
+            status = self.fit_text(status, self.fantasy_small, row.width - 65)
             status_text = self.fantasy_small.render(status, True, status_color)
-            screen.blit(status_text, (row.x + 58, row.y + 34))
+            screen.blit(status_text, (row.x + 53, row.y + 44))
 
             progress = self.egg_progress(egg)
-            bar = pygame.Rect(row.x + 58, row.bottom - 15, row.width - 70, 5)
+            bar = pygame.Rect(row.x + 53, row.bottom - 10, row.width - 65, 4)
             pygame.draw.rect(screen, (26, 21, 18), bar, border_radius=3)
             if progress > 0:
                 pygame.draw.rect(
@@ -639,7 +750,9 @@ class HatcheryScreen(BaseScreen):
                     (bar.x, bar.y, max(3, int(bar.width * progress)), bar.height),
                     border_radius=3,
                 )
-            self.buttons.append(ClickTarget(row, lambda idx=index: self.select_egg(idx)))
+            self.buttons.append(
+                ClickTarget(row, lambda selected_group=group: self.select_clutch(selected_group))
+            )
 
         screen.set_clip(old_clip)
         self.draw_scroll_track(screen, list_rect, self.egg_scroll, content_height, visible_height)
@@ -652,6 +765,7 @@ class HatcheryScreen(BaseScreen):
         self.draw_divider(screen, rect.x + 22, rect.right - 22, rect.y + 52)
 
         egg = self.get_selected_egg()
+        clutch = self.get_selected_clutch() if egg else []
         stage = pygame.Rect(rect.x + 16, rect.y + 62, rect.width - 32, 170)
         glow = pygame.Surface((stage.width, stage.height), pygame.SRCALPHA)
         for radius, alpha in ((80, 18), (62, 26), (45, 35)):
@@ -679,11 +793,41 @@ class HatcheryScreen(BaseScreen):
             )
 
         if egg:
-            if self.egg_image:
+            clutch_label = (
+                f"MUDWING CLUTCH · {len(clutch)} EGGS"
+                if len(clutch) > 1
+                else "SINGLE INCUBATING EGG"
+            )
+            label_color = RED if any(
+                candidate.get("egg_type") == "blood_red" for candidate in clutch
+            ) else GOLD
+            clutch_image = self.fantasy_tiny.render(clutch_label, True, label_color)
+            screen.blit(clutch_image, clutch_image.get_rect(center=(stage.centerx, stage.y + 10)))
+
+            if len(clutch) == 1 and self.egg_image and egg.get("egg_type") != "blood_red":
                 egg_rect = self.egg_image.get_rect(center=(stage.centerx, stage.y + 92))
                 screen.blit(self.egg_image, egg_rect)
+            elif len(clutch) == 1:
+                self.draw_egg_icon(screen, (stage.centerx, stage.y + 91), 2.35, True, egg)
             else:
-                self.draw_egg_icon(screen, (stage.centerx, stage.y + 88), 2.55, True)
+                layouts = {
+                    2: [(-35, 7), (35, 7)],
+                    3: [(-48, 12), (0, -5), (48, 12)],
+                    4: [(-54, 15), (-19, -7), (19, -7), (54, 15)],
+                    5: [(-60, 16), (-31, -8), (0, 18), (31, -8), (60, 16)],
+                }
+                positions = layouts.get(len(clutch), layouts[5])
+                for candidate, (offset_x, offset_y) in sorted(
+                    zip(clutch, positions),
+                    key=lambda item: item[1][1],
+                ):
+                    self.draw_egg_icon(
+                        screen,
+                        (stage.centerx + offset_x, stage.y + 91 + offset_y),
+                        1.22,
+                        candidate.get("egg_type") == "blood_red",
+                        candidate,
+                    )
         else:
             empty = self.fantasy_body.render("No egg currently rests here.", True, MUTED)
             screen.blit(empty, empty.get_rect(center=(stage.centerx, stage.y + 88)))
@@ -703,15 +847,42 @@ class HatcheryScreen(BaseScreen):
 
             age = egg.get("age", 0)
             hatch_time = egg.get("hatch_time", "?")
+            try:
+                hatch_countdown = f"{max(0, int(hatch_time) - int(age))} moons"
+            except (TypeError, ValueError):
+                hatch_countdown = "Unknown"
+
+            blood_red_count = sum(
+                1 for candidate in clutch if candidate.get("egg_type") == "blood_red"
+            )
+            if len(clutch) == 1:
+                shell_summary = str(egg.get("shell_color", "Plain")).title()
+            elif blood_red_count:
+                shell_summary = f"{blood_red_count} blood-red"
+            else:
+                shell_summary = "Natural variation"
+
+            conditions = {
+                str(candidate.get("condition", "Unknown")).title()
+                for candidate in clutch
+            }
+            movements = {
+                str(candidate.get("movement", "Quiet")).capitalize()
+                for candidate in clutch
+            }
+            caretakers = {
+                str(candidate.get("caretaker") or "Unassigned")
+                for candidate in clutch
+            }
             left_lines = [
-                ("Age", f"{age} / {hatch_time} moons"),
-                ("Shell", str(egg.get("shell_color", "Plain")).title()),
-                ("Size", str(egg.get("size", "Ordinary")).title()),
+                ("Eggs", str(len(clutch))),
+                ("Hatches", hatch_countdown),
+                ("Shells", shell_summary),
             ]
             right_lines = [
-                ("Movement", str(egg.get("movement", "Quiet")).capitalize()),
-                ("Condition", str(egg.get("condition", "Unknown")).title()),
-                ("Caretaker", str(egg.get("caretaker") or "Unassigned")),
+                ("Movement", next(iter(movements)) if len(movements) == 1 else "Mixed"),
+                ("Condition", next(iter(conditions)) if len(conditions) == 1 else "Mixed"),
+                ("Caretaker", next(iter(caretakers)) if len(caretakers) == 1 else "Mixed"),
             ]
             for column_x, lines in ((details.x + 15, left_lines), (details.x + 196, right_lines)):
                 for index, (label, value) in enumerate(lines):
@@ -738,9 +909,18 @@ class HatcheryScreen(BaseScreen):
         gap = 7
         button_y = rect.y + 398
         button_width = (rect.width - 48 - gap * 2) // 3
-        inspected = egg is not None and egg.get("last_inspected_moon") == current_moon
-        tended = egg is not None and egg.get("last_tended_moon") == current_moon
-        healer_checked = egg is not None and egg.get("last_healer_check_moon") == current_moon
+        inspected = bool(clutch) and all(
+            candidate.get("last_inspected_moon") == current_moon
+            for candidate in clutch
+        )
+        tended = bool(clutch) and all(
+            candidate.get("last_tended_moon") == current_moon
+            for candidate in clutch
+        )
+        healer_checked = bool(clutch) and all(
+            candidate.get("last_healer_check_moon") == current_moon
+            for candidate in clutch
+        )
         action_buttons = [
             HatcheryButton(
                 (rect.x + 17, button_y, button_width, 36),
@@ -923,7 +1103,17 @@ class HatcheryScreen(BaseScreen):
 
         pygame.draw.circle(screen, (94, 60, 29), (panel.centerx, panel.y + 108), 66)
         pygame.draw.circle(screen, GOLD, (panel.centerx, panel.y + 108), 66, 3)
-        self.draw_egg_icon(screen, (panel.centerx, panel.y + 106), 1.85, True)
+        reveal_egg = {
+            "egg_type": reveal.get("egg_type", "normal"),
+            "fire_resistant": reveal.get("fire_resistant", False),
+        }
+        self.draw_egg_icon(
+            screen,
+            (panel.centerx, panel.y + 106),
+            1.85,
+            True,
+            reveal_egg,
+        )
 
         heading = self.fantasy_small.render("A NEW DRAGONET HAS HATCHED", True, GOLD)
         screen.blit(heading, heading.get_rect(center=(panel.centerx, panel.y + 31)))
@@ -936,6 +1126,35 @@ class HatcheryScreen(BaseScreen):
         )
         screen.blit(tribe, tribe.get_rect(center=(panel.centerx, panel.y + 240)))
 
+        identity_parts = []
+        if reveal.get("is_bigwings"):
+            identity_parts.append("BIGWINGS · FIRST OF THE CLUTCH")
+        elif reveal.get("sib_group_id"):
+            birth_order = reveal.get("birth_order")
+            identity_parts.append(
+                f"MUDWING SIB · HATCH ORDER {birth_order}"
+                if birth_order
+                else "MUDWING SIB"
+            )
+        if reveal.get("fire_resistant"):
+            identity_parts.append("BLOOD-RED · FIRE-RESISTANT")
+        identity_text = "  |  ".join(identity_parts)
+        if identity_text:
+            identity_text = self.fit_text(
+                identity_text,
+                self.fantasy_tiny,
+                panel.width - 110,
+            )
+            identity_image = self.fantasy_tiny.render(
+                identity_text,
+                True,
+                RED if reveal.get("fire_resistant") else CREAM,
+            )
+            screen.blit(
+                identity_image,
+                identity_image.get_rect(center=(panel.centerx, panel.y + 261)),
+            )
+
         parents = reveal.get("parents", [])
         parent_text = " and ".join(parents) if parents else "Unknown"
         details = [
@@ -944,7 +1163,7 @@ class HatcheryScreen(BaseScreen):
             ("Health", reveal.get("health", "Healthy")),
             ("Hatched", f"Moon {reveal.get('moon', getattr(self.world, 'moon', 0))}"),
         ]
-        detail_box = pygame.Rect(panel.x + 66, panel.y + 270, panel.width - 132, 116)
+        detail_box = pygame.Rect(panel.x + 66, panel.y + 278, panel.width - 132, 116)
         pygame.draw.rect(screen, (42, 33, 27), detail_box, border_radius=9)
         pygame.draw.rect(screen, (105, 72, 45), detail_box, 1, border_radius=9)
         for index, (label, value) in enumerate(details):
