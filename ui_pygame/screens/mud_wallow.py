@@ -1,10 +1,12 @@
 import pygame
 
+from ui_pygame.core.coordinates import canvas_mouse_position
+
 from core.sim.mudwing import (
     rest_sibs_at_wallow, resting_sibs, sib_group_label, sib_groups, wallow_reopens_moon,
 )
 from ui_pygame.core.base_screen import BaseScreen
-from ui_pygame.screens.locations import BRONZE, GOLD, MUTED, PARCHMENT, FantasyButton, scale_mouse_pos
+from ui_pygame.screens.locations import BRONZE, GOLD, MUTED, PARCHMENT, FantasyButton
 
 
 class MudWallowScreen(BaseScreen):
@@ -75,16 +77,9 @@ class MudWallowScreen(BaseScreen):
         self.buttons.append(FantasyButton(
             (390, 622, 220, 42), "RETURN TO MAP", lambda: self.change_screen("locations")
         ))
-        window = pygame.display.get_surface()
-        mouse = scale_mouse_pos(pygame.mouse.get_pos(), window.get_size()) if window else (0, 0)
+        mouse = canvas_mouse_position()
         for button in self.buttons:
             button.draw(screen, self.button_font, mouse)
 
     def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            window = pygame.display.get_surface()
-            if window:
-                event = pygame.event.Event(
-                    event.type, {**event.dict, "pos": scale_mouse_pos(event.pos, window.get_size())}
-                )
-            self.handle_button_events(event)
+        self.handle_button_events(event)

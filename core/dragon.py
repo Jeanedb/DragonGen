@@ -89,3 +89,5 @@ class Dragon:
     last_clutch_moon: int = -999
     birth_sib_group_id: Optional[str] = None
     sib_adoption_moon: Optional[int] = None
+    caretaker_id: Optional[int] = None
+    caretaker_role: Optional[str] = None

@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pygame
 
+from ui_pygame.core.coordinates import canvas_mouse_position
+
 from ui_pygame.core.base_screen import BaseScreen
 
 
@@ -618,7 +620,7 @@ class DragonPortraitScreen(BaseScreen):
         self.draw_dragon(screen)
         self.draw_identity_panel(screen)
         self.draw_title_plaque(screen)
-        self.draw_footer(screen, pygame.mouse.get_pos())
+        self.draw_footer(screen, canvas_mouse_position())
 
     def handle_event(self, event):
         if self.ui_hidden:

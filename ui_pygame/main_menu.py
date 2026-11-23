@@ -1,12 +1,14 @@
 import random
 import pygame
+
+from ui_pygame.core.coordinates import CANVAS_SIZE, canvas_event, canvas_mouse_position
 from pathlib import Path
 
 from core.save_manager import load_world
 from ui_pygame.app import PygameApp
 from ui_pygame.widgets.save_slot_browser import SaveSlotBrowser
 
-WIDTH, HEIGHT = 1000, 700
+WIDTH, HEIGHT = CANVAS_SIZE
 FPS = 60
 
 TEXT = (230, 230, 230)
@@ -106,7 +108,7 @@ class FantasyButton:
             self.callback()
 
     def draw(self, surface, font):
-        hovered = self.enabled and self.rect.collidepoint(pygame.mouse.get_pos())
+        hovered = self.enabled and self.rect.collidepoint(canvas_mouse_position())
 
         shadow = self.rect.move(0, 5)
         pygame.draw.rect(surface, (12, 8, 6), shadow, border_radius=8)
@@ -291,7 +293,7 @@ class PygameMainMenu:
 
     def draw_tribe_medallion(self, tribe_id, name, center, radius, selected):
         dark, bright, monogram = TRIBE_THEMES[tribe_id]
-        mouse = pygame.mouse.get_pos()
+        mouse = canvas_mouse_position()
         dx = mouse[0] - center[0]
         dy = mouse[1] - center[1]
         hovered = dx * dx + dy * dy <= radius * radius
@@ -780,18 +782,22 @@ class PygameMainMenu:
         scaled = pygame.transform.smoothscale(self.surface, (window_w, window_h))
         self.screen.blit(scaled, (0, 0))
 
+    def handle_event(self, event):
+        event = canvas_event(event)
+        if event.type == pygame.QUIT:
+            self.running = False
+        elif self.state == "load" and self.save_browser:
+            self.save_browser.handle_event(event)
+        else:
+            for button in self.buttons:
+                button.handle_event(event)
+
     def run(self):
         while self.running:
             dt = self.clock.tick(FPS) / 1000
 
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
-                elif self.state == "load" and self.save_browser:
-                    self.save_browser.handle_event(event)
-                else:
-                    for button in self.buttons:
-                        button.handle_event(event)
+                self.handle_event(event)
 
             if not self.running:
                 break

@@ -1,5 +1,7 @@
 import random
 import pygame
+
+from ui_pygame.core.coordinates import canvas_mouse_position
 from pathlib import Path
 
 from core.sim.memory import Memory, add_memory, current_moon
@@ -1170,10 +1172,7 @@ class TrainingGroundsScreen(BaseScreen):
 
     def draw(self, screen):
         self.buttons.clear()
-        mouse_pos = scale_mouse_pos(
-            pygame.mouse.get_pos(),
-            pygame.display.get_surface().get_size(),
-        )
+        mouse_pos = canvas_mouse_position()
 
         if self.bg_image:
             screen.blit(self.bg_image, (0, 0))
@@ -1255,10 +1254,7 @@ class TrainingGroundsScreen(BaseScreen):
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEWHEEL:
-            mouse_x, mouse_y = scale_mouse_pos(
-                pygame.mouse.get_pos(),
-                pygame.display.get_surface().get_size(),
-            )
+            mouse_x, mouse_y = canvas_mouse_position()
 
             roster_area = pygame.Rect(47, 190, 236, 444)
             log_area = pygame.Rect(727, 190, 226, 446)
@@ -1278,23 +1274,5 @@ class TrainingGroundsScreen(BaseScreen):
                 self.log_scroll = min(0, self.log_scroll)
                 self.log_scroll = max(-max_scroll, self.log_scroll)
 
-        if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
-            scaled_pos = scale_mouse_pos(
-                event.pos,
-                pygame.display.get_surface().get_size(),
-            )
-            scaled_event = pygame.event.Event(
-                event.type,
-                {"pos": scaled_pos, "button": event.button},
-            )
-            for button in list(self.buttons):
-                button.handle_event(scaled_event)
-        else:
-            for button in list(self.buttons):
-                button.handle_event(event)
-
-
-def scale_mouse_pos(pos, window_size):
-    mouse_x, mouse_y = pos
-    window_width, window_height = window_size
-    return int(mouse_x * WIDTH / window_width), int(mouse_y * HEIGHT / window_height)
+        for button in list(self.buttons):
+            button.handle_event(event)

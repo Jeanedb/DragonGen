@@ -1,5 +1,7 @@
 import pygame
 
+from ui_pygame.core.coordinates import canvas_mouse_position
+
 TEXT = (230, 230, 230)
 BLUE = (70, 130, 200)
 
@@ -12,7 +14,7 @@ class Button:
         self.enabled = enabled
 
     def draw(self, screen, font):
-        mouse = pygame.mouse.get_pos()
+        mouse = canvas_mouse_position()
         hovered = self.rect.collidepoint(mouse)
 
         color = BLUE if self.enabled else (80, 80, 80)

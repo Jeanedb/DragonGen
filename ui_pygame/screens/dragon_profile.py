@@ -3,6 +3,8 @@ import re
 
 import pygame
 
+from ui_pygame.core.coordinates import canvas_mouse_position
+
 from ui_pygame.core.base_screen import BaseScreen
 from core.sim.relationships import get_relationships
 from core.sim.mudwing import sib_group_label, sib_groups
@@ -773,7 +775,7 @@ class DragonProfileScreen(BaseScreen):
             screen.blit(hint, hint.get_rect(bottomright=(content_rect.right - 12, content_rect.bottom - 8)))
 
     def draw(self, screen):
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = canvas_mouse_position()
         self.buttons.clear()
 
         if self.bg_image:
@@ -828,7 +830,7 @@ class DragonProfileScreen(BaseScreen):
             self.ensure_valid_selection()
 
         if event.type == pygame.MOUSEWHEEL:
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = canvas_mouse_position()
             if self.list_view_rect.collidepoint(mouse_pos):
                 total_height = len(self.get_filtered_dragons()) * 61
                 max_scroll = max(0, total_height - self.list_view_rect.height)

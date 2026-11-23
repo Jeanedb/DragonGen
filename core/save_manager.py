@@ -1,11 +1,14 @@
 import json
+import os
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from dataclasses import asdict
 from core.world import World
 from core.dragon import Dragon
 from core.sim.memory import Memory
 from core.sim.relationships import Relationship
 
-SAVE_VERSION = 9
+SAVE_VERSION = 10
 
 
 def _keys_to_int(value):
@@ -137,6 +140,7 @@ def save_world(world: World, filename: str):
         "dragons": [asdict(dragon) for dragon in world.dragons],
         "event_log": world.event_log,
         "pending_choice": world.pending_choice,
+        "scheduled_events": world.scheduled_events,
         "location_notices": getattr(world, "location_notices", {}),
         "tension": world.tension,
         "food_stores": world.food_stores,
@@ -161,8 +165,21 @@ def save_world(world: World, filename: str):
         "region_activity": world.region_activity,
     }
 
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4)
+    target = Path(filename)
+    temporary = None
+    try:
+        with NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=target.parent, prefix=f".{target.name}.",
+            suffix=".tmp", delete=False,
+        ) as output:
+            temporary = Path(output.name)
+            json.dump(data, output, indent=4)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def load_world(filename: str) -> World:
@@ -178,6 +195,7 @@ def load_world(filename: str) -> World:
         dragons=[],
         event_log=data.get("event_log", []),
         pending_choice=data.get("pending_choice"),
+        scheduled_events=data.get("scheduled_events", []),
         location_notices=data.get("location_notices", {}),
         tension=data.get("tension", 0.0),
         food_stores=data.get("food_stores", 100),

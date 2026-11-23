@@ -867,6 +867,33 @@ def apply_world_drift(world: World):
             if abs(dragon.perceived_reputation[k]) < 0.05:
                 del dragon.perceived_reputation[k]
                 
+def offer_moon_choice(world):
+    if world.pending_choice is not None:
+        return
+    if try_sib_adoption(world) or try_marsh_fire(world) or try_mudwing_sib_decision(world):
+        return
+    if random.random() < 0.10 and create_ai_conversation_choice(world):
+        prepare_pending_choice(world)
+        return
+
+    roll = random.random()
+    for threshold, generate in (
+        (0.08, create_leader_decision),
+        (0.14, create_injured_patrol_choice),
+        (0.20, create_rival_confrontation_choice),
+        (0.25, create_diplomatic_choice),
+        (0.31, create_tribal_policy_choice),
+        (0.36, create_incoming_diplomacy_choice),
+        (0.41, create_border_sighting_event),
+        (0.46, create_border_violation_event),
+        (0.51, create_aid_delivery_event),
+    ):
+        if roll < threshold:
+            if generate(world):
+                prepare_pending_choice(world)
+            return
+
+
 def advance_moon(world: World):
 
     previous_event_ids = {
@@ -915,85 +942,6 @@ def advance_moon(world: World):
     add_new_dragonet(world)
 
 
-    # occasional player choice
-    if world.pending_choice is None:
-        if try_sib_adoption(world) or try_marsh_fire(world) or try_mudwing_sib_decision(world):
-            world.event_log = world.event_log[-100:]
-            return finish_moon_advance(world, previous_event_ids)
-
-        if random.random() < 0.10:
-            created = create_ai_conversation_choice(world)
-            if created:
-                prepare_pending_choice(world)
-                world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
-
-        choice_roll = random.random()
-
-        if choice_roll < 0.08:
-            created = create_leader_decision(world)
-            if created:
-                prepare_pending_choice(world)
-                world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
-
-        elif choice_roll < 0.14:
-            created = create_injured_patrol_choice(world)
-            if created:
-                prepare_pending_choice(world)
-                world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
-
-        elif choice_roll < 0.20:
-            created = create_rival_confrontation_choice(world)
-            if created:
-                prepare_pending_choice(world)
-                world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
-
-        elif choice_roll < 0.25:
-            created = create_diplomatic_choice(world)
-            if created:
-                prepare_pending_choice(world)
-                world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
-
-        elif choice_roll < 0.31:
-            created = create_tribal_policy_choice(world)
-            if created:
-                prepare_pending_choice(world)
-                world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
-
-        elif choice_roll < 0.36:
-            created = create_incoming_diplomacy_choice(world)
-            if created:
-                prepare_pending_choice(world)
-                world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
-
-        elif choice_roll < 0.41:
-            created = create_border_sighting_event(world)
-            if created:
-                prepare_pending_choice(world)
-                world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
-
-        elif choice_roll < 0.46:
-            created = create_border_violation_event(world)
-            if created:
-                prepare_pending_choice(world)
-                world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
-
-        elif choice_roll < 0.51:
-            created = create_aid_delivery_event(world)
-            if created:
-                prepare_pending_choice(world)
-                world.event_log = world.event_log[-100:]
-                return finish_moon_advance(world, previous_event_ids)
-
-
     run_event_phase(world)
 
     run_leadership_phase(world)
@@ -1006,7 +954,7 @@ def advance_moon(world: World):
     world.previous_tribal_relations = world.tribal_relations.copy()
 
     evaluate_world_titles(world)
-
+    offer_moon_choice(world)
 
     world.event_log = world.event_log[-100:]
     return finish_moon_advance(world, previous_event_ids)

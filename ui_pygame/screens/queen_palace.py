@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pygame
 
+from ui_pygame.core.coordinates import canvas_mouse_position
+
 from ui_pygame.core.base_screen import BaseScreen
 
 
@@ -376,10 +378,7 @@ class QueenPalaceScreen(BaseScreen):
 
     def draw(self, screen):
         self.buttons.clear()
-        mouse_pos = scale_mouse_pos(
-            pygame.mouse.get_pos(),
-            pygame.display.get_surface().get_size(),
-        )
+        mouse_pos = canvas_mouse_position()
 
         if self.bg_image:
             screen.blit(self.bg_image, (0, 0))
@@ -538,38 +537,12 @@ class QueenPalaceScreen(BaseScreen):
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEWHEEL:
-            mouse_x, mouse_y = scale_mouse_pos(
-                pygame.mouse.get_pos(),
-                pygame.display.get_surface().get_size(),
-            )
+            mouse_x, mouse_y = canvas_mouse_position()
 
             detail_rect = pygame.Rect(425, 308, 515, 230)
             if detail_rect.collidepoint(mouse_x, mouse_y):
                 self.detail_scroll += event.y * 30
                 self.detail_scroll = max(-300, min(0, self.detail_scroll))
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            scaled_pos = scale_mouse_pos(
-                event.pos,
-                pygame.display.get_surface().get_size(),
-            )
-            scaled_event = pygame.event.Event(
-                event.type,
-                {"pos": scaled_pos, "button": event.button},
-            )
-
-            for button in self.buttons:
-                button.handle_event(scaled_event)
-        else:
-            for button in self.buttons:
-                button.handle_event(event)
-
-
-def scale_mouse_pos(pos, window_size):
-    mouse_x, mouse_y = pos
-    window_width, window_height = window_size
-
-    scale_x = WIDTH / window_width
-    scale_y = HEIGHT / window_height
-
-    return int(mouse_x * scale_x), int(mouse_y * scale_y)
+        for button in list(self.buttons):
+            button.handle_event(event)

@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pygame
 
+from ui_pygame.core.coordinates import canvas_mouse_position
+
 
 WIDTH, HEIGHT = 1000, 700
 SLOT_COUNT = 5
@@ -238,7 +240,7 @@ class SaveSlotBrowser:
 
     def draw(self, surface, mouse_pos=None):
         if mouse_pos is None:
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = canvas_mouse_position()
 
         shade = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         shade.fill((6, 4, 3, 170))

@@ -1,5 +1,7 @@
 import random
 import pygame
+
+from ui_pygame.core.coordinates import canvas_mouse_position
 from pathlib import Path
 
 from ui_pygame.core.base_screen import BaseScreen
@@ -1465,7 +1467,7 @@ class HuntingGroundsScreen(BaseScreen):
 
     def draw(self, screen):
         self.buttons.clear()
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = canvas_mouse_position()
 
         if self.bg_image:
             screen.blit(self.bg_image, (0, 0))
@@ -1560,7 +1562,7 @@ class HuntingGroundsScreen(BaseScreen):
     def handle_event(self, event):
 
         if event.type == pygame.MOUSEWHEEL:
-            mouse_x, mouse_y = pygame.mouse.get_pos()
+            mouse_x, mouse_y = canvas_mouse_position()
 
             if self._dragon_list_rect.collidepoint(mouse_x, mouse_y):
                 visible_height = self._dragon_list_rect.height

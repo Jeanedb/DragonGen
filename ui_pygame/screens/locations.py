@@ -1,5 +1,7 @@
 import math
 import pygame
+
+from ui_pygame.core.coordinates import canvas_mouse_position
 from ui_pygame.core.base_screen import BaseScreen
 from core.sim.mudwing import has_mud_wallow
 from pathlib import Path
@@ -196,28 +198,28 @@ class LocationsScreen(BaseScreen):
             print(f"Could not load locations background: {e}")
             self.bg_image = None
         
-    def advance_week(self):
+    def advance_turn(self):
         if advance_moon:
             try:
                 advance_moon(self.world)
             except Exception as error:
-                print(f"Could not advance moon/week: {error}")
+                print(f"Could not advance moon: {error}")
         else:
             # Emergency fallback if the simulation import fails.
             if hasattr(self.world, "moon"):
                 self.world.moon += 1
 
-    def request_advance_week(self):
+    def request_advance_turn(self):
         self.show_advance_confirmation = True
 
 
-    def cancel_advance_week(self):
+    def cancel_advance_turn(self):
         self.show_advance_confirmation = False
 
 
-    def confirm_advance_week(self):
+    def confirm_advance_turn(self):
         self.show_advance_confirmation = False
-        self.advance_week()
+        self.advance_turn()
 
     def get_pending_choice_location(self):
         choice = getattr(self.world, "pending_choice", None)
@@ -409,7 +411,7 @@ class LocationsScreen(BaseScreen):
         )
 
         title = self.fantasy_heading.render(
-            "ADVANCE TO THE NEXT WEEK?",
+            "ADVANCE TO THE NEXT MOON?",
             True,
             (246, 216, 158),
         )
@@ -424,23 +426,27 @@ class LocationsScreen(BaseScreen):
         )
         screen.blit(message, message.get_rect(center=(500, 310)))
 
-        warning = self.fantasy_body.render(
-            "Events, food consumption, relationships, and injuries may change.",
-            True,
-            (174, 158, 135),
-        )
+        needed = sum(dragon.status == "Alive" for dragon in self.world.dragons)
+        available = self.world.food_stores
+        if available < needed:
+            food_message = f"Food shortfall projected: {available} available, {needed} needed."
+            food_color = (241, 183, 111)
+        else:
+            food_message = f"Next moon: about {needed} food needed, {available} in stores."
+            food_color = (174, 158, 135)
+        warning = self.fantasy_body.render(food_message, True, food_color)
         screen.blit(warning, warning.get_rect(center=(500, 340)))
 
         confirm_btn = FantasyButton(
             (315, 385, 175, 46),
             "ADVANCE",
-            self.confirm_advance_week,
+            self.confirm_advance_turn,
         )
 
         cancel_btn = FantasyButton(
             (510, 385, 175, 46),
             "CANCEL",
-            self.cancel_advance_week,
+            self.cancel_advance_turn,
         )
 
         # Remove every map button while the confirmation is open.
@@ -737,10 +743,7 @@ class LocationsScreen(BaseScreen):
             screen.blit(update, (x + 18, message_y))
 
     def draw(self, screen):
-        mouse_pos = scale_mouse_pos(
-            pygame.mouse.get_pos(),
-            pygame.display.get_surface().get_size()
-        )
+        mouse_pos = canvas_mouse_position()
         self.buttons.clear()
 
         if self.bg_image:
@@ -791,14 +794,14 @@ class LocationsScreen(BaseScreen):
         status_text = (
             f"MOON {moon}  •  "
             f"{len(living)} LIVING  •  "
-            f"FOOD {food}  •  "
+            f"FOOD {food} / {len(living)} NEEDED  •  "
             f"TENSION {tension:.1f}"
         )
 
         subtitle = self.small.render(
             status_text,
             True,
-            (184, 166, 135),
+            (241, 183, 111) if food < len(living) else (184, 166, 135),
         )
         screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 68)))
 
@@ -811,8 +814,8 @@ class LocationsScreen(BaseScreen):
         else:
             advance_btn = FantasyButton(
                 (28, 28, 175, 39),
-                "ADVANCE WEEK",
-                self.request_advance_week,
+                "ADVANCE MOON",
+                self.request_advance_turn,
             )
 
         dashboard_btn = FantasyButton(
@@ -895,38 +898,12 @@ class LocationsScreen(BaseScreen):
 
         if self.show_advance_confirmation and event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                self.cancel_advance_week()
+                self.cancel_advance_turn()
                 return
 
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
-                self.confirm_advance_week()
+                self.confirm_advance_turn()
                 return
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            scaled_pos = scale_mouse_pos(
-                event.pos,
-                pygame.display.get_surface().get_size()
-            )
-
-            scaled_event = pygame.event.Event(
-                event.type,
-                {
-                    "pos": scaled_pos,
-                    "button": event.button
-                }
-            )
-
-            for button in self.buttons:
-                button.handle_event(scaled_event)
-        else:
-            for button in self.buttons:
-                button.handle_event(event)
-
-def scale_mouse_pos(pos, window_size):
-    mouse_x, mouse_y = pos
-    window_w, window_h = window_size
-
-    scale_x = WIDTH / window_w
-    scale_y = HEIGHT / window_h
-
-    return int(mouse_x * scale_x), int(mouse_y * scale_y)
+        for button in list(self.buttons):
+            button.handle_event(event)

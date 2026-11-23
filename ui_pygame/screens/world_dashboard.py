@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pygame
 
+from ui_pygame.core.coordinates import canvas_mouse_position
+
 from ui_pygame.core.base_screen import BaseScreen
 
 
@@ -373,7 +375,7 @@ class WorldDashboardScreen(BaseScreen):
             screen.blit(hint, hint.get_rect(bottomright=(rect.right - 22, rect.bottom - 12)))
 
     def draw(self, screen):
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = canvas_mouse_position()
         self.buttons.clear()
 
         if self.bg_image:

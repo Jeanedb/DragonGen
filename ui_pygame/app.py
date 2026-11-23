@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pygame
 
+from ui_pygame.core.coordinates import CANVAS_SIZE, canvas_event, canvas_mouse_position
+
 from core.save_manager import save_world
 from ui_pygame.widgets.save_slot_browser import SaveSlotBrowser
 from ui_pygame.screens.healer_den_poc import HealerDenScreen
@@ -25,7 +27,7 @@ from ui_pygame.screens.hatchery import HatcheryScreen
 from ui_pygame.screens.mud_wallow import MudWallowScreen
 
 
-WIDTH, HEIGHT = 1000, 700
+WIDTH, HEIGHT = CANVAS_SIZE
 FPS = 60
 
 
@@ -169,16 +171,6 @@ class PygameApp:
                 getattr(self.world, "selected_portrait_dragon", None)
             )
 
-    def window_to_game(self, position):
-        """Translate mouse coordinates to the fixed 1000 x 700 canvas."""
-        window_w, window_h = self.screen.get_size()
-        if window_w <= 0 or window_h <= 0:
-            return position
-        return (
-            int(position[0] * WIDTH / window_w),
-            int(position[1] * HEIGHT / window_h),
-        )
-
     def request_main_menu(self):
         self.exit_status = ""
         self.show_exit_prompt = True
@@ -236,7 +228,7 @@ class PygameApp:
         if event.type != pygame.MOUSEBUTTONUP or event.button != 1:
             return
 
-        mouse_pos = self.window_to_game(event.pos)
+        mouse_pos = event.pos
         if self.exit_save_rect.collidepoint(mouse_pos):
             self.open_save_slots()
         elif self.exit_without_save_rect.collidepoint(mouse_pos):
@@ -245,7 +237,7 @@ class PygameApp:
             self.cancel_main_menu()
 
     def draw_fantasy_button(self, surface, rect, label, font, primary=False):
-        mouse_pos = self.window_to_game(pygame.mouse.get_pos())
+        mouse_pos = canvas_mouse_position()
         hovered = rect.collidepoint(mouse_pos)
 
         shadow = rect.move(0, 4)
@@ -273,7 +265,7 @@ class PygameApp:
         surface.blit(text, text.get_rect(center=rect.center))
 
     def draw_menu_button(self, surface):
-        # The map has a purpose-built gap between Advance Week and its title.
+        # The map has a purpose-built gap between Advance Moon and its title.
         # Other screens can open the same menu with Escape without disturbing
         # their carefully arranged layouts.
         if self.current_screen_name != "locations":
@@ -360,52 +352,51 @@ class PygameApp:
         )
         self.screen.blit(scaled_surface, (0, 0))
 
+    def handle_event(self, event):
+        event = canvas_event(event)
+        if event.type == pygame.QUIT:
+            self.exit_action = "quit"
+            self.running = False
+            return
+
+        if self.save_browser:
+            self.save_browser.handle_event(event)
+            return
+
+        if self.show_exit_prompt:
+            self.handle_exit_prompt_event(event)
+            return
+
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.request_main_menu()
+            return
+
+        if (
+            self.current_screen_name == "locations"
+            and not self.decision_popup
+            and not getattr(
+                self.current_screen,
+                "show_advance_confirmation",
+                False,
+            )
+            and event.type == pygame.MOUSEBUTTONUP
+            and event.button == 1
+            and self.menu_button_rect.collidepoint(event.pos)
+        ):
+            self.request_main_menu()
+            return
+
+        if self.decision_popup:
+            self.decision_popup.handle_event(event)
+        else:
+            self.current_screen.handle_event(event)
+
     def run(self):
         while self.running:
             dt = self.clock.tick(FPS) / 1000
 
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.exit_action = "quit"
-                    self.running = False
-                    continue
-
-                if self.save_browser:
-                    self.save_browser.handle_event(
-                        event,
-                        position_transform=self.window_to_game,
-                    )
-                    continue
-
-                if self.show_exit_prompt:
-                    self.handle_exit_prompt_event(event)
-                    continue
-
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                    self.request_main_menu()
-                    continue
-
-                if (
-                    self.current_screen_name == "locations"
-                    and not self.decision_popup
-                    and not getattr(
-                        self.current_screen,
-                        "show_advance_confirmation",
-                        False,
-                    )
-                    and event.type == pygame.MOUSEBUTTONUP
-                    and event.button == 1
-                    and self.menu_button_rect.collidepoint(
-                        self.window_to_game(event.pos)
-                    )
-                ):
-                    self.request_main_menu()
-                    continue
-
-                if self.decision_popup:
-                    self.decision_popup.handle_event(event)
-                else:
-                    self.current_screen.handle_event(event)
+                self.handle_event(event)
 
             if not self.running:
                 break
@@ -425,7 +416,7 @@ class PygameApp:
             if self.save_browser:
                 self.save_browser.draw(
                     self.game_surface,
-                    mouse_pos=self.window_to_game(pygame.mouse.get_pos()),
+                    mouse_pos=canvas_mouse_position(),
                 )
 
             self.scale_surface_to_window()

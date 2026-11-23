@@ -1,5 +1,7 @@
 import math
 import pygame
+
+from ui_pygame.core.coordinates import canvas_mouse_position
 from pathlib import Path
 
 from core.sim.logging import log_event
@@ -1188,7 +1190,7 @@ class HatcheryScreen(BaseScreen):
 
     def draw(self, screen):
         self.buttons.clear()
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = canvas_mouse_position()
 
         if self.bg_image:
             screen.blit(self.bg_image, (0, 0))
@@ -1233,7 +1235,7 @@ class HatcheryScreen(BaseScreen):
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEWHEEL:
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = canvas_mouse_position()
             if hasattr(self, "egg_list_rect") and self.egg_list_rect.collidepoint(mouse_pos):
                 self.egg_scroll += event.y * 30
             elif hasattr(self, "caretaker_list_rect") and self.caretaker_list_rect.collidepoint(mouse_pos):

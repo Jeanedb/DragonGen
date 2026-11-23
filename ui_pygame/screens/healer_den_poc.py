@@ -1,4 +1,6 @@
 import pygame
+
+from ui_pygame.core.coordinates import canvas_event, canvas_mouse_position
 from dataclasses import dataclass
 import sys
 from pathlib import Path
@@ -413,7 +415,7 @@ class HealerDenScreen(BaseScreen):
         self.buttons.clear()
         self.get_selected_patient()
         self.clamp_scrolls()
-        mouse_pos = scale_mouse_pos(pygame.mouse.get_pos(), pygame.display.get_surface().get_size())
+        mouse_pos = canvas_mouse_position()
         if self.bg_image:
             screen.blit(self.bg_image, (0, 0))
         else:
@@ -502,9 +504,7 @@ class HealerDenScreen(BaseScreen):
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEWHEEL:
-            mouse_x, mouse_y = scale_mouse_pos(
-                pygame.mouse.get_pos(), pygame.display.get_surface().get_size(),
-            )
+            mouse_x, mouse_y = canvas_mouse_position()
             if self.popup_dragon:
                 if pygame.Rect(283, 204, 434, 260).collidepoint(mouse_x, mouse_y):
                     self.popup_scroll += event.y * 30
@@ -514,14 +514,9 @@ class HealerDenScreen(BaseScreen):
                 self.scroll_right += event.y * 30
             self.clamp_scrolls()
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            scaled_pos = scale_mouse_pos(event.pos, pygame.display.get_surface().get_size())
-            scaled_event = pygame.event.Event(event.type, {"pos": scaled_pos, "button": event.button})
-            for button in list(self.buttons):
-                button.handle_event(scaled_event)
-        else:
-            for button in list(self.buttons):
-                button.handle_event(event)
+        for button in list(self.buttons):
+            button.handle_event(event)
+
 
 
 def create_test_world():
@@ -533,12 +528,6 @@ def create_test_world():
         Dragon(5, "Mudroot", "MudWing", "Healer", healer_skill=0.9),
         Dragon(6, "Nightfall", "NightWing", "Scout"),
     ]
-
-
-def scale_mouse_pos(pos, window_size):
-    mouse_x, mouse_y = pos
-    window_width, window_height = window_size
-    return int(mouse_x * WIDTH / window_width), int(mouse_y * HEIGHT / window_height)
 
 
 def main():
@@ -554,7 +543,7 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            healer_screen.handle_event(event)
+            healer_screen.handle_event(canvas_event(event))
         healer_screen.update(dt)
         healer_screen.draw(game_surface)
         screen.blit(pygame.transform.smoothscale(game_surface, screen.get_size()), (0, 0))

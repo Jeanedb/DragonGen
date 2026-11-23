@@ -19,6 +19,8 @@ import random
 
 import pygame
 
+from ui_pygame.core.coordinates import canvas_mouse_position
+
 from ui_pygame.screens.village_center import (
     BLUE,
     BRONZE,
@@ -2132,7 +2134,7 @@ class VillageCenterScreen(LegacyVillageCenterScreen):
         self.draw_title_plaque(screen)
         self.draw_badges(screen)
 
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = canvas_mouse_position()
         self.draw_social_pulse_v2(screen, pygame.Rect(38, 122, 245, 466))
         self.draw_activity(screen, pygame.Rect(298, 122, 414, 466), mouse_pos)
         self.draw_gatherings_v2(screen, pygame.Rect(727, 122, 235, 466), mouse_pos)

@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pygame
 
+from ui_pygame.core.coordinates import canvas_mouse_position
+
 from ui_pygame.core.base_screen import BaseScreen
 
 try:
@@ -729,7 +731,7 @@ class ScrollLibraryScreen(BaseScreen):
         rect = pygame.Rect(0, 0, *size)
         rect.center = center
         dead = dragon is not None and self.is_dead(dragon)
-        hovered = dragon is not None and rect.collidepoint(pygame.mouse.get_pos())
+        hovered = dragon is not None and rect.collidepoint(canvas_mouse_position())
         fill = (77, 51, 32) if selected else ((40, 37, 34) if dead else (42, 34, 29))
         edge = GOLD if selected or hovered else ((88, 79, 70) if dead else BRONZE)
         pygame.draw.rect(screen, (7, 5, 4), rect.move(0, 3), border_radius=8)
@@ -881,7 +883,7 @@ class ScrollLibraryScreen(BaseScreen):
 
     def draw(self, screen):
         self.buttons.clear()
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = canvas_mouse_position()
         if self.bg_image:
             screen.blit(self.bg_image, (0, 0))
         else:
@@ -936,7 +938,7 @@ class ScrollLibraryScreen(BaseScreen):
                 self.roster_scroll = 0
 
         if event.type == pygame.MOUSEWHEEL:
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = canvas_mouse_position()
             if self._roster_rect.collidepoint(mouse_pos):
                 maximum = max(0, self._roster_content_height - self._roster_rect.height)
                 self.roster_scroll = clamp(self.roster_scroll + event.y * 28, -maximum, 0)

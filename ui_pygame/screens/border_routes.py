@@ -3,10 +3,13 @@ from pathlib import Path
 
 import pygame
 
+from ui_pygame.core.coordinates import canvas_mouse_position
+
 from core.sim.behavior import get_behavior_score
 from core.sim.injury import add_injury, escort_injured_sib
 from core.sim.logging import log_event
 from core.sim.memory import Memory, add_memory, current_moon
+from core.sim.mudwing import sib_group_label
 from ui_pygame.core.base_screen import BaseScreen
 
 
@@ -698,14 +701,15 @@ class BorderRoutesScreen(BaseScreen):
         screen.set_clip(list_rect)
 
         dragons = self.get_dragons()
-        row_height = 49
+        row_height = 63 if any(dragon.sib_group_id for dragon in dragons) else 49
         self._list_content_height = len(dragons) * row_height
         y = list_rect.y + self.list_scroll
         for dragon in dragons:
-            row = pygame.Rect(list_rect.x + 3, y + 3, list_rect.width - 6, 42)
+            row = pygame.Rect(list_rect.x + 3, y + 3, list_rect.width - 6, row_height - 7)
+            visible_row = row.clip(list_rect)
             selected = dragon in party
-            hovered = row.collidepoint(mouse_pos)
-            if row.bottom >= list_rect.top and row.top <= list_rect.bottom:
+            hovered = visible_row.collidepoint(mouse_pos)
+            if visible_row.height:
                 fill = (71, 49, 31) if hovered else (39, 31, 26)
                 edge = GOLD if selected else ((151, 105, 57) if hovered else (73, 54, 40))
                 pygame.draw.rect(screen, fill, row, border_radius=8)
@@ -727,7 +731,12 @@ class BorderRoutesScreen(BaseScreen):
                     self.tiny_font,
                     readiness_color,
                 )
-                self.buttons.append(ClickTarget(row, lambda d=dragon: self.toggle_party_member(d)))
+                if dragon.sib_group_id:
+                    label = sib_group_label(dragon.sib_group_id)
+                    if dragon.is_bigwings:
+                        label += " • BigWings"
+                    self.draw_text_line(screen, label, row.x + 43, row.y + 39, self.tiny_font, GOLD)
+                self.buttons.append(ClickTarget(visible_row, lambda d=dragon: self.toggle_party_member(d)))
             y += row_height
         screen.set_clip(old_clip)
 
@@ -834,7 +843,7 @@ class BorderRoutesScreen(BaseScreen):
 
     def draw(self, screen):
         self.buttons.clear()
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = canvas_mouse_position()
 
         if self.bg_image:
             screen.blit(self.bg_image, (0, 0))
@@ -904,7 +913,7 @@ class BorderRoutesScreen(BaseScreen):
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEWHEEL:
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = canvas_mouse_position()
             if self._dragon_list_rect.collidepoint(mouse_pos):
                 visible = self._dragon_list_rect.height
                 maximum = max(0, self._list_content_height - visible)

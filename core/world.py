@@ -50,3 +50,5 @@ class World:
     # Kept at the end to preserve the positional argument order used by any
     # older World construction code.
     location_notices: dict[str, list[dict]] = field(default_factory=dict)
+
+    scheduled_events: list[dict] = field(default_factory=list)
