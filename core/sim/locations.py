@@ -10,6 +10,7 @@ LOCATION_NAMES = {
     "border_routes": "The Border Routes",
     "scroll_library": "The Scroll Library",
     "hatchery": "The Hatchery",
+    "mud_wallow": "The Mud Wallow",
 }
 
 

@@ -22,6 +22,7 @@ from ui_pygame.screens.training_grounds import TrainingGroundsScreen
 from ui_pygame.screens.hunting_grounds import HuntingGroundsScreen
 from ui_pygame.screens.border_routes import BorderRoutesScreen
 from ui_pygame.screens.hatchery import HatcheryScreen
+from ui_pygame.screens.mud_wallow import MudWallowScreen
 
 
 WIDTH, HEIGHT = 1000, 700
@@ -97,6 +98,7 @@ class PygameApp:
             "border_routes": "border",
             "scroll_library": "library",
             "hatchery": "hatchery",
+            "mud_wallow": "mud_wallow",
         }
         open_location = screen_locations.get(self.current_screen_name)
         choice_location = choice.get("location", "relations")
@@ -158,6 +160,8 @@ class PygameApp:
             self.current_screen = BorderRoutesScreen(self.world, self.change_screen)
         elif screen_name == "hatchery":
             self.current_screen = HatcheryScreen(self.world, self.change_screen)    
+        elif screen_name == "mud_wallow":
+            self.current_screen = MudWallowScreen(self.world, self.change_screen)
         elif screen_name == "dragon_portrait":
             self.current_screen = DragonPortraitScreen(
                 self.world,

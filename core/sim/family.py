@@ -2,6 +2,23 @@ import random
 from core.sim.logging import log_event
 
 
+def birth_sib_group(dragon):
+    if getattr(dragon, "sib_adoption_moon", None) is not None:
+        return getattr(dragon, "birth_sib_group_id", None)
+    return getattr(dragon, "sib_group_id", None)
+
+
+def are_family(a, b):
+    a_groups = {getattr(a, "sib_group_id", None), birth_sib_group(a)} - {None, ""}
+    b_groups = {getattr(b, "sib_group_id", None), birth_sib_group(b)} - {None, ""}
+    return bool(
+        a_groups & b_groups
+        or a.id in b.parents
+        or b.id in a.parents
+        or set(a.parents) & set(b.parents)
+    )
+
+
 def add_family_bond_event(world, a, b):
     texts = [
         f"{a.name} and {b.name} spent time together as kin and grew closer.",
@@ -33,8 +50,6 @@ def add_family_conflict_event(world, a, b):
 
 
 def try_family_event(world, living):
-    from core.simulation import are_family  # temporary dependency
-
     family_pairs = []
 
     for i in range(len(living)):

@@ -5,6 +5,10 @@ from core.sim.eggs import create_egg
 from core.world import World
 from core.generator import generate_dragonet
 from core.sim.logging import log_event
+from core.sim.mudwing import (
+    maintain_bigwings, try_marsh_fire, try_mudwing_sib_decision, try_sib_adoption,
+)
+from core.sim.family import are_family
 from core.sim.progression import tick_dragon_progression
 from core.sim.events import run_event_phase
 from core.sim.titles import evaluate_world_titles
@@ -177,17 +181,6 @@ def prepare_pending_choice(world):
     choice_type = choice.get("type")
     choice.setdefault("location", CHOICE_LOCATIONS.get(choice_type, "relations"))
     return True
-
-def are_family(a, b):
-    a_sib_group = getattr(a, "sib_group_id", None)
-    b_sib_group = getattr(b, "sib_group_id", None)
-    if a_sib_group and a_sib_group == b_sib_group:
-        return True
-    if a.id in b.parents or b.id in a.parents:
-        return True
-    if set(a.parents) & set(b.parents):
-        return True
-    return False
 
 def add_friend_event(world, a, b):
     direction = getattr(world, "direction", None)
@@ -909,6 +902,7 @@ def advance_moon(world: World):
     run_reputation_phase(world)
 
     run_progression_phase(world, living)
+    maintain_bigwings(world)
 
     if random.random() < 0.35:
         try_existing_relationship_event(world, living)
@@ -923,7 +917,10 @@ def advance_moon(world: World):
 
     # occasional player choice
     if world.pending_choice is None:
-        
+        if try_sib_adoption(world) or try_marsh_fire(world) or try_mudwing_sib_decision(world):
+            world.event_log = world.event_log[-100:]
+            return finish_moon_advance(world, previous_event_ids)
+
         if random.random() < 0.10:
             created = create_ai_conversation_choice(world)
             if created:

@@ -5,6 +5,7 @@ import pygame
 
 from ui_pygame.core.base_screen import BaseScreen
 from core.sim.relationships import get_relationships
+from core.sim.mudwing import sib_group_label, sib_groups
 
 
 WIDTH, HEIGHT = 1000, 700
@@ -484,6 +485,58 @@ class DragonProfileScreen(BaseScreen):
         self.detail_view_height = rect.height
         screen.set_clip(old_clip)
 
+    def draw_sibs(self, screen, rect, dragon):
+        old_clip = screen.get_clip()
+        screen.set_clip(rect)
+        x = rect.x + 18
+        y = rect.y + 14 + self.detail_scroll
+        start_y = y
+        group_id = dragon.sib_group_id
+        title = sib_group_label(group_id) if group_id else "No recorded sib group"
+        screen.blit(self.heading.render(title, True, GOLD), (x, y))
+        y += 31
+
+        details = []
+        if dragon.sib_adoption_moon is not None:
+            details.append("Adopted sib")
+            if dragon.birth_sib_group_id:
+                details.append(f"Born into {sib_group_label(dragon.birth_sib_group_id).lower()}")
+        if dragon.birth_order is not None:
+            birth_group = dragon.birth_sib_group_id or group_id
+            label = "Birth order" if birth_group and birth_group.startswith("founding-") else "Hatch order"
+            details.append(f"{label} {dragon.birth_order}")
+        if dragon.egg_type == "blood_red":
+            details.append("Blood-red egg origin")
+        if dragon.fire_resistant:
+            details.append("Fire-resistant scales")
+        if details:
+            y = self.draw_wrapped_text(
+                screen, "  •  ".join(details), x, y, rect.width - 36, self.body, PARCHMENT
+            ) + 8
+
+        members = sib_groups(self.world).get(group_id, [])
+        siblings = [sib for sib in members if sib.id != dragon.id]
+        if not siblings:
+            screen.blit(self.body.render("No recorded sibs.", True, MUTED), (x, y))
+            y += 26
+        for sib in siblings:
+            if sib.status == "Alive":
+                place = str(sib.location or "Unknown").replace("_", " ").title()
+            else:
+                place = sib.status
+            role = ""
+            if sib.is_bigwings:
+                role = "  •  BigWings" if sib.status == "Alive" else "  •  Former BigWings"
+            if sib.sib_adoption_moon is not None:
+                role += "  •  Adopted sib"
+            y = self.draw_wrapped_text(
+                screen, f"{sib.name}  •  {place}{role}", x, y, rect.width - 36, self.body, TEXT
+            ) + 4
+
+        self.detail_content_height = max(rect.height, y - start_y + 25)
+        self.detail_view_height = rect.height
+        screen.set_clip(old_clip)
+
     def get_memory_lines(self, dragon):
         lines = []
         for memory in reversed(list(getattr(dragon, "memories", []) or [])):
@@ -679,15 +732,21 @@ class DragonProfileScreen(BaseScreen):
             tag_x = self.draw_tag(screen, tag_x, rect.y + 88, rank, GOLD)
         health = str(getattr(dragon, "health", "Unknown"))
         tag_x = self.draw_tag(screen, tag_x, rect.y + 88, health, self.get_health_color(dragon))
+        if tribe == "MudWing" and dragon.is_bigwings:
+            label = "BigWings" if dragon.status == "Alive" else "Former BigWings"
+            self.draw_tag(screen, tag_x, rect.y + 88, label, GOLD)
 
         location = str(getattr(dragon, "location", "Unknown")).replace("_", " ").title()
         screen.blit(self.small_text.render(f"Currently at: {location}", True, TEXT), (rect.x + 183, rect.y + 127))
 
         tab_y = rect.y + 177
-        tab_width = 158
-        for index, tab in enumerate(self.PROFILE_TABS):
+        tabs = self.PROFILE_TABS + ["Sibs"] if tribe == "MudWing" else self.PROFILE_TABS
+        if self.profile_tab not in tabs:
+            self.set_profile_tab("Overview")
+        tab_width = 132 if len(tabs) == 4 else 158
+        for index, tab in enumerate(tabs):
             button = FantasyButton(
-                (rect.x + 20 + index * 166, tab_y, tab_width, 34),
+                (rect.x + 20 + index * (tab_width + 8), tab_y, tab_width, 34),
                 tab.upper(),
                 lambda value=tab: self.set_profile_tab(value),
                 selected=self.profile_tab == tab,
@@ -704,6 +763,8 @@ class DragonProfileScreen(BaseScreen):
             self.draw_overview(screen, content_rect, dragon)
         elif self.profile_tab == "Bonds":
             self.draw_bonds(screen, content_rect, dragon)
+        elif self.profile_tab == "Sibs":
+            self.draw_sibs(screen, content_rect, dragon)
         else:
             self.draw_history(screen, content_rect, dragon, mouse_pos)
 

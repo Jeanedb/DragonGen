@@ -15,6 +15,10 @@ from core.sim.choice_handlers.border import (
 from core.sim.choice_handlers.personal import handle_personal_choice
 from core.sim.injury import add_injury
 from core.sim.logging import log_event
+from core.sim.mudwing import (
+    maintain_bigwings, resolve_marsh_fire, resolve_sib_adoption, resolve_sib_rations,
+    resolve_wallow_flood,
+)
 from core.sim.memory import Memory, add_memory, current_moon
 
 
@@ -525,6 +529,19 @@ def resolve_choice(world, option_id):
         "rival_confrontation_choice",
     }:
         handler_result = handle_personal_choice(world, option_id)
+        maintain_bigwings(world)
+
+    elif choice_type == "mudwing_marsh_fire":
+        handler_result = resolve_marsh_fire(world, option_id)
+
+    elif choice_type == "mudwing_sib_rations":
+        handler_result = resolve_sib_rations(world, option_id)
+
+    elif choice_type == "mudwing_wallow_flood":
+        handler_result = resolve_wallow_flood(world, option_id)
+
+    elif choice_type == "mudwing_sib_adoption":
+        handler_result = resolve_sib_adoption(world, option_id)
 
     elif choice_type == "hatchery_incident":
         handler_result = handle_hatchery_incident(world, option_id)

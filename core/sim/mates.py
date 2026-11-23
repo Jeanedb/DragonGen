@@ -1,5 +1,6 @@
 import random
 from core.sim.logging import log_event
+from core.sim.family import are_family
 
 
 def can_become_mates(a, b):
@@ -15,15 +16,7 @@ def can_become_mates(a, b):
     if a.mate_id is not None or b.mate_id is not None:
         return False
 
-    # direct parent/child
-    if a.id in b.parents or b.id in a.parents:
-        return False
-
-    # shared parents / siblings
-    if set(a.parents) & set(b.parents):
-        return False
-
-    return True
+    return not are_family(a, b)
 
 
 def mate_weight(a, b):

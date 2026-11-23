@@ -4,7 +4,7 @@ from pathlib import Path
 import pygame
 
 from core.sim.behavior import get_behavior_score
-from core.sim.injury import add_injury
+from core.sim.injury import add_injury, escort_injured_sib
 from core.sim.logging import log_event
 from core.sim.memory import Memory, add_memory, current_moon
 from ui_pygame.core.base_screen import BaseScreen
@@ -531,6 +531,7 @@ class BorderRoutesScreen(BaseScreen):
                 effect = "The expedition exposed weaknesses and left the tribe unsettled."
 
         injury_text = ""
+        encounter_party = party
         if not success and mission_type in {"patrol", "expedition"}:
             base_risk = 0.16 if mission_type == "patrol" else 0.38
             injury_risk = base_risk * (1.0 - profile["injury_protection"])
@@ -538,6 +539,15 @@ class BorderRoutesScreen(BaseScreen):
                 injured = random.choice(party)
                 if add_injury(self.world, injured):
                     injury_text = f" {injured.name} was injured and taken to the healer's den."
+                    escort = escort_injured_sib(self.world, injured, party)
+                    if escort is not None:
+                        injury_text = (
+                            f" {escort.name} left the patrol to escort their injured sib "
+                            f"{injured.name} to the Healer's Den."
+                        )
+                        encounter_party = [
+                            dragon for dragon in party if dragon.id not in (injured.id, escort.id)
+                        ]
 
         self.apply_relationship_result(party, success)
         self.add_patrol_fatigue(party, mission_type)
@@ -562,7 +572,8 @@ class BorderRoutesScreen(BaseScreen):
             importance=4 if mission_type == "expedition" else 3,
         )
         self.use_action()
-        self.create_border_encounter(party, mission_type)
+        if encounter_party:
+            self.create_border_encounter(encounter_party, mission_type)
 
     # Drawing helpers -------------------------------------------------
 

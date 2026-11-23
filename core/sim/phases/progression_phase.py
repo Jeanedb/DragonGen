@@ -2,6 +2,7 @@ import random
 from core.sim.memory import Memory, add_memory, choose_memory_to_reflect
 from core.sim.relationships import strengthen_relationship, weaken_relationship
 from core.sim.death import handle_possible_death
+from core.sim.family import birth_sib_group
 from core.sim.progression import tick_dragon_progression
 from core.generator import generate_dragonet
 from core.sim.logging import log_event
@@ -459,13 +460,10 @@ def run_progression_phase(world, living):
             existing_sibs = [
                 sibling
                 for sibling in world.dragons
-                if getattr(sibling, "sib_group_id", None) == dragonet.sib_group_id
+                if birth_sib_group(sibling) == dragonet.sib_group_id
             ]
             dragonet.birth_order = len(existing_sibs) + 1
-            dragonet.is_bigwings = not any(
-                getattr(sibling, "is_bigwings", False)
-                for sibling in existing_sibs
-            )
+            dragonet.is_bigwings = not any(sibling.is_bigwings for sibling in existing_sibs)
 
             for sibling in existing_sibs:
                 if sibling.id not in dragonet.friends:

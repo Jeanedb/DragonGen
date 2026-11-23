@@ -1,6 +1,7 @@
 import math
 import pygame
 from ui_pygame.core.base_screen import BaseScreen
+from core.sim.mudwing import has_mud_wallow
 from pathlib import Path
 
 try:
@@ -155,6 +156,16 @@ class LocationsScreen(BaseScreen):
             },
         ]
              
+        if has_mud_wallow(self.world):
+            self.locations.append({
+                "name": "Mud Wallow",
+                "desc": "Rest and spend time with sibs.",
+                "id": "mud_wallow",
+                "icon": "MW",
+                "anchor": (450, 385),
+                "side": "right",
+            })
+
         PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
         # Get the tribe being played.
@@ -866,6 +877,8 @@ class LocationsScreen(BaseScreen):
             self.change_screen("border_routes")
         elif loc_id == "hatchery":
             self.change_screen("hatchery")
+        elif loc_id == "mud_wallow":
+            self.change_screen("mud_wallow")
         else:
             print(f"{loc_id} not built yet.")
 

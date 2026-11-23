@@ -1041,11 +1041,12 @@ class HatcheryScreen(BaseScreen):
 
         for index, dragon in enumerate(dragons):
             row = pygame.Rect(list_rect.x + 4, list_rect.y + index * row_height + self.list_scroll, list_rect.width - 12, 52)
-            if row.bottom < list_rect.top or row.top > list_rect.bottom:
+            visible_row = row.clip(list_rect)
+            if not visible_row.width or not visible_row.height:
                 continue
             is_selected = dragon == selected
             is_current = getattr(dragon, "name", None) == current_name
-            hovered = row.collidepoint(mouse_pos)
+            hovered = visible_row.collidepoint(mouse_pos)
             fill = (70, 50, 32) if is_selected else ((53, 43, 35) if hovered else (39, 33, 29))
             edge = GOLD if is_selected else (GREEN if is_current else (72, 57, 45))
             pygame.draw.rect(screen, fill, row, border_radius=8)
@@ -1070,7 +1071,9 @@ class HatcheryScreen(BaseScreen):
             )
             role_image = self.fantasy_tiny.render(role_text, True, GREEN if is_current else rating_color)
             screen.blit(role_image, (row.x + 51, row.y + 29))
-            self.buttons.append(ClickTarget(row, lambda chosen=dragon: self.select_dragon(chosen)))
+            self.buttons.append(
+                ClickTarget(visible_row, lambda chosen=dragon: self.select_dragon(chosen))
+            )
 
         screen.set_clip(old_clip)
         self.draw_scroll_track(screen, list_rect, self.list_scroll, content_height, visible_height)
