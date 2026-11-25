@@ -1,6 +1,7 @@
 import random
 from core.sim.logging import log_event
-from core.sim.politics import get_random_foreign_tribe
+from core.sim.membership import mark_departed
+from core.sim.memory import Memory, add_memory
 
 
 def schedule_consequence(world, delay, data):
@@ -33,7 +34,8 @@ def process_scheduled_events(world):
     remaining = []
 
     for event in world.scheduled_events:
-        if world.moon >= event["trigger_moon"]:
+        waits_for_choice = event["data"].get("type") == "defector_returns" and world.pending_choice is not None
+        if world.moon >= event["trigger_moon"] and not waits_for_choice:
             resolve_scheduled_event(world, event["data"])
         else:
             remaining.append(event)
@@ -42,7 +44,16 @@ def process_scheduled_events(world):
 
 
 def resolve_scheduled_event(world, data):
-    if data["type"] == "abandoned_return":
+    if data["type"] == "seawing_trench_supplies":
+        world.food_stores += 5
+        log_event(
+            world,
+            "The shore crew followed the marked route to the trench sled and recovered 5 food.",
+            event_type="hunt",
+            importance=3,
+        )
+
+    elif data["type"] == "abandoned_return":
         abandoned = next((d for d in world.dragons if d.id == data["abandoned"]), None)
         abandoner = next((d for d in world.dragons if d.id == data["abandoner"]), None)
 
@@ -135,14 +146,18 @@ def resolve_scheduled_event(world, data):
             return
 
         old_tribe = dragon.tribe
-        new_tribe = get_random_foreign_tribe(world)
-
-        if not new_tribe:
+        home_tribe = world.tribe_name.removesuffix(" Tribe")
+        destinations = [tribe for tribe in world.tribal_relations if tribe not in {old_tribe, home_tribe}]
+        if not destinations:
             return
 
-        dragon.tribe = new_tribe
+        new_tribe = random.choice(destinations)
+        dragon.foreign_tribe = new_tribe
         dragon.role = "Defector"
         dragon.rank = "Outsider"
+        mark_departed(world, dragon)
+        add_memory(dragon, Memory("defected_after_betrayal", world.moon, caused_by.id, importance=6))
+        add_memory(caused_by, Memory("tribemate_defected", world.moon, dragon.id, importance=6))
 
         old = old_tribe
         new = new_tribe
@@ -183,57 +198,77 @@ def resolve_scheduled_event(world, data):
         })
         
     elif data["type"] == "defector_returns":
-        dragon = next((d for d in world.dragons if d.id == data["dragon_id"]), None)
-        target = next((d for d in world.dragons if d.id == data["target_id"]), None)
-
+        dragon, target = returning_dragons(world, data)
         if not dragon or not target:
             return
 
-        if dragon.status != "Alive" or target.status != "Alive":
-            return
+        world.pending_choice = {
+            "type": "defector_return_choice",
+            "location": "border",
+            "dragon_id": dragon.id,
+            "target_id": target.id,
+            "text": (
+                f"{dragon.name} has returned to the boundary as a member of the {dragon.foreign_tribe}s. "
+                f"They are still angry with {target.name} for leaving them on patrol and demand to speak."
+            ),
+            "options": [
+                {"id": "hear_out", "text": "Let them talk at the border"},
+                {"id": "turn_away", "text": "Turn the former tribemate away"},
+            ],
+        }
 
-        if dragon.role != "Defector":
-            return
 
+def returning_dragons(world, data):
+    dragon = next(
+        (d for d in world.dragons if d.id == data["dragon_id"] and d.status == "Departed"),
+        None,
+    )
+    target = next(
+        (d for d in world.dragons if d.id == data["target_id"] and d.status == "Alive"),
+        None,
+    )
+    return dragon, target
+
+
+def resolve_defector_return(world, option_id):
+    dragon, target = returning_dragons(world, world.pending_choice)
+    if not dragon or not target:
+        return "The border meeting can no longer take place."
+
+    if option_id == "hear_out":
+        prior_resentment = dragon.resentment.get(target.id, 0)
+        dragon.resentment[target.id] = max(0, prior_resentment - 2)
+        target.trust[dragon.id] = target.trust.get(dragon.id, 0) + 0.5
+        text = (
+            f"{dragon.name} told {target.name} how it felt to be left behind. "
+            f"{target.name} listened, and {dragon.name} returned to the {dragon.foreign_tribe}s with less resentment."
+        )
+        memories = ("heard_at_border", "heard_former_tribemate")
+    elif option_id == "turn_away":
+        dragon.resentment[target.id] = dragon.resentment.get(target.id, 0) + 2
+        target.resentment[dragon.id] = target.resentment.get(dragon.id, 0) + 1
         if target.id not in dragon.rivals:
             dragon.rivals.append(target.id)
         if dragon.id not in target.rivals:
             target.rivals.append(dragon.id)
-
-        dragon.resentment[target.id] = dragon.resentment.get(target.id, 0) + 2
-
-        log_event(
-            world,
-            f"{dragon.name}, now of the {dragon.tribe}s, was sighted again near the territory. Their hostility toward {target.name} has only grown.",
-            involved_ids=[dragon.id, target.id],
-            event_type="defector_return",
-            importance=5,
-            cause="A past defection has come back to haunt the tribe"
+        relation = world.tribal_relations.get(dragon.foreign_tribe, 0)
+        world.tribal_relations[dragon.foreign_tribe] = max(-100, relation - 2)
+        text = (
+            f"{target.name} refused to meet with {dragon.name}. "
+            f"{dragon.name} left angry, and relations with the {dragon.foreign_tribe}s worsened."
         )
+        memories = ("turned_away_at_border", "turned_away_former_tribemate")
+    else:
+        return "That response is unavailable."
 
-        # 🔥 confrontation escalation
-        if random.random() < 0.4:
-            log_event(
-                world,
-                f"{dragon.name} actively confronted {target.name} during the sighting.",
-                involved_ids=[dragon.id, target.id],
-                event_type="defector_confrontation",
-                importance=5
-            )
-
-            dragon.resentment[target.id] = dragon.resentment.get(target.id, 0) + 2
-            target.resentment[dragon.id] = target.resentment.get(dragon.id, 0) + 2
-
-        # 🔥 injury escalation
-        if random.random() < 0.15:
-            victim = random.choice([dragon, target])
-
-            victim.health = "Injured"
-
-            log_event(
-                world,
-                f"{victim.name} was injured during the encounter with {dragon.name}.",
-                involved_ids=[dragon.id, target.id, victim.id],
-                event_type="defector_injury",
-                importance=6
-            )
+    for member, other, kind in zip((dragon, target), (target, dragon), memories):
+        add_memory(member, Memory(kind, world.moon, other.id, importance=6))
+    log_event(
+        world, text, involved_ids=[dragon.id, target.id], event_type="defector_return",
+        importance=6,
+    )
+    if option_id == "hear_out":
+        if prior_resentment <= 0:
+            return f"{target.name} trusts {dragon.name} a little more. Both will remember the meeting."
+        return f"{dragon.name}'s resentment toward {target.name} eased. Both will remember the meeting."
+    return f"The rivalry deepened, and relations with the {dragon.foreign_tribe}s worsened. Both will remember the meeting."

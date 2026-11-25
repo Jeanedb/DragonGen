@@ -91,3 +91,4 @@ class Dragon:
     sib_adoption_moon: Optional[int] = None
     caretaker_id: Optional[int] = None
     caretaker_role: Optional[str] = None
+    foreign_tribe: Optional[str] = None

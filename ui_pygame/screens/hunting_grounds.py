@@ -10,7 +10,10 @@ from core.sim.behavior import get_behavior_score
 from core.sim.fatigue import change_fatigue
 from core.sim.memory import Memory, add_memory, current_moon
 from core.sim.logging import log_event
-from core.sim.seawing import REEF_REWARDS, forage_reef, has_reef_routes, reef_food_range, reef_party
+from core.sim.seawing import (
+    REEF_REWARDS, forage_reef, has_reef_routes, has_strong_current, reef_food_range,
+    reef_party, reef_success,
+)
 
 WIDTH, HEIGHT = 1000, 700
 
@@ -120,6 +123,7 @@ class HuntingGroundsScreen(BaseScreen):
 
         self.selected_party = []
         self.hunt_party_mode = "single"
+        self.expedition_region = "reef" if has_reef_routes(world) else "land"
 
         self.fantasy_title = pygame.font.SysFont("georgia", 30, bold=True)
         self.fantasy_heading = pygame.font.SysFont("georgia", 18, bold=True)
@@ -256,6 +260,7 @@ class HuntingGroundsScreen(BaseScreen):
         divers, shore_party = reef_party(party, route)
         size = "large" if route == "deep_reef" else "small"
         profile = self.get_party_profile(divers, size)
+        profile["success"] = reef_success(self.world, route, divers, profile["success"])
         return profile, len(shore_party)
 
     def get_party_profile(self, party, hunt_type):
@@ -1342,11 +1347,34 @@ class HuntingGroundsScreen(BaseScreen):
         self.draw_beveled_panel(screen, rect, title="Choose an Expedition")
 
         reef_access = has_reef_routes(self.world)
-        art_rect = pygame.Rect(rect.x + 18, rect.y + 55, rect.width - 36, 71 if reef_access else 145)
-        expedition_art = self.bg_image if reef_access else self.forest_image
+        reef_view = reef_access and self.expedition_region == "reef"
+        art_y = rect.y + 55
+        art_height = 145
+        if reef_access:
+            tab_width = (rect.width - 44) // 2
+            for index, (region, label) in enumerate((("reef", "REEF"), ("land", "LAND"))):
+                tab = HuntButton(
+                    (rect.x + 18 + index * (tab_width + 8), art_y, tab_width, 33),
+                    label,
+                    lambda selected=region: setattr(self, "expedition_region", selected),
+                    selected=self.expedition_region == region,
+                )
+                self.buttons.append(tab)
+                tab.draw(screen, self.fantasy_small, mouse_pos)
+            art_y += 48
+            art_height = 151 if reef_view else 96
+
+        art_rect = pygame.Rect(rect.x + 18, art_y, rect.width - 36, art_height)
+        expedition_art = self.bg_image if reef_view else self.forest_image
         if expedition_art:
-            art = pygame.transform.smoothscale(expedition_art, art_rect.size)
-            screen.blit(art, art_rect)
+            scale = max(
+                art_rect.width / expedition_art.get_width(),
+                art_rect.height / expedition_art.get_height(),
+            )
+            art = pygame.transform.smoothscale_by(expedition_art, scale)
+            source = pygame.Rect((0, 0), art_rect.size)
+            source.center = art.get_rect().center
+            screen.blit(art, art_rect, source)
         else:
             pygame.draw.rect(screen, (37, 62, 39), art_rect, border_radius=9)
         pygame.draw.rect(screen, BRONZE, art_rect, 2, 9)
@@ -1359,6 +1387,11 @@ class HuntingGroundsScreen(BaseScreen):
             strength_color = GOLD
         elif "Weak" in strength_text:
             strength_color = RED
+
+        if reef_view:
+            strong = has_strong_current(self.world)
+            strength_text = "Strong Current" if strong else "Calm Current"
+            strength_color = GOLD if strong else GREEN
 
         strength_bar = pygame.Surface((art_rect.width, 31), pygame.SRCALPHA)
         strength_bar.fill((12, 8, 6, 205))
@@ -1374,17 +1407,17 @@ class HuntingGroundsScreen(BaseScreen):
             ("LARGE HUNT", "large", "MEDIUM RISK", 18, 30, GOLD),
             ("DANGEROUS HUNT", "dangerous", "HIGH RISK", 30, 50, RED),
         ]
-        if reef_access:
-            hunt_definitions.extend([
+        if reef_view:
+            hunt_definitions = [
                 ("SHALLOW REEF", "shallow_reef", "ALL TRIBES", *REEF_REWARDS["shallow_reef"], GREEN),
                 ("DEEP REEF", "deep_reef", "SEAWING DIVERS", *REEF_REWARDS["deep_reef"], GOLD),
-            ])
+            ]
         active_party = self.get_active_party()
         hunts_remaining = self.get_hunts_remaining()
         card_y = art_rect.bottom + 14
 
         for title, hunt_type, risk, minimum_food, maximum_food, risk_color in hunt_definitions:
-            card = pygame.Rect(rect.x + 14, card_y, rect.width - 28, 54 if reef_access else 70)
+            card = pygame.Rect(rect.x + 14, card_y, rect.width - 28, 78 if reef_view else 70)
             pygame.draw.rect(screen, (38, 30, 25), card, border_radius=9)
             pygame.draw.rect(screen, (82, 59, 41), card, 1, 9)
             pygame.draw.rect(screen, risk_color, (card.x, card.y, 5, card.height), border_radius=3)
@@ -1403,12 +1436,12 @@ class HuntingGroundsScreen(BaseScreen):
             detail = f"{risk}  •  {low}–{high} food  •  {chance}% success"
             if is_reef and not ready:
                 detail = "Needs a healthy adult SeaWing" if hunt_type == "deep_reef" else "Needs a healthy adult"
-            self.draw_text_line(screen, title, card.x + 16, card.y + 7, self.fantasy_body_bold, CREAM)
+            self.draw_text_line(screen, title, card.x + 16, card.y + 12, self.fantasy_body_bold, CREAM)
             self.draw_fitted_text_line(
                 screen,
                 detail,
                 card.x + 16,
-                card.y + (29 if reef_access else 36),
+                card.y + 38,
                 card.width - 110,
                 MUTED if enabled else (106, 98, 89),
                 start_size=11,
@@ -1424,7 +1457,7 @@ class HuntingGroundsScreen(BaseScreen):
             )
             self.buttons.append(button)
             button.draw(screen, self.fantasy_tiny, mouse_pos)
-            card_y += card.height + 8
+            card_y += card.height + (12 if reef_view else 8)
 
     def draw_hunting_log(self, screen, rect):
         self.draw_beveled_panel(screen, rect, title="Hunting Journal")
@@ -1528,8 +1561,11 @@ class HuntingGroundsScreen(BaseScreen):
         )
         title = title_font.render(title_text, True, CREAM)
         screen.blit(title, title.get_rect(center=(title_panel.centerx, title_panel.y + 35)))
-        if has_reef_routes(self.world):
-            subtitle_text = "SeaWings dive deep. Other tribes forage in the shallows."
+        if self.expedition_region == "reef":
+            if has_strong_current(self.world):
+                subtitle_text = "Strong current makes deep dives harder. SeaWing scouts help."
+            else:
+                subtitle_text = "SeaWings dive deep. Other tribes forage in the shallows."
         else:
             subtitle_text = "Gather the tribe's hunters. Choose the risk. Bring home prey."
         subtitle_font = self.get_fitted_font(

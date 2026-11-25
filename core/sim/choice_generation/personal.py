@@ -1,6 +1,8 @@
 import random
 
 from core.sim.logging import log_event
+from core.sim.life_story import can_return_mentor_help
+from core.sim.patrol_experience import rescue_injury_risk
 from core.sim.politics import get_most_hostile_relation
 from core.sim.regions import (
     get_random_region,
@@ -64,6 +66,8 @@ def create_injured_patrol_choice(world):
                 continue
 
             weight = 1.0
+            if can_return_mentor_help(a, b, world.moon):
+                weight += 2.0
 
             if ("saved_by", b.id) in a.memory_flags:
                 weight += 1.5
@@ -180,6 +184,10 @@ def create_injured_patrol_choice(world):
                 f"What should {b.name} do?"
             )
 
+    mentorship = can_return_mentor_help(a, b, world.moon)
+    if mentorship:
+        prompt_text += f" {b.name} remembers learning from {a.name}. This is a chance to return the favour."
+
     world.pending_choice = {
         "type": "injured_patrol_choice",
         "text": prompt_text,
@@ -193,7 +201,7 @@ def create_injured_patrol_choice(world):
             {"label": "Tribal mood", "value": str(mood)},
         ],
         "options": [
-            {"id": "stay_and_help", "text": f"Stay and help {a.name}"},
+            {"id": "stay_and_help", "text": f"Stay and help {a.name} ({rescue_injury_risk(b):.0%} risk to helper)"},
             {"id": "run_for_help", "text": "Return to camp for help"}
         ]
     }

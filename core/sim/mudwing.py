@@ -63,9 +63,10 @@ def maintain_bigwings(world):
             importance=5,
             tags=["mudwing", "sib", "family"],
         ))
+        loss = "departure" if former.status == "Departed" else "death"
         log_event(
             world,
-            f"{successor.name} took up BigWings duties for their sibs after {former.name}'s death.",
+            f"{successor.name} took up BigWings duties for their sibs after {former.name}'s {loss}.",
             involved_ids=[successor.id, former.id],
             event_type="bigwings_succession",
             importance=5,

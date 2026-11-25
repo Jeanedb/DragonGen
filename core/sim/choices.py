@@ -14,7 +14,9 @@ from core.sim.choice_handlers.border import (
 )
 from core.sim.choice_handlers.personal import handle_personal_choice
 from core.sim.injury import add_injury
-from core.sim.seawing import resolve_aquatic_warning, resolve_reef_storm
+from core.sim.consequences import resolve_defector_return
+from core.sim.relationship_stories import resolve_expedition_credit, resolve_friendship_rations
+from core.sim.seawing import resolve_aquatic_warning, resolve_reef_storm, resolve_trench_discovery
 from core.sim.logging import log_event
 from core.sim.mudwing import (
     maintain_bigwings, resolve_marsh_fire, resolve_sib_adoption, resolve_sib_rations,
@@ -550,11 +552,23 @@ def resolve_choice(world, option_id):
     elif choice_type == "seawing_aquatic_warning":
         handler_result = resolve_aquatic_warning(world, option_id)
 
+    elif choice_type == "seawing_trench_discovery":
+        handler_result = resolve_trench_discovery(world, option_id)
+
     elif choice_type == "seawing_reef_storm":
         handler_result = resolve_reef_storm(world, option_id)
 
     elif choice_type == "hunting_crisis":
         handler_result = handle_hunting_crisis(world, option_id)
+
+    elif choice_type == "friendship_rations":
+        handler_result = resolve_friendship_rations(world, option_id)
+
+    elif choice_type == "expedition_credit":
+        handler_result = resolve_expedition_credit(world, option_id)
+
+    elif choice_type == "defector_return_choice":
+        handler_result = resolve_defector_return(world, option_id)
 
     elif choice_type == "border_crisis":
         handler_result = handle_border_crisis(world, option_id)

@@ -11,6 +11,7 @@ from core.sim.logging import log_event
 from ui_pygame.core.base_screen import BaseScreen
 
 WIDTH, HEIGHT = 1000, 700
+TRAINING_PER_MOON = 2
 
 TEXT = (236, 222, 196)
 MUTED = (176, 158, 132)
@@ -161,11 +162,13 @@ class TrainingGroundsScreen(BaseScreen):
 
         return None
 
-    def get_dragons(self):
+    def get_dragons(self, training_type=None):
+        mode = training_type or self.training_mode
         return [
             d for d in getattr(self.world, "dragons", [])
             if getattr(d, "status", "") == "Alive"
             and getattr(d, "role", "") != "Dragonet"
+            and (mode == "mentor" or getattr(d, "health", "Healthy") == "Healthy")
         ]
 
     def add_training_event(self, text, involved_ids=None, importance=2):
@@ -177,27 +180,17 @@ class TrainingGroundsScreen(BaseScreen):
             importance=importance,
         )
 
+    def get_training_remaining(self):
+        flags = self.world.world_flags
+        used = flags.get("training_actions_used", 0) if flags.get("training_action_moon") == self.world.moon else 0
+        return max(0, TRAINING_PER_MOON - used)
+
     def run_training(self, training_type):
-
-        dragons = self.get_dragons()
-
-        if training_type == "team":
-            if len(self.training_group_a) < 1 or len(self.training_group_b) < 1:
-                return
-        else:
-            if len(self.training_group_a) != 1 or len(self.training_group_b) != 1:
-                return
-
-        if len(dragons) < 2:
+        remaining = self.get_training_remaining()
+        if not remaining or not self.training_is_ready(training_type):
             return
 
         a = self.training_group_a[0]
-
-        others = [d for d in dragons if d != a]
-
-        if not a or not others:
-            return
-
         training_score = self.get_training_score(a, training_type)
 
         b = self.training_group_b[0]
@@ -356,6 +349,10 @@ class TrainingGroundsScreen(BaseScreen):
             f"{text}\n    {effect_text}",
             involved_ids=list(dict.fromkeys(involved_ids)),
             importance=importance,
+        )
+        self.world.world_flags.update(
+            training_action_moon=self.world.moon,
+            training_actions_used=TRAINING_PER_MOON - remaining + 1,
         )
 
     def get_training_effect_text(self, a, b, outcome_type):
@@ -944,10 +941,17 @@ class TrainingGroundsScreen(BaseScreen):
         handle_y = rect.top + int(ratio * rect.height)
         pygame.draw.circle(screen, GOLD, (rect.centerx, handle_y), 4)
 
-    def training_is_ready(self):
-        if self.training_mode == "team":
-            return len(self.training_group_a) >= 1 and len(self.training_group_b) >= 1
-        return len(self.training_group_a) == 1 and len(self.training_group_b) == 1
+    def training_is_ready(self, training_type=None):
+        mode = training_type or self.training_mode
+        eligible = {dragon.id for dragon in self.get_dragons(mode)}
+        max_per_side = 3 if mode == "team" else 1
+        if not (
+            1 <= len(self.training_group_a) <= max_per_side
+            and 1 <= len(self.training_group_b) <= max_per_side
+        ):
+            return False
+        participants = [dragon.id for dragon in self.training_group_a + self.training_group_b]
+        return len(set(participants)) == len(participants) and set(participants) <= eligible
 
     def get_mode_description(self):
         descriptions = {
@@ -1109,15 +1113,16 @@ class TrainingGroundsScreen(BaseScreen):
             MUTED,
         )
 
-        ready = self.training_is_ready()
-        status_text = "THE RING IS READY" if ready else "ASSIGN DRAGONS TO BOTH SIDES"
+        remaining = self.get_training_remaining()
+        ready = remaining > 0 and self.training_is_ready()
+        status_text = f"TRAINING SESSIONS LEFT THIS MOON: {remaining}"
         status_color = GREEN if ready else GOLD
         status = self.fantasy_tiny.render(status_text, True, status_color)
         screen.blit(status, status.get_rect(center=(rect.centerx, rect.y + 458)))
 
         start = TrainingButton(
             (rect.centerx - 112, rect.bottom - 58, 224, 42),
-            "BEGIN TRAINING" if ready else "SELECT COMBATANTS",
+            "BEGIN TRAINING" if ready else ("SESSION LIMIT REACHED" if not remaining else "SELECT COMBATANTS"),
             lambda: self.run_training(self.training_mode),
             enabled=ready,
             primary=True,
@@ -1218,6 +1223,9 @@ class TrainingGroundsScreen(BaseScreen):
 
     def set_training_mode(self, mode):
         self.training_mode = mode
+        eligible = self.get_dragons()
+        self.training_group_a = [dragon for dragon in self.training_group_a if dragon in eligible]
+        self.training_group_b = [dragon for dragon in self.training_group_b if dragon in eligible]
 
         # If switching out of team mode, reduce to 1v1.
         if mode != "team":

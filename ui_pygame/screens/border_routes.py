@@ -10,6 +10,8 @@ from core.sim.injury import add_injury, escort_injured_sib
 from core.sim.logging import log_event
 from core.sim.memory import Memory, add_memory, current_moon
 from core.sim.mudwing import sib_group_label
+from core.sim.patrol_experience import record_patrol_milestone
+from core.sim.relationship_stories import try_expedition_credit
 from ui_pygame.core.base_screen import BaseScreen
 
 
@@ -567,6 +569,10 @@ class BorderRoutesScreen(BaseScreen):
                 ),
             )
 
+        if success and mission_type == "patrol":
+            for dragon in party:
+                record_patrol_milestone(self.world, dragon)
+
         log_event(
             self.world,
             f"{text}\n    {effect}{injury_text}",
@@ -575,6 +581,8 @@ class BorderRoutesScreen(BaseScreen):
             importance=4 if mission_type == "expedition" else 3,
         )
         self.use_action()
+        if success and mission_type == "expedition" and try_expedition_credit(self.world, party):
+            return
         if encounter_party:
             self.create_border_encounter(encounter_party, mission_type)
 

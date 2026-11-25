@@ -7,6 +7,9 @@ from ui_pygame.core.coordinates import canvas_mouse_position
 
 from ui_pygame.core.base_screen import BaseScreen
 from core.sim.relationships import get_relationships
+from core.sim.life_story import STORY_EVENT_TYPES, STORY_LINES, defining_memories, set_followed
+from core.sim.patrol_experience import PATROL_MILESTONE, patrol_milestone_text
+from core.sim.seawing import has_dark_vision
 from core.sim.mudwing import sib_group_label, sib_groups
 
 
@@ -101,7 +104,7 @@ class RosterEntry(ClickTarget):
 class DragonProfileScreen(BaseScreen):
     """Searchable tribe roster with focused Overview, Bonds, and History tabs."""
 
-    STATUS_FILTERS = ["Living", "Fallen", "All"]
+    STATUS_FILTERS = ["Living", "Fallen", "Away", "All", "Following"]
     ATTENTION_FILTERS = ["All", "Attention", "Leaders"]
     SORT_MODES = ["Rank", "Name", "Age", "Location"]
     PROFILE_TABS = ["Overview", "Bonds", "History"]
@@ -120,6 +123,7 @@ class DragonProfileScreen(BaseScreen):
         self.search_active = False
         self.list_scroll = 0
         self.detail_scroll = 0
+        self.chronicle_trail = []
         self.detail_content_height = 0
         self.detail_view_height = 0
         self.search_rect = pygame.Rect(48, 156, 286, 34)
@@ -214,9 +218,14 @@ class DragonProfileScreen(BaseScreen):
         dragons = self.get_all_dragons()
 
         if self.status_filter == "Living":
-            dragons = [d for d in dragons if str(getattr(d, "status", "Alive")).lower() != "dead"]
+            dragons = [d for d in dragons if str(getattr(d, "status", "Alive")).lower() == "alive"]
         elif self.status_filter == "Fallen":
             dragons = [d for d in dragons if str(getattr(d, "status", "Alive")).lower() == "dead"]
+
+        elif self.status_filter == "Away":
+            dragons = [d for d in dragons if d.status == "Departed"]
+        elif self.status_filter == "Following":
+            dragons = [d for d in dragons if self.is_following(d)]
 
         if self.attention_filter == "Attention":
             dragons = [d for d in dragons if self.needs_attention(d)]
@@ -268,9 +277,38 @@ class DragonProfileScreen(BaseScreen):
         names = [self.get_dragon_name_by_id(value) for value in (values or [])]
         return ", ".join(names) if names else "None"
 
+    def is_following(self, dragon):
+        return dragon.id in self.world.world_flags.get("followed_dragons", [])
+
+    def toggle_following(self, dragon):
+        set_followed(self.world, dragon.id, not self.is_following(dragon))
+        self.ensure_valid_selection()
+
     def select_dragon(self, dragon):
+        self.chronicle_trail.clear()
         self.selected_dragon = dragon
         self.detail_scroll = 0
+
+    def open_chronicle_link(self, dragon):
+        self.chronicle_trail.append((
+            self.selected_dragon, self.detail_scroll, self.status_filter,
+            self.attention_filter, self.search_text, self.list_scroll,
+        ))
+        if dragon not in self.get_filtered_dragons():
+            self.status_filter = "All"
+            self.attention_filter = "All"
+            self.search_text = ""
+            self.list_scroll = 0
+        self.selected_dragon = dragon
+        self.detail_scroll = 0
+
+    def go_back_in_chronicle(self):
+        (
+            self.selected_dragon, self.detail_scroll, self.status_filter,
+            self.attention_filter, self.search_text, self.list_scroll,
+        ) = self.chronicle_trail.pop()
+        self.profile_tab = "History"
+        self.history_mode = "Full Chronicle"
 
     def set_status_filter(self, status):
         self.status_filter = status
@@ -323,10 +361,10 @@ class DragonProfileScreen(BaseScreen):
 
         self.draw_search_box(screen)
 
-        tab_width = 88
+        tab_width = 53
         for index, status in enumerate(self.STATUS_FILTERS):
             button = FantasyButton(
-                (rect.x + 16 + index * 94, rect.y + 93, tab_width, 30),
+                (rect.x + 16 + index * 58, rect.y + 93, tab_width, 30),
                 status.upper(),
                 lambda value=status: self.set_status_filter(value),
                 selected=self.status_filter == status,
@@ -456,6 +494,10 @@ class DragonProfileScreen(BaseScreen):
             ("RIVALS", self.format_names(getattr(dragon, "rivals", [])), RED),
             ("MATES", self.format_names(getattr(dragon, "mates", [])), GOLD),
         ]
+        for kind, label in (("mentored_by", "MENTORS"), ("mentored", "STUDENTS")):
+            partners = list(dict.fromkeys(memory.other_id for memory in dragon.memories if memory.type == kind))
+            if partners:
+                groups.append((label, self.format_names(partners), GOLD))
         for label, value, color in groups:
             screen.blit(self.small_bold.render(label, True, color), (x, y))
             y = self.draw_wrapped_text(screen, value, x, y + 22, rect.width - 36, self.body, TEXT) + 16
@@ -585,11 +627,43 @@ class DragonProfileScreen(BaseScreen):
 
     def get_dragon_events(self, dragon):
         events = getattr(self.world, "event_log", []) or []
-        return [
-            event
-            for event in reversed(events)
-            if self.event_involves_dragon(event, dragon)
+        history = [
+            event for event in reversed(events) if self.event_involves_dragon(event, dragon)
         ]
+        if not any(event.get("type") == PATROL_MILESTONE for event in history):
+            milestone = next((memory for memory in dragon.memories if memory.type == PATROL_MILESTONE), None)
+            if milestone:
+                history.append({
+                    "type": PATROL_MILESTONE, "moon": milestone.moon,
+                    "text": patrol_milestone_text(dragon), "importance": milestone.importance,
+                    "involved_ids": [dragon.id],
+                })
+        for memory in defining_memories(dragon):
+            logged_type = {
+                **STORY_EVENT_TYPES,
+                "helped_by_former_student": "returned_mentor_help",
+                "defected_after_betrayal": "defection",
+                "tribemate_defected": "defection",
+                "heard_at_border": "defector_return",
+                "heard_former_tribemate": "defector_return",
+                "turned_away_at_border": "defector_return",
+                "turned_away_former_tribemate": "defector_return",
+            }.get(memory.type, memory.type)
+            if any(
+                entry.get("type") == logged_type and entry.get("moon") == memory.moon
+                and memory.other_id in entry.get("involved_ids", [])
+                for entry in history
+            ):
+                continue
+            history.append({
+                "type": memory.type, "moon": memory.moon, "importance": memory.importance,
+                "text": STORY_LINES[memory.type].format(
+                    dragon=dragon.name, other=self.get_dragon_name_by_id(memory.other_id)
+                ),
+                "involved_ids": [dragon.id, memory.other_id],
+            })
+        history.sort(key=lambda event: event.get("moon") or 0, reverse=True)
+        return history
 
     def get_event_color(self, event_type):
         lowered = str(event_type).lower()
@@ -600,6 +674,31 @@ class DragonProfileScreen(BaseScreen):
         if any(word in lowered for word in ("leader", "training", "hunt", "border")):
             return GOLD
         return BRONZE
+
+    def draw_chronicle_links(self, screen, viewport, y, event, dragon, dragons, mouse_pos):
+        x_start = viewport.x + 36
+        right = viewport.right - 18
+        x = x_start
+        ids = dict.fromkeys(str(dragon_id) for dragon_id in (event.get("involved_ids") or event.get("dragon_ids") or ()))
+        for dragon_id in ids:
+            other = dragons.get(dragon_id)
+            if other is None or other.id == dragon.id:
+                continue
+            name = self.small_bold.render(other.name, True, GOLD)
+            width = min(name.get_width() + 18, right - x_start)
+            if x + width > right:
+                x = x_start
+                y += 27
+            rect = pygame.Rect(x, y, width, 22)
+            visible = rect.clip(viewport)
+            if visible.width and visible.height:
+                hovered = visible.collidepoint(mouse_pos)
+                pygame.draw.rect(screen, PANEL_LIGHT, rect, border_radius=5)
+                pygame.draw.rect(screen, GOLD if hovered else BRONZE, rect, width=1, border_radius=5)
+                screen.blit(name, (rect.x + 9, rect.y + 3), pygame.Rect(0, 0, width - 18, name.get_height()))
+                self.buttons.append(ClickTarget(visible, lambda target=other: self.open_chronicle_link(target)))
+            x += width + 7
+        return y + 27 if x != x_start else y
 
     def draw_history(self, screen, rect, dragon, mouse_pos):
         mode_width = 248
@@ -649,6 +748,7 @@ class DragonProfileScreen(BaseScreen):
                     )
         else:
             events = self.get_dragon_events(dragon)
+            dragons = {str(member.id): member for member in self.get_all_dragons()}
             screen.blit(self.small_bold.render("COMPLETE PERSONAL RECORD", True, GOLD), (x, y))
             count = self.small_text.render(f"{len(events)} attributed events", True, MUTED)
             screen.blit(count, count.get_rect(topright=(history_rect.right - 18, y + 1)))
@@ -697,6 +797,7 @@ class DragonProfileScreen(BaseScreen):
                             MUTED,
                         )
 
+                    y = self.draw_chronicle_links(screen, history_rect, y, event, dragon, dragons, mouse_pos)
                     y += 13
                     pygame.draw.line(
                         screen,
@@ -720,6 +821,16 @@ class DragonProfileScreen(BaseScreen):
             screen.blit(message, message.get_rect(center=rect.center))
             return
 
+        following = self.is_following(dragon)
+        follow_button = FantasyButton(
+            (rect.right - 133, rect.y + 22, 113, 30),
+            "UNFOLLOW" if following else "FOLLOW",
+            lambda: self.toggle_following(dragon),
+            selected=following,
+        )
+        self.buttons.append(follow_button)
+        follow_button.draw(screen, self.tiny, mouse_pos)
+
         self.draw_portrait(screen, (rect.x + 20, rect.y + 20, 142, 142), dragon)
         name = str(getattr(dragon, "name", "Unknown"))
         screen.blit(self.name_font.render(name, True, PARCHMENT), (rect.x + 182, rect.y + 24))
@@ -737,9 +848,16 @@ class DragonProfileScreen(BaseScreen):
         if tribe == "MudWing" and dragon.is_bigwings:
             label = "BigWings" if dragon.status == "Alive" else "Former BigWings"
             self.draw_tag(screen, tag_x, rect.y + 88, label, GOLD)
+        elif has_dark_vision(dragon):
+            self.draw_tag(screen, tag_x, rect.y + 88, "Dark Vision", GOLD)
 
         location = str(getattr(dragon, "location", "Unknown")).replace("_", " ").title()
-        screen.blit(self.small_text.render(f"Currently at: {location}", True, TEXT), (rect.x + 183, rect.y + 127))
+        location_text = (
+            f"Departed · Now with the {dragon.foreign_tribe}s"
+            if dragon.status == "Departed" and dragon.foreign_tribe
+            else f"Currently at: {location}"
+        )
+        screen.blit(self.small_text.render(location_text, True, TEXT), (rect.x + 183, rect.y + 127))
 
         tab_y = rect.y + 177
         tabs = self.PROFILE_TABS + ["Sibs"] if tribe == "MudWing" else self.PROFILE_TABS
@@ -811,6 +929,15 @@ class DragonProfileScreen(BaseScreen):
         )
         self.buttons.append(return_button)
         return_button.draw(screen, self.body_bold, mouse_pos)
+        if self.chronicle_trail:
+            previous = self.chronicle_trail[-1][0]
+            back = FantasyButton(
+                (625, 640, 300, 40),
+                f"BACK TO {previous.name}",
+                self.go_back_in_chronicle,
+            )
+            self.buttons.append(back)
+            back.draw(screen, self.small_bold, mouse_pos)
 
     def update(self, dt):
         pass

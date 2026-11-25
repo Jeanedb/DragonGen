@@ -180,9 +180,6 @@ class LocationsScreen(BaseScreen):
             .replace(" ", "")
         )
 
-        print("LOCATION MAP TRIBE:", tribe)
-        print("WORLD ATTRIBUTES:", vars(self.world))
-
         # Try the tribe-specific location map first.
         bg_path = PROJECT_ROOT / "assets" / tribe / "location_map.png"
 
@@ -477,7 +474,7 @@ class LocationsScreen(BaseScreen):
 
         return [
             d for d in dragons
-            if getattr(d, "location", None) in valid_names
+            if d.status == "Alive" and getattr(d, "location", None) in valid_names
         ]
 
 

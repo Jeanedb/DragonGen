@@ -1,5 +1,7 @@
 import random
 from core.sim.logging import log_event
+from core.sim.life_story import can_return_mentor_help, mourn_mentor_relationships, record_mentor_rescue
+from core.sim.patrol_experience import rescue_injury_risk
 from core.sim.consequences import schedule_consequence
 
 
@@ -61,7 +63,8 @@ def handle_personal_choice(world, option_id):
             if "The Watchful" in b.earned_titles:
                 helper_bonus -= 1
 
-            a_gain = max(0, 2 + helper_bonus)
+            mentorship = can_return_mentor_help(a, b, world.moon)
+            a_gain = max(0, 2 + helper_bonus) + int(mentorship)
 
             a.trust[b.id] = a.trust.get(b.id, 0) + a_gain
             b.trust[a.id] = b.trust.get(a.id, 0) + 1
@@ -103,7 +106,10 @@ def handle_personal_choice(world, option_id):
                 importance=4
             )
 
-            if random.random() < 0.35:
+            if mentorship:
+                record_mentor_rescue(world, a, b)
+
+            if random.random() < rescue_injury_risk(b):
                 b.health = "Injured"
                 log_event(
                     world,
@@ -112,6 +118,12 @@ def handle_personal_choice(world, option_id):
                     event_type="injury",
                     importance=3
                 )
+            if mentorship:
+                return f"{a.name}'s trust in {b.name} grew. Both will remember the rescue."
+            if a_gain:
+                return f"{a.name} trusts {b.name} more and will remember who stayed."
+            return f"{a.name} will remember that {b.name} stayed."
+
         elif option_id == "run_for_help":
             b.watchful_actions += 1
             a.legend_flags["hardship_marks"] = a.legend_flags.get("hardship_marks", 0) + 1
@@ -140,7 +152,8 @@ def handle_personal_choice(world, option_id):
                 importance=4
             )
 
-            if random.random() < 0.30:
+            felt_abandoned = random.random() < 0.30
+            if felt_abandoned:
                 if b.id not in a.rivals:
                     a.rivals.append(b.id)
                 if a.id not in b.rivals:
@@ -179,6 +192,10 @@ def handle_personal_choice(world, option_id):
                     "dragon_id": a.id,
                     "caused_by": b.id
                 })
+
+            if felt_abandoned:
+                return f"{a.name} felt abandoned and will remember that {b.name} left."
+            return f"{a.name} remembers being left behind when {b.name} went for help."
 
     elif choice_type == "rival_confrontation_choice":
         if option_id == "back_down":
@@ -349,6 +366,7 @@ def handle_personal_choice(world, option_id):
                         event_type="death",
                         importance=5 
                     )
+                    mourn_mentor_relationships(world, injured)
 
                 else:
                     injured.health = "Injured"

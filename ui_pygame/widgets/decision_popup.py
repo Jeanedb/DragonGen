@@ -106,6 +106,8 @@ class DecisionPopup:
         self.context = list(context or [])
         self.on_choose = on_choose
         self.on_continue = None
+        self.on_follow = None
+        self.follow_name = None
         self.mode = "choice"
 
         self.hovered_index = None
@@ -122,13 +124,17 @@ class DecisionPopup:
     def is_showing_result(self):
         return self.mode == "result"
 
-    def show_result(self, body, on_continue=None):
+    def show_result(self, body, on_continue=None, *, follow_name=None, on_follow=None):
         """Reuse the same modal to show the consequence of the decision."""
         self.mode = "result"
         self.title = "Decision Resolved"
         self.body = str(body or "The decision was carried out.")
         self.context = []
         self.options = [{"id": "continue", "text": "Continue"}]
+        self.on_follow = on_follow
+        self.follow_name = follow_name
+        if follow_name and on_follow:
+            self.options.append({"id": "follow", "text": f"Follow {follow_name}"})
         self.on_continue = on_continue
         self.hovered_index = None
         self.button_rects = []
@@ -169,7 +175,11 @@ class DecisionPopup:
         option = self.options[index]
         option_id = option.get("id") if isinstance(option, dict) else option
         if self.mode == "result":
-            if callable(self.on_continue):
+            if option_id == "follow" and self.on_follow is not None:
+                self.on_follow()
+                self.on_follow = None
+                option["text"] = f"Following {self.follow_name}"
+            elif option_id == "continue" and callable(self.on_continue):
                 self.on_continue()
         elif option_id is not None:
             self.on_choose(option_id)
@@ -220,7 +230,8 @@ class DecisionPopup:
 
         button_h = 48
         gap = 12
-        total_buttons_h = option_count * button_h + (option_count - 1) * gap
+        result_columns = self.mode == "result" and option_count == 2
+        total_buttons_h = button_h if result_columns else option_count * button_h + (option_count - 1) * gap
         panel_h = min(
             height - 54,
             max(360, 210 + body_height + context_height + total_buttons_h),
@@ -328,10 +339,17 @@ class DecisionPopup:
 
         self.button_rects = []
         for index, option in enumerate(self.options):
+            button_width = panel.width - 100
+            x = panel.left + 50
+            y = buttons_top + index * (button_h + gap)
+            if result_columns:
+                button_width = (button_width - gap) // 2
+                x += (1 - index) * (button_width + gap)
+                y = buttons_top
             button = pygame.Rect(
-                panel.left + 50,
-                buttons_top + index * (button_h + gap),
-                panel.width - 100,
+                x,
+                y,
+                button_width,
                 button_h,
             )
             self.button_rects.append(button)
@@ -340,7 +358,8 @@ class DecisionPopup:
         self._update_hover(self._mouse_pos)
 
         for index, (option, button) in enumerate(zip(self.options, self.button_rects)):
-            hovered = index == self.hovered_index
+            followed = self.mode == "result" and option["id"] == "follow" and self.on_follow is None
+            hovered = index == self.hovered_index and not followed
             fill = (91, 55, 25) if hovered else PANEL_LIGHT
             border = GOLD if hovered else BRONZE
             _draw_panel(surface, button, fill, border, 3 if hovered else 2, 9)
@@ -356,7 +375,7 @@ class DecisionPopup:
 
             label = option.get("text", option.get("label", "Choose")) if isinstance(option, dict) else str(option)
             font = _fit_text(label, 17, 13, button.width - 92)
-            color = PALE_GOLD if hovered else TEXT
+            color = MUTED_TEXT if followed else PALE_GOLD if hovered else TEXT
             rendered = font.render(label, True, color)
             label_offset = 8 if self.mode == "choice" else 0
             surface.blit(rendered, rendered.get_rect(center=(button.centerx + label_offset, button.centery)))

@@ -3,6 +3,7 @@ import random
 
 from core.world import World
 from core.sim.logging import log_event
+from core.sim.life_story import mourn_mentor_relationships
 
 def handle_possible_death(world: World, dragon):
     if dragon.status != "Alive":
@@ -76,6 +77,7 @@ def handle_possible_death(world: World, dragon):
 
         text = random.choice(texts)
         log_event(world, text, involved_ids=[dragon.id], event_type="death", importance=5)
+        mourn_mentor_relationships(world, dragon)
 
         dragon.mate_id = None
         return True

@@ -2,6 +2,7 @@
 
 import random
 
+from core.sim.consequences import schedule_consequence
 from core.sim.fatigue import change_fatigue
 from core.sim.logging import log_event
 from core.sim.memory import Memory, add_memory
@@ -11,6 +12,26 @@ REEF_REWARDS = {"shallow_reef": (8, 14), "deep_reef": (21, 33)}
 
 def has_reef_routes(world):
     return world.tribe_name == "SeaWing Tribe"
+
+
+def has_dark_vision(dragon):
+    return dragon.tribe == "SeaWing"
+
+
+def advance_reef_current(world):
+    if has_reef_routes(world):
+        world.world_flags["reef_current"] = "strong" if random.random() < 0.30 else "calm"
+
+
+def has_strong_current(world):
+    return world.world_flags.get("reef_current") == "strong"
+
+
+def reef_success(world, route, divers, base_chance):
+    if not divers or route != "deep_reef" or not has_strong_current(world):
+        return base_chance
+    penalty = 0.10 if any(dragon.role == "Scout" for dragon in divers) else 0.20
+    return max(0.05, base_chance - penalty)
 
 
 def fit_for_reef(dragon):
@@ -132,6 +153,55 @@ def resolve_aquatic_warning(world, option_id):
         event_type="hunt", importance=3,
     )
     return result
+
+
+def try_trench_discovery(world):
+    if (
+        not has_reef_routes(world)
+        or world.pending_choice is not None
+        or world.moon < world.world_flags.get("last_trench_discovery_moon", -6) + 6
+    ):
+        return False
+
+    divers = [dragon for dragon in world.dragons if fit_for_reef(dragon) and has_dark_vision(dragon)]
+    if not divers or random.random() >= 0.08:
+        return False
+
+    guide = next((dragon for dragon in divers if dragon.role == "Scout"), divers[0])
+    world.pending_choice = {
+        "type": "seawing_trench_discovery",
+        "location": "hunting",
+        "guide_id": guide.id,
+        "text": (
+            f"In the dark passages of Deepfin Trench, {guide.name} spots a supply sled "
+            "wedged beneath a ledge. They can see a path to it that the shore crew missed."
+        ),
+        "options": [
+            {"id": "retrieve", "text": f"Send {guide.name} in now (10 food, +2 fatigue)"},
+            {"id": "mark", "text": "Mark the route and return next moon (5 food, no extra fatigue)"},
+        ],
+    }
+    world.world_flags["last_trench_discovery_moon"] = world.moon
+    return True
+
+
+def resolve_trench_discovery(world, option_id):
+    guide = next(
+        (dragon for dragon in world.dragons if dragon.id == world.pending_choice["guide_id"]),
+        None,
+    )
+    if option_id == "retrieve" and guide and fit_for_reef(guide) and has_dark_vision(guide):
+        change_fatigue(world, guide, 2)
+        world.food_stores += 10
+        text = f"{guide.name} used their dark vision to free the supply sled. The tribe gained 10 food."
+    elif option_id == "mark":
+        schedule_consequence(world, 0, {"type": "seawing_trench_supplies"})
+        text = "The route to the sled is marked. A shore crew will recover 5 food next moon."
+    else:
+        return "That response to the trench discovery is unavailable."
+
+    log_event(world, text, involved_ids=[guide.id] if guide else [], event_type="hunt", importance=3)
+    return text
 
 
 def try_reef_storm(world):

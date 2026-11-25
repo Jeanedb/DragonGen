@@ -6,6 +6,7 @@ from dataclasses import asdict
 from core.world import World
 from core.dragon import Dragon
 from core.sim.memory import Memory
+from core.sim.membership import mark_departed
 from core.sim.relationships import Relationship
 
 SAVE_VERSION = 10
@@ -223,6 +224,11 @@ def load_world(filename: str) -> World:
     for d in data.get("dragons", []):
         dragon = _normalize_dragon_after_load(Dragon(**d))
         world.dragons.append(dragon)
+
+    for dragon in world.dragons:
+        if dragon.role == "Defector" and dragon.status == "Alive":
+            dragon.foreign_tribe = dragon.foreign_tribe or dragon.tribe
+            mark_departed(world, dragon)
 
     _normalize_eggs_after_load(world)
 

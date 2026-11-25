@@ -9,13 +9,14 @@ from core.sim.mudwing import (
     maintain_bigwings, try_marsh_fire, try_mudwing_sib_decision, try_sib_adoption,
 )
 from core.sim.family import are_family
-from core.sim.seawing import try_reef_storm
+from core.sim.seawing import advance_reef_current, try_reef_storm, try_trench_discovery
 from core.sim.progression import tick_dragon_progression
 from core.sim.events import run_event_phase
 from core.sim.titles import evaluate_world_titles
 from core.sim.rumors import spread_rumor
 from core.sim.choice_generation.conversation import create_ai_conversation_choice
 from core.sim.consequences import process_scheduled_events
+from core.sim.relationship_stories import try_friendship_rations
 from core.sim.phases.healing_phase import run_healing_phase
 from core.sim.locations import move_dragons_between_locations
 from core.sim.phases.reputation_phase import run_reputation_phase
@@ -873,7 +874,9 @@ def offer_moon_choice(world):
         return
     if try_sib_adoption(world) or try_marsh_fire(world) or try_mudwing_sib_decision(world):
         return
-    if try_reef_storm(world):
+    if try_reef_storm(world) or try_trench_discovery(world):
+        return
+    if try_friendship_rations(world):
         return
     if random.random() < 0.10 and create_ai_conversation_choice(world):
         prepare_pending_choice(world)
@@ -905,8 +908,6 @@ def advance_moon(world: World):
         if isinstance(event, dict)
     }
 
-    living = get_living_dragons(world)
-
     if world.pending_choice is not None:
         return False
     
@@ -931,11 +932,11 @@ def advance_moon(world: World):
 
     run_reputation_phase(world)
 
-    run_progression_phase(world, living)
+    run_progression_phase(world, get_living_dragons(world))
     maintain_bigwings(world)
 
     if random.random() < 0.35:
-        try_existing_relationship_event(world, living)
+        try_existing_relationship_event(world, get_living_dragons(world))
 
     maintain_hierarchy(world)
     apply_leader_influence(world)
@@ -957,6 +958,7 @@ def advance_moon(world: World):
     world.previous_tribal_relations = world.tribal_relations.copy()
 
     evaluate_world_titles(world)
+    advance_reef_current(world)
     offer_moon_choice(world)
 
     world.event_log = world.event_log[-100:]

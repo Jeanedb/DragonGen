@@ -17,6 +17,7 @@ from ui_pygame.screens.village_center_v2_3_dialogue_test import VillageCenterScr
 from ui_pygame.screens.dragon_profile import DragonProfileScreen
 from ui_pygame.widgets.decision_popup import DecisionPopup
 from core.sim.choices import resolve_choice
+from core.sim.life_story import decision_follow_candidate, set_followed
 from ui_pygame.screens.world_dashboard import WorldDashboardScreen
 from ui_pygame.screens.scroll_library import ScrollLibraryScreen
 from ui_pygame.screens.dragon_portrait import DragonPortraitScreen
@@ -121,11 +122,18 @@ class PygameApp:
             )
 
     def resolve_decision(self, option_id):
+        event_start = len(self.world.event_log)
         outcome = resolve_choice(self.world, option_id)
         if self.decision_popup is not None:
+            candidate = decision_follow_candidate(self.world, self.world.event_log[event_start:], option_id)
+            follow = None
+            if candidate:
+                follow = lambda: set_followed(self.world, candidate.id, True)
             self.decision_popup.show_result(
                 outcome,
                 on_continue=self.close_decision_result,
+                follow_name=candidate.name if candidate else None,
+                on_follow=follow,
             )
         else:
             self.decision_popup = None
@@ -133,7 +141,7 @@ class PygameApp:
     def close_decision_result(self):
         self.decision_popup = None
 
-    def change_screen(self, screen_name):
+    def change_screen(self, screen_name, *, dragon_id=None):
         if screen_name == "save_game":
             self.open_save_slots(return_to_menu=False)
             return
@@ -150,6 +158,13 @@ class PygameApp:
             self.current_screen = VillageCenterScreen(self.world, self.change_screen)
         elif screen_name == "dragon_profile":
             self.current_screen = DragonProfileScreen(self.world, self.change_screen)
+            if dragon_id is not None:
+                dragon = next((member for member in self.world.dragons if member.id == dragon_id), None)
+                if dragon is not None:
+                    self.current_screen.set_status_filter("All")
+                    self.current_screen.select_dragon(dragon)
+                    self.current_screen.set_profile_tab("History")
+                    self.current_screen.set_history_mode("Full Chronicle")
         elif screen_name == "dashboard":
             self.current_screen = WorldDashboardScreen(self.world, self.change_screen)
         elif screen_name == "scroll_library":

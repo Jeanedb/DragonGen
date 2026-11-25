@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pygame
 
+from core.sim.life_story import life_story_paragraph
 from ui_pygame.core.coordinates import canvas_mouse_position
 
 from ui_pygame.core.base_screen import BaseScreen
@@ -213,9 +214,11 @@ class ScrollLibraryScreen(BaseScreen):
     def get_filtered_dragons(self):
         dragons = self.get_dragons()
         if self.roster_filter == "Living":
-            dragons = [dragon for dragon in dragons if not self.is_dead(dragon)]
+            dragons = [dragon for dragon in dragons if dragon.status == "Alive"]
         elif self.roster_filter == "Dead":
             dragons = [dragon for dragon in dragons if self.is_dead(dragon)]
+        elif self.roster_filter == "Away":
+            dragons = [dragon for dragon in dragons if dragon.status == "Departed"]
         query = self.search_text.strip().lower()
         if query:
             dragons = [
@@ -544,19 +547,21 @@ class ScrollLibraryScreen(BaseScreen):
     def draw_roster(self, screen, rect, mouse_pos):
         self.draw_panel(screen, rect, title="Archive Index")
         all_dragons = self.get_dragons()
-        living = sum(not self.is_dead(dragon) for dragon in all_dragons)
+        living = sum(dragon.status == "Alive" for dragon in all_dragons)
+        away = sum(dragon.status == "Departed" for dragon in all_dragons)
+        deceased = sum(self.is_dead(dragon) for dragon in all_dragons)
         self.draw_text_line(
             screen,
-            f"{len(all_dragons)} RECORDS  •  {living} LIVING  •  {len(all_dragons) - living} DECEASED",
+            f"{living} LIVING  •  {away} AWAY  •  {deceased} DECEASED",
             rect.x + 16,
             rect.y + 44,
             self.tiny,
             MUTED,
         )
         filter_y = rect.y + 65
-        for index, label in enumerate(("All", "Living", "Dead")):
+        for index, label in enumerate(("All", "Living", "Dead", "Away")):
             button = ArchiveButton(
-                pygame.Rect(rect.x + 12 + index * 82, filter_y, 76, 27),
+                pygame.Rect(rect.x + 12 + index * 65, filter_y, 59, 27),
                 label.upper(),
                 lambda value=label: self.set_filter(value),
                 selected=self.roster_filter == label,
@@ -704,8 +709,12 @@ class ScrollLibraryScreen(BaseScreen):
             y = self.draw_wrapped(screen, value, pygame.Rect(life.x + 14, y, life.width - 28, 100), self.small, TEXT, 15)
             y += 8
 
+        story = life_story_paragraph(dragon, self.world)
+        sections = [(True, "LIFE STORY"), (False, story)] if story else []
+        if story:
+            sections.append((True, "ABOUT THIS DRAGON"))
+        sections.extend([(False, self.get_biography(dragon)), (True, "NOTABLE CHRONICLE")])
         events = self.get_dragon_events(dragon)
-        sections = [(False, self.get_biography(dragon)), (True, "NOTABLE CHRONICLE")]
         if events:
             sections.extend(
                 (False, f"• {'Moon ' + str(event.get('moon')) + ': ' if event.get('moon') is not None else ''}{event.get('text', '')}")
@@ -902,9 +911,9 @@ class ScrollLibraryScreen(BaseScreen):
         self.draw_text_line(screen, "The tribe's memory, preserved in ink.", header.centerx, header.y + 53, self.small, MUTED, center=True)
 
         dragons = self.get_dragons()
-        living = sum(not self.is_dead(dragon) for dragon in dragons)
+        living = sum(dragon.status == "Alive" for dragon in dragons)
         badges = (
-            (pygame.Rect(48, 38, 225, 58), "ARCHIVED LIVES", str(len(dragons)), f"{living} living • {len(dragons) - living} deceased"),
+            (pygame.Rect(48, 38, 225, 58), "ARCHIVED LIVES", str(len(dragons)), f"{living} living • {sum(self.is_dead(d) for d in dragons)} deceased"),
             (pygame.Rect(727, 38, 225, 58), "CURRENT MOON", str(getattr(self.world, "moon", 0)), str(getattr(self.world, "tribe_name", "Tribal archive"))),
         )
         for badge, heading, value, detail in badges:

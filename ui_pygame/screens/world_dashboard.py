@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pygame
 
+from core.sim.life_story import STORY_LINES, defining_memories
 from ui_pygame.core.coordinates import canvas_mouse_position
 
 from ui_pygame.core.base_screen import BaseScreen
@@ -74,6 +75,14 @@ class FantasyButton(ClickTarget):
 
 class WorldDashboardScreen(BaseScreen):
     """A strategic report: current tribe health plus the recent chronicle."""
+
+    FOLLOWED_EVENT_TYPES = {
+        "bigwings_succession", "choice_abandonment", "choice_loyalty", "death", "defection",
+        "defector_return", "friendship", "lost_mentor", "lost_student", "mate_bond",
+        "shared_ration", "returned_ration", "kept_rations_when_owed", "resented_ration_sharing",
+        "shared_expedition_credit", "claimed_expedition_credit",
+        "proven_patrolmate", "relationship_break", "returned_mentor_help", "rivalry", "title_gain",
+    }
 
     FILTERS = [
         "All",
@@ -319,6 +328,61 @@ class WorldDashboardScreen(BaseScreen):
             self.buttons.append(button)
             button.draw(screen, self.small_bold, mouse_pos)
 
+    def get_followed_updates(self):
+        followed_ids = self.world.world_flags.get("followed_dragons", [])
+        followed = {dragon.id: dragon for dragon in self.get_dragons() if dragon.id in followed_ids}
+        if not followed:
+            return []
+        recent = range(max(0, self.world.moon - 1), self.world.moon + 1)
+        updates = []
+        for event in reversed(self.world.event_log):
+            if not isinstance(event, dict) or event.get("type") not in self.FOLLOWED_EVENT_TYPES:
+                continue
+            if event.get("moon") not in recent:
+                continue
+            for dragon_id in event.get("involved_ids") or ():
+                if dragon_id in followed:
+                    updates.append((event["moon"], event.get("importance", 0), followed[dragon_id], event["text"]))
+                    break
+
+        for dragon in followed.values():
+            for memory in defining_memories(dragon):
+                if memory.moon in recent and memory.type in {"mentored", "mentored_by"}:
+                    text = STORY_LINES[memory.type].format(
+                        dragon=dragon.name, other=self.dragon_name(memory.other_id, "another dragon")
+                    )
+                    updates.append((memory.moon, 4, dragon, text))
+
+        updates.sort(key=lambda update: (update[0], update[1]), reverse=True)
+        return updates[:3]
+
+    def draw_followed_updates(self, screen, rect, mouse_pos):
+        self.draw_beveled_panel(screen, rect, fill=PANEL, edge=BRONZE)
+        screen.blit(self.heading.render("SINCE LAST MOON", True, PARCHMENT), (rect.x + 22, rect.y + 13))
+        updates = self.get_followed_updates()
+        if not updates:
+            message = (
+                "No major updates for followed dragons."
+                if self.world.world_flags.get("followed_dragons")
+                else "Follow dragons in the roster to see their updates here."
+            )
+            screen.blit(self.small_text.render(message, True, MUTED), (rect.x + 22, rect.y + 47))
+        for index, (moon, _, dragon, text) in enumerate(updates):
+            row = pygame.Rect(rect.x + 19, rect.y + 40 + index * 34, rect.width - 38, 31)
+            color = PANEL_LIGHT if row.collidepoint(mouse_pos) else INK
+            pygame.draw.rect(screen, color, row, border_radius=5)
+            title = self.small_bold.render(f"{dragon.name}  •  Moon {moon}", True, GOLD)
+            screen.blit(title, (row.x + 7, row.y + 1))
+            snippet = " ".join(text.split())
+            if self.small_text.size(snippet)[0] > row.width - 15:
+                while snippet and self.small_text.size(snippet + "…")[0] > row.width - 15:
+                    snippet = snippet[:-1]
+                snippet = snippet.rstrip() + "…"
+            screen.blit(self.small_text.render(snippet, True, TEXT), (row.x + 7, row.y + 15))
+            self.buttons.append(ClickTarget(
+                row, lambda dragon_id=dragon.id: self.change_screen("dragon_profile", dragon_id=dragon_id)
+            ))
+
     def draw_chronicle(self, screen, rect, mouse_pos):
         rect = pygame.Rect(rect)
         self.draw_beveled_panel(screen, rect, fill=PANEL, edge=BRONZE)
@@ -439,7 +503,10 @@ class WorldDashboardScreen(BaseScreen):
         pygame.draw.rect(screen, (100, 72, 46), bar, width=1, border_radius=7)
 
         self.draw_watch(screen, (left.x + 20, left.y + 367, left.width - 40, 132), mouse_pos)
-        self.draw_chronicle(screen, right, mouse_pos)
+        updates = pygame.Rect(right.x, right.y, right.width, 153)
+        chronicle = pygame.Rect(right.x, updates.bottom + 12, right.width, right.height - updates.height - 12)
+        self.draw_followed_updates(screen, updates, mouse_pos)
+        self.draw_chronicle(screen, chronicle, mouse_pos)
 
         return_button = FantasyButton(
             (390, 640, 220, 40),
